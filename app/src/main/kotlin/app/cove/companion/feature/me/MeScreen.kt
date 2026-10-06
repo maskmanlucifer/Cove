@@ -36,6 +36,10 @@ import app.cove.companion.design.components.DockClearance
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.design.components.pressable
 import app.cove.companion.feature.onboarding.SignIn
+import app.cove.companion.feature.security.AuthAvailability
+import app.cove.companion.feature.security.Authenticator
+import app.cove.companion.feature.security.SecurityGroup
+import app.cove.companion.feature.security.findFragmentActivity
 import app.cove.companion.navigation.Nav
 import app.cove.companion.navigation.Routes
 
@@ -85,6 +89,21 @@ fun MeScreen(nav: Nav) {
             RowDivider()
             SettingsRow("Restore from backup", onClick = { vm.resetBackup(); sheet = MeSheet.Restore })
         }
+        SecurityGroup(
+            settings,
+            onLockToggle = { on ->
+                val host = context.findFragmentActivity()
+                when {
+                    !on -> vm.update { it.copy(biometricLock = false) }
+                    host == null || Authenticator.availability(context) == AuthAvailability.None -> sheet = MeSheet.LockUnavailable
+                    else -> Authenticator.prompt(host, "Turn on app lock", null) { ok ->
+                        if (ok) vm.update { it.copy(biometricLock = true) }
+                    }
+                }
+            },
+            onLockAfter = { sheet = MeSheet.LockAfter },
+            onHideInRecents = { v -> vm.update { it.copy(hideInRecents = v) } },
+        )
         SettingsGroup("More") {
             SettingsRow("Look and text size", value = lookSummary(settings.theme, settings.textScale), onClick = { sheet = MeSheet.Look })
             RowDivider()

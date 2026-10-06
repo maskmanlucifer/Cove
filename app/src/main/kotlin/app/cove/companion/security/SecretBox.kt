@@ -10,15 +10,15 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
 /** Encrypts small secrets with a non-exportable Android Keystore AES-256-GCM key named [alias]. */
-class SecretBox(private val alias: String) {
+class SecretBox(private val alias: String) : Sealer {
     /** Encrypts [plain]; the result is `iv || ciphertext` and is safe to store anywhere. */
-    fun encrypt(plain: ByteArray): ByteArray {
+    override fun encrypt(plain: ByteArray): ByteArray {
         val cipher = Cipher.getInstance(TRANSFORM).apply { init(Cipher.ENCRYPT_MODE, key()) }
         return cipher.iv + cipher.doFinal(plain)
     }
 
     /** Reverses [encrypt]; throws if the data was tampered with or the key is gone. */
-    fun decrypt(box: ByteArray): ByteArray {
+    override fun decrypt(box: ByteArray): ByteArray {
         val cipher = Cipher.getInstance(TRANSFORM)
         cipher.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(TAG_BITS, box, 0, IV_BYTES))
         return cipher.doFinal(box, IV_BYTES, box.size - IV_BYTES)
