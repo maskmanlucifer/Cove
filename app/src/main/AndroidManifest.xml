@@ -44,6 +44,13 @@
 
         <!-- Invisible trampoline for the launcher shortcut and the tile: opens the app straight into listening. -->
         <activity
+            android:name=".feature.recovery.RestartActivity"
+            android:exported="false"
+            android:process=":restart"
+            android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <activity
             android:name=".feature.voice.QuickListenActivity"
             android:exported="true"
             android:excludeFromRecents="true"

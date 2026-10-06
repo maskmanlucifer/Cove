@@ -2,8 +2,6 @@ package app.cove.companion.feature.recovery
 
 import android.content.Context
 import android.content.Intent
-import android.os.Handler
-import android.os.Looper
 import android.os.Process
 import app.cove.companion.data.backup.Backup
 import app.cove.companion.data.backup.ExportBuilder
@@ -91,11 +89,15 @@ class RecoveryActions(private val context: Context) {
         }
     }
 
-    /** Starts Cove again from scratch: launches the main screen in a new task and ends this process shortly after. */
+    /**
+     * Starts Cove again from scratch. A helper activity in its own process launches the main screen and then this
+     * process ends, so the new start never races with the dying one.
+     */
     fun restart() {
-        val launch = app.packageManager.getLaunchIntentForPackage(app.packageName)?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-        if (launch != null) app.startActivity(launch)
-        Handler(Looper.getMainLooper()).postDelayed({ Process.killProcess(Process.myPid()) }, 250)
+        app.startActivity(
+            Intent(app, RestartActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                .putExtra(RestartActivity.EXTRA_PID, Process.myPid()),
+        )
     }
 
     private companion object {
