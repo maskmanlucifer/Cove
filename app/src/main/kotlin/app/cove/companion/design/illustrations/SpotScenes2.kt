@@ -1,157 +1,134 @@
 package app.cove.companion.design.illustrations
 
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathFillType
+import kotlin.random.Random
 
-private const val W = 240f
-private const val H = 180f
+internal fun alarmsArt() = spotScene(
+    MascotPose.Sleeping, mx = 140f, ms = 1.1f, sky = { it.day(it.coralSoft, it.sunSoft) }, haze = { it.pinkSoft },
+    back = { sun(120f, 118f, 26f); cloud(50f, 60f, 54f, a = 0.8f); cloud(194f, 78f, 44f, a = 0.7f); birds2() },
+    ground = { alarmClock(58f, 196f, 1.15f) },
+)
 
-private fun ArtBuilder.sprig(bx: Float, by: Float, height: Float, lean: Float = 0f, scale: Float = 1f) {
-    line(path { moveTo(bx, by); quadraticTo(bx + lean * 0.3f, by - height * 0.5f, bx + lean, by - height) }, 1.5f, 0.6f)
-    fill(leaf(bx + lean * 0.35f, by - height * 0.45f, -28f, 22f * scale, 7f * scale), pal.sage)
-    fill(leaf(bx + lean * 0.6f, by - height * 0.7f, -152f, 20f * scale, 6.5f * scale), pal.sage)
-    fill(leaf(bx + lean, by - height, -86f, 18f * scale, 6.5f * scale), pal.sage)
+private fun Painter.birds2() {
+    line(path { moveTo(150f, 50f); quadraticTo(154f, 45f, 158f, 50f); quadraticTo(162f, 45f, 166f, 50f) }, pal.ink, 1.1f, 0.4f)
 }
 
-private fun Path.shifted(dx: Float, dy: Float) = Path().also { it.addPath(this, Offset(dx, dy)) }
+internal fun voiceArt() = spotScene(
+    MascotPose.Listening, mx = 142f, ms = 1.15f, sky = { it.day(it.lilacSoft, it.pinkSoft) }, haze = { it.pinkSoft },
+    back = { cloud(176f, 42f, 56f); sparkle(120f, 52f, 4f, pal.sun) },
+    ground = { songbird(40f, 176f) },
+)
 
-internal fun messagesArt(p: ScenePalette) = ArtBuilder(p).run {
-    backdrop(112f, 96f, 92f)
-    shadow(106f, 152f, 70f)
-    fill(rrect(72f, 72f, 134f, 104f, 5f), p.base)
-    line(rrect(72f, 72f, 134f, 104f, 5f), 1.4f, 0.4f)
-    line(path { moveTo(82f, 82f); lineTo(118f, 82f); moveTo(82f, 90f); lineTo(106f, 90f) }, 1.4f, 0.28f)
-    val body = rrect(56f, 92f, 152f, 150f, 11f)
-    fill(body.shifted(0f, 3f), p.lilac, 0.35f)
-    fill(body, p.paper)
-    fill(path { moveTo(56f, 104f); quadraticTo(56f, 92f, 68f, 92f); lineTo(140f, 92f); quadraticTo(152f, 92f, 152f, 104f); lineTo(104f, 128f); close() }, p.paperShade)
-    line(body, 1.5f, 0.55f)
-    line(path { moveTo(58f, 100f); lineTo(104f, 126f); lineTo(150f, 100f) }, 1.5f, 0.55f)
-    line(path { moveTo(60f, 146f); lineTo(88f, 120f); moveTo(148f, 146f); lineTo(120f, 120f) }, 1.3f, 0.3f)
-    line(path { moveTo(150f, 86f); cubicTo(164f, 72f, 160f, 56f, 176f, 52f) }, 1.5f, 0.45f, dashed = true)
-    move(ax = 3f, ay = -3f) {
-        val tri = path { moveTo(168f, 58f); lineTo(214f, 34f); lineTo(190f, 74f); lineTo(186f, 60f); close() }
-        fill(tri, p.paper)
-        fill(path { moveTo(186f, 60f); lineTo(214f, 34f); lineTo(190f, 74f); close() }, p.lilac)
-        line(tri, 1.5f, 0.6f)
-        line(path { moveTo(214f, 34f); lineTo(186f, 60f) }, 1.4f, 0.5f)
-    }
-    build(W, H)
+private fun Painter.songbird(x: Float, y: Float) = at(x, y) {
+    fill(oval(0f, 1f, 14f, 2.6f), pal.shade)
+    fill(rrect(-3f, -8f, 3f, 0f, 1.5f), pal.clay)
+    fill(oval(0f, -20f, 11f, 10f), vgrad(-30f, -10f, pal.glow, pal.sun))
+    fill(oval(-5f, -21f, 5f, 3.6f), pal.orange, 0.5f)
+    fill(path { moveTo(10f, -22f); lineTo(17f, -19f); lineTo(10f, -17f); close() }, pal.orange)
+    ds.drawCircle(pal.eye, 1.4f, androidx.compose.ui.geometry.Offset(5f, -23f))
+    leafAt(-8f, -17f, 200f, 9f, 3f, pal.orange, vein = false)
+    sparkle(22f, -36f, 3.6f, pal.lilac); sparkle(30f, -26f, 2.6f, pal.pink)
 }
 
-internal fun syncedArt(p: ScenePalette) = ArtBuilder(p).run {
-    backdrop(120f, 96f, 94f)
-    move(ax = -5f, shift = 0.5f) { fill(cloud(58f, 70f, 40f), p.lilac, 0.5f) }
-    move(ax = 6f) { fill(cloud(190f, 62f, 46f), p.paper, 0.85f) }
-    shadow(120f, 152f, 66f)
-    val c = cloud(120f, 140f, 128f)
-    fill(c.shifted(0f, 3f), p.lilac, 0.4f)
-    fill(c, p.paper)
-    fill(oval(120f, 112f, 17f), p.sky)
-    line(oval(120f, 112f, 17f), 1.5f, 0.45f)
-    line(path { moveTo(112f, 112f); lineTo(118f, 118f); lineTo(129f, 105f) }, 1.9f, 0.8f)
-    build(W, H)
+internal fun messagesArt() = spotScene(
+    MascotPose.Waving, mx = 120f, ms = 1.15f, sky = { it.day(it.pinkSoft, it.warmWhite) }, haze = { it.pinkSoft },
+    back = {
+        cloud(60f, 54f, 48f, a = 0.8f)
+        dotTrail(70f, 140f, 60f, 30f, 150f, 36f, 18, pal.coral)
+        paperPlane(160f, 34f, 1f, -12f)
+    },
+    ground = { envelope(188f, 188f, 1.15f, 6f) },
+)
+
+internal fun syncedArt() = spotScene(
+    MascotPose.Stargazing, mx = 120f, ms = 1.15f, sky = { it.day(it.leafSoft, it.warmWhite) },
+    back = {
+        cloud(120f, 52f, 96f)
+        fill(oval(120f, 82f, 14f), vgrad(68f, 96f, pal.leafLight, pal.leaf))
+        line(path { moveTo(113f, 82f); lineTo(118f, 87f); lineTo(128f, 76f) }, pal.warmWhite, 2.8f)
+        dotTrail(120f, 98f, 128f, 108f, 122f, 118f, 5, pal.leaf)
+        leafAt(180f, 70f, 40f, 9f, 3.4f, pal.leafLight, vein = false); leafAt(56f, 76f, 150f, 8f, 3f, pal.leaf, vein = false)
+    },
+)
+
+internal fun offlineArt() = spotScene(
+    MascotPose.Idle, mx = 112f, ms = 1.15f, sky = { it.day(it.mix(it.lilac, it.lilacSoft, 0.55f), it.pinkSoft) }, haze = { it.lilacSoft },
+    back = {
+        cloud(100f, 50f, 100f, pal.mix(pal.warmWhite, pal.lilac, 0.35f), 0.95f)
+        repeat(3) { sparkle(168f + it * 8f, 30f + it * 10f, 2.8f, pal.warmWhite, 0.8f) }
+        sparkle(40f, 90f, 3f, pal.warmWhite, 0.8f)
+    },
+    ground = {
+        fill(rrect(186f, 118f, 190.5f, 196f, 2f), pal.clay)
+        line(path { moveTo(188f, 124f); quadraticTo(168f, 118f, 168f, 128f) }, pal.clay, 2.4f)
+        lanternProp(168f, 126f, 1.0f)
+    },
+)
+
+internal fun helpArt() = spotScene(
+    MascotPose.Idle, mx = 108f, ms = 1.15f, sky = { it.day(it.sunSoft, it.leafSoft) },
+    back = { sun(190f, 52f, 13f); cloud(70f, 48f, 58f) },
+    ground = {
+        fill(rrect(190f, 150f, 194f, 200f, 2f), pal.clay)
+        lifebuoy(192f, 148f, 21f)
+        mushroom(40f, 196f, 9f, pal.orange)
+    },
+)
+
+internal fun lanternArt() = SceneArt(S, S, ArtShape.Circle, MascotSpot(MascotPose.Lantern, 112f, 206f, 1.2f)) {
+    fill(rrect(0f, 0f, S, S, 0f), vgrad(0f, 170f, pal.nightTop, pal.nightLow))
+    val r = Random(77)
+    repeat(26) { val x = r.nextFloat() * S; val y = r.nextFloat() * 110f; if (it % 3 == 0) sparkle(x, y, 2.4f + r.nextFloat() * 2f, pal.cream, 0.9f) else fill(oval(x, y, 0.8f), pal.cream, 0.7f) }
+    moon(176f, 50f, 15f)
+    rollingMeadow(S, S, 118f, pal.nightLow, 10, 1.2f, between = { glow(150f, 170f, 90f, pal.glow, 0.28f); mascot() })
+    fireflies(8L, 9, 20f, 110f, 220f, 200f)
+    grain(S, S)
 }
 
-internal fun offlineArt(p: ScenePalette) = ArtBuilder(p).run {
-    backdrop(120f, 88f, 88f, strength = if (p.dark) 0.35f else 0.6f)
-    move(ay = 2f) {
-        shadow(120f, 112f, 50f, 4f)
-        val c = cloud(120f, 100f, 112f)
-        fill(c.shifted(0f, 3f), p.lilac, 0.35f)
-        fill(c, p.paper)
-    }
-    line(path { moveTo(112f, 104f); cubicTo(112f, 126f, 70f, 118f, 84f, 146f) }, 1.7f, 0.6f)
-    shadow(122f, 158f, 76f)
-    fill(rrect(82f, 138f, 108f, 154f, 5f), p.peach)
-    line(rrect(82f, 138f, 108f, 154f, 5f), 1.5f, 0.55f)
-    line(path { moveTo(108f, 143f); lineTo(118f, 143f); moveTo(108f, 149f); lineTo(118f, 149f) }, 1.7f, 0.65f)
-    fill(rrect(146f, 132f, 184f, 158f, 9f), p.paper)
-    line(rrect(146f, 132f, 184f, 158f, 9f), 1.5f, 0.55f)
-    line(path { moveTo(154f, 141f); lineTo(162f, 141f); moveTo(154f, 149f); lineTo(162f, 149f) }, 1.7f, 0.5f)
-    build(W, H)
-}
+internal fun secureArt() = spotScene(
+    MascotPose.Idle, mx = 84f, ms = 1.15f, sky = { it.day(it.leafSoft, it.sunSoft) },
+    back = { sun(60f, 50f, 12f); cloud(186f, 40f, 54f) },
+    ground = { lockFlower(172f, 142f, 22f) },
+)
 
-private fun ringSegment(cx: Float, cy: Float, ro: Float, ri: Float, startDeg: Float, sweepDeg: Float) = path {
-    arcTo(Rect(cx - ro, cy - ro, cx + ro, cy + ro), startDeg, sweepDeg, true)
-    arcTo(Rect(cx - ri, cy - ri, cx + ri, cy + ri), startDeg + sweepDeg, -sweepDeg, false)
-    close()
-}
+internal fun clearedArt() = spotScene(
+    MascotPose.Waving, mx = 100f, ms = 1.15f, sky = { it.day(it.warmWhite, it.leafSoft) }, flowers = 5, blooms = 1.1f,
+    back = { sun(184f, 54f, 13f); cloud(80f, 46f, 56f) },
+    ground = {
+        sprout(170f, 198f, 28f)
+        sparkle(184f, 160f, 4f, pal.sun); sparkle(158f, 168f, 2.8f, pal.pink)
+    },
+)
 
-internal fun helpArt(p: ScenePalette) = ArtBuilder(p).run {
-    backdrop(120f, 92f, 92f)
-    move(ay = 2.5f) {
-        shadow(120f, 142f, 44f, 5f)
-        val ring = path { fillType = PathFillType.EvenOdd; addOval(Rect(78f, 48f, 162f, 132f)); addOval(Rect(104f, 74f, 136f, 106f)) }
-        fill(ring, p.paper)
-        for (a in listOf(-45f, 45f, 135f, 225f)) fill(ringSegment(120f, 90f, 42f, 16f, a - 17f, 34f), p.peach)
-        line(oval(120f, 90f, 42f), 1.5f, 0.55f)
-        line(oval(120f, 90f, 16f), 1.5f, 0.55f)
-        line(oval(120f, 90f, 49f), 1.3f, 0.3f, dashed = true)
-    }
-    move(ax = 5f, shift = 0.3f) {
-        for ((y, a) in listOf(150f to 0.55f, 162f to 0.35f)) {
-            line(path { moveTo(52f, y); cubicTo(72f, y - 7f, 88f, y + 7f, 108f, y); cubicTo(128f, y - 7f, 144f, y + 7f, 164f, y); cubicTo(176f, y - 5f, 184f, y + 4f, 190f, y) }, 2f, a, p.sky)
+internal fun celebrationArt() = spotScene(
+    MascotPose.Celebrating, mx = 120f, ms = 1.1f, sky = { it.day(it.sunSoft, it.pinkSoft) }, haze = { it.pinkSoft },
+    back = {
+        line(path { moveTo(10f, 34f); quadraticTo(120f, 72f, 230f, 34f) }, pal.olive, 1f, 0.6f)
+        listOf(pal.coral, pal.sun, pal.lilac, pal.leaf, pal.pink, pal.orange, pal.sun).forEachIndexed { i, c ->
+            val t = (i + 0.7f) / 7.4f
+            val x = 10f + 220f * t
+            val y = 34f + 76f * t * (1f - t)
+            fill(path { moveTo(x - 7f, y); lineTo(x + 7f, y); lineTo(x, y + 14f); close() }, c)
         }
-    }
-    build(W, H)
-}
+        val r = Random(5)
+        repeat(18) { leafAt(r.nextFloat() * S, 70f + r.nextFloat() * 70f, r.nextFloat() * 360f, 6f, 2.4f, listOf(pal.orange, pal.pink, pal.sun, pal.lilac, pal.leaf)[it % 5], vein = false) }
+    },
+)
 
-internal fun lanternArt(p: ScenePalette) = ArtBuilder(p).run {
-    backdrop(120f, 92f, 92f)
-    move(grow = 0.06f, px = 120f, py = 98f) { fill(oval(120f, 98f, 74f), radial(120f, 98f, 74f, p.glow, if (p.dark) 0.45f else 0.85f)) }
-    shadow(120f, 148f, 46f)
-    line(path { moveTo(100f, 54f); cubicTo(100f, 26f, 140f, 26f, 140f, 54f) }, 1.8f, 0.65f)
-    val body = rrect(96f, 62f, 144f, 128f, 12f)
-    fill(body, Brush.radialGradient(0f to p.glow, 0.55f to p.peach.copy(alpha = 0.7f), 1f to p.paper, center = Offset(120f, 100f), radius = 44f))
-    line(path { moveTo(112f, 64f); lineTo(112f, 126f); moveTo(128f, 64f); lineTo(128f, 126f) }, 1.3f, 0.3f)
-    line(body, 1.5f, 0.55f)
-    val cap = path { moveTo(90f, 64f); quadraticTo(120f, 38f, 150f, 64f); close() }
-    fill(cap, p.lilac)
-    line(cap, 1.5f, 0.55f)
-    fill(rrect(92f, 126f, 148f, 138f, 6f), p.lilac)
-    line(rrect(92f, 126f, 148f, 138f, 6f), 1.5f, 0.55f)
-    move(ay = -1.2f, grow = 0.05f, px = 120f, py = 112f) {
-        fill(path { moveTo(120f, 114f); cubicTo(109f, 106f, 115f, 98f, 120f, 88f); cubicTo(125f, 98f, 131f, 106f, 120f, 114f) }, if (p.dark) p.moon else p.paper, 0.95f)
-    }
-    build(W, H)
-}
-
-internal fun secureArt(p: ScenePalette) = ArtBuilder(p).run {
-    backdrop(120f, 92f, 92f)
-    shadow(118f, 150f, 58f)
-    line(path { moveTo(98f, 86f); lineTo(98f, 66f); cubicTo(98f, 30f, 142f, 30f, 142f, 66f); lineTo(142f, 86f) }, 4.2f, 0.7f)
-    val body = rrect(78f, 84f, 162f, 144f, 18f)
-    fill(body, p.lilac)
-    fill(body, radial(100f, 100f, 60f, p.peach, 0.7f))
-    line(body, 1.5f, 0.5f)
-    fill(oval(120f, 108f, 6.5f), p.line, 0.75f)
-    fill(rrect(117.5f, 110f, 122.5f, 126f, 2.5f), p.line, 0.75f)
-    move(ax = 2f) { sprig(160f, 100f, 50f, 14f, 1.1f) }
-    build(W, H)
-}
-
-private fun sparkle(cx: Float, cy: Float, r: Float) = path {
-    moveTo(cx, cy - r); quadraticTo(cx, cy, cx + r, cy); quadraticTo(cx, cy, cx, cy + r); quadraticTo(cx, cy, cx - r, cy); quadraticTo(cx, cy, cx, cy - r); close()
-}
-
-internal fun clearedArt(p: ScenePalette) = ArtBuilder(p).run {
-    backdrop(120f, 94f, 92f)
-    shadow(120f, 150f, 70f)
-    val front = rrect(74f, 92f, 166f, 148f, 9f)
-    fill(front, p.paper)
-    fill(rrect(74f, 118f, 166f, 148f, 9f), p.paperShade, 0.6f)
-    line(front, 1.5f, 0.55f)
-    val lid = rrect(68f, 76f, 172f, 98f, 9f)
-    fill(lid, p.lilac)
-    line(lid, 1.5f, 0.55f)
-    fill(rrect(112f, 76f, 128f, 148f, 3f), p.peach, 0.85f)
-    line(path { moveTo(112f, 76f); lineTo(112f, 148f); moveTo(128f, 76f); lineTo(128f, 148f) }, 1.3f, 0.35f)
-    move(ay = -3f, grow = 0.08f, px = 184f, py = 52f) { fill(sparkle(184f, 52f, 10f), p.glow); line(sparkle(184f, 52f, 10f), 1.3f, 0.4f) }
-    move(ay = -2f, grow = 0.08f, px = 56f, py = 70f, shift = 0.4f) { fill(sparkle(56f, 70f, 6f), p.glow); line(sparkle(56f, 70f, 6f), 1.2f, 0.4f) }
-    move(ax = 1.5f) { sprig(196f, 148f, 26f, 4f, 0.8f) }
-    build(W, H)
+internal fun lockArt() = SceneArt(S, S, ArtShape.Circle, MascotSpot(MascotPose.Idle, 168f, 208f, 1.15f)) {
+    fill(rrect(0f, 0f, S, S, 0f), vgrad(0f, 170f, pal.mix(pal.nightTop, pal.lilac, if (pal.dark) 0.1f else 0.15f), pal.mix(pal.nightLow, pal.pink, 0.35f)))
+    moon(178f, 46f, 12f)
+    repeat(8) { sparkle(24f + it * 27f % 200f, 20f + (it * 37f) % 80f, 2.2f, pal.cream, 0.8f) }
+    rollingMeadow(S, S, 124f, pal.nightLow, 8, 1.2f, between = {
+        // garden gate: two posts and a round-topped gate with a padlock
+        fill(oval(86f, 200f, 52f, 6f), pal.shade)
+        for (x in listOf(40f, 132f)) { fill(rrect(x - 5f, 112f, x + 5f, 202f, 3f), vgrad(112f, 202f, pal.mix(pal.clay, pal.warmWhite, 0.2f), pal.clay)); fill(oval(x, 112f, 6f, 3.4f), pal.clay) }
+        val gate = path { moveTo(46f, 200f); lineTo(46f, 148f); quadraticTo(86f, 118f, 126f, 148f); lineTo(126f, 200f); close() }
+        fill(gate, pal.olive, 0.35f)
+        for (i in 0..5) line(path { moveTo(52f + i * 13f, 200f); lineTo(52f + i * 13f, 140f + kotlin.math.abs(i - 2.5f) * 5f) }, pal.clay, 4f)
+        line(path { moveTo(46f, 168f); lineTo(126f, 168f) }, pal.clay, 3.4f)
+        padlock(86f, 178f, 1.15f)
+        mascot()
+    })
+    fireflies(9L, 7, 20f, 120f, 220f, 200f)
+    grain(S, S)
 }

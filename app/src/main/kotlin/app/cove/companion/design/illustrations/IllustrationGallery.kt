@@ -19,22 +19,38 @@ import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.coveTopInset
 
-/** Debug-only review screen (`--es route debug/illustrations`): every scene, light beside dark, on one page. */
+/**
+ * Debug-only review screen (`--es route debug/illustrations`): every mascot pose and every scene, light beside dark.
+ * Still frames (no animation) so screenshots are stable.
+ */
 @Composable
 fun IllustrationGallery() {
     Column(
         Modifier.fillMaxSize().background(Cove.colors.canvas).verticalScroll(rememberScrollState()).coveTopInset().padding(horizontal = 8.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        CoveText("Mascot poses", style = CoveType.Meta, color = Cove.colors.muted)
+        listOf(false, true).forEach { dark ->
+            CoveTheme(dark = dark) {
+                Column(Modifier.fillMaxWidth().background(Cove.colors.canvas).padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    MascotPose.entries.chunked(5).forEach { row ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            row.forEach { pose -> Box(Modifier.weight(1f)) { Mascot(pose, Modifier.fillMaxWidth(), animate = false) } }
+                            repeat(5 - row.size) { Box(Modifier.weight(1f)) }
+                        }
+                    }
+                }
+            }
+        }
         Scene.entries.forEach { scene ->
             CoveText(scene.name, style = CoveType.Meta, color = Cove.colors.muted)
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf(false, true).forEach { dark ->
+            val themes = listOf(false, true)
+            if (scene.isWide) Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                themes.forEach { dark -> CoveTheme(dark = dark) { Illustration(scene, Modifier.fillMaxWidth(), animate = false) } }
+            } else Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                themes.forEach { dark ->
                     CoveTheme(dark = dark) {
-                        Box(Modifier.weight(1f).background(Cove.colors.canvas).padding(vertical = 8.dp)) {
-                            if (scene.isTimeOfDay) SceneBanner(scene, 90.dp, Modifier.fillMaxWidth().padding(horizontal = 4.dp), animate = false)
-                            else Illustration(scene, Modifier.fillMaxWidth(), animate = false)
-                        }
+                        Box(Modifier.weight(1f).background(Cove.colors.canvas).padding(vertical = 8.dp)) { Illustration(scene, Modifier.fillMaxWidth(), animate = false) }
                     }
                 }
             }

@@ -1,91 +1,120 @@
 package app.cove.companion.design.illustrations
 
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.graphics.lerp
+import kotlin.random.Random
 
-private const val W = 360f
-private const val H = 160f
+internal const val WideW = 360f
+internal const val WideH = 200f
 
-private fun sky(top: Color, bottom: Color, y1: Float = H) = vertical(0f, y1, top, bottom)
+private val Garden = listOf(Bloom.Orange, Bloom.Yellow, Bloom.Lilac, Bloom.Pink, Bloom.White, Bloom.White, Bloom.Daisy)
 
-private fun ArtBuilder.sky(top: Color, bottom: Color) = fill(rrect(0f, 0f, W, H, 0f), vertical(0f, H, top, bottom))
-
-private fun hill(y0: Float, y1: Float, y2: Float, y3: Float, bump: Float = 14f) = path {
-    moveTo(0f, y0)
-    cubicTo(70f, y0 - bump, 130f, y1 - bump, 190f, y1)
-    cubicTo(250f, y1 + bump * 0.6f, 310f, y3 - bump, W, y2)
-    lineTo(W, H); lineTo(0f, H); close()
+/** Three rolling hill layers and the flower meadow in front; [haze] tints the far hills with the sky's colour. */
+internal fun Painter.rollingMeadow(w: Float, h: Float, horizon: Float, haze: Color, flowers: Int = 26, bloomScale: Float = 1f, between: () -> Unit = {}) {
+    val far = greens(0.1f, haze)
+    hill(pts(0f, horizon, 70f, horizon - 14f, 150f, horizon - 4f, 240f, horizon - 18f, w, horizon - 6f), h, far.first, far.second, pal.leaf, pal.warmWhite, 40, pal.warmWhite, 1)
+    val mid = greens(0.45f, haze)
+    hill(pts(0f, horizon + 18f, 90f, horizon + 4f, 190f, horizon + 20f, 290f, horizon + 8f, w, horizon + 22f), h, mid.first, mid.second, pal.leafDeep, pal.leafLight, 110, pal.leafLight, 2)
+    scatter(21L, 22, 6f, w - 6f, horizon + 16f, horizon + 40f, 2.2f, 3.6f, listOf(Bloom.Daisy, Bloom.Daisy, Bloom.Lilac, Bloom.Yellow, Bloom.Orange))
+    val near = greens(0.9f, haze)
+    hill(pts(0f, horizon + 44f, 110f, horizon + 32f, 220f, horizon + 46f, w, horizon + 34f), h, near.first, near.second, pal.leafDeep, pal.leaf, 150, pal.leafLight, 3)
+    blades(0f, w, horizon + 56f, (w / 3f).toInt(), 6f, 13f, pal.grassDark, pal.leaf, 4)
+    scatter(23L, flowers, 4f, w - 4f, horizon + 52f, h - 26f, 4.5f * bloomScale, 7.5f * bloomScale, Garden, stems = true, groundY = h + 6f)
+    between()
+    scatter(24L, (w / 24f).toInt(), 2f, w - 2f, h - 22f, h - 6f, 7f * bloomScale, 9f * bloomScale, Garden, stems = true, groundY = h + 8f)
+    blades(0f, w, h + 1f, (w / 4f).toInt(), 6f, 16f, pal.leafDeep, pal.grassDark, 5, 4f, 1.9f)
 }
 
-internal fun morningArt(p: ScenePalette) = ArtBuilder(p).run {
-    sky(lerp(p.base, p.sky, 0.55f), lerp(p.base, p.peach, 0.7f))
-    move(ay = -3f, grow = 0.03f, px = 258f, py = 96f) {
-        fill(oval(258f, 96f, 96f), radial(258f, 96f, 96f, p.glow, if (p.dark) 0.45f else 0.75f))
-        fill(oval(258f, 96f, 22f), if (p.dark) p.glow else lerp(p.peach, p.paper, 0.45f))
+private fun Painter.birds(vararg xy: Float) {
+    for (i in 0 until xy.size / 3) {
+        val x = xy[i * 3]; val y = xy[i * 3 + 1]; val s = xy[i * 3 + 2]
+        line(path { moveTo(x - 5 * s, y); quadraticTo(x - 2.5f * s, y - 4 * s, x, y); quadraticTo(x + 2.5f * s, y - 4 * s, x + 5 * s, y) }, pal.ink, 1.1f, 0.5f)
     }
-    line(path { moveTo(64f, 46f); quadraticTo(69f, 40f, 74f, 46f); quadraticTo(79f, 40f, 84f, 46f) }, 1.4f, 0.45f)
-    line(path { moveTo(98f, 34f); quadraticTo(102f, 29f, 106f, 34f); quadraticTo(110f, 29f, 114f, 34f) }, 1.3f, 0.35f)
-    fill(hill(112f, 106f, 100f, 118f), lerp(p.lilac, p.base, 0.35f), 0.85f)
-    fill(hill(132f, 128f, 130f, 140f, 10f), lerp(p.sky, p.lilac, 0.5f), 0.8f)
-    fill(hill(146f, 142f, 142f, 146f, 6f), lerp(p.lilac, p.paper, if (p.dark) 0.1f else 0.6f))
-    build(W, H)
 }
 
-internal fun afternoonArt(p: ScenePalette) = ArtBuilder(p).run {
-    sky(lerp(p.base, p.sky, 0.85f), lerp(p.base, p.sky, 0.15f))
-    move(grow = 0.025f, px = 276f, py = 52f) {
-        fill(oval(276f, 52f, 70f), radial(276f, 52f, 70f, p.glow, 0.5f))
-        fill(oval(276f, 52f, 24f), p.base)
-        fill(oval(276f, 52f, 24f), radial(280f, 64f, 26f, p.sky))
-        fill(oval(276f, 52f, 24f), radial(286f, 44f, 22f, p.lilac))
-        fill(oval(276f, 52f, 24f), radial(266f, 44f, 20f, p.peach))
+private fun Painter.starsAndSparkles(sd: Long, count: Int, w: Float, h: Float) {
+    val r = Random(seed + sd)
+    repeat(count) {
+        val x = r.nextFloat() * w; val y = r.nextFloat() * h
+        if (it % 3 == 0) sparkle(x, y, 2.5f + r.nextFloat() * 2.5f, pal.cream, 0.9f) else fill(oval(x, y, 0.7f + r.nextFloat() * 0.8f), pal.cream, 0.4f + r.nextFloat() * 0.5f)
     }
-    move(ax = 8f) { fill(cloud(96f, 74f, 100f), p.paper, 0.92f) }
-    move(ax = -6f, shift = 0.4f) { fill(cloud(214f, 112f, 64f), p.paper, 0.8f) }
-    move(ax = 5f, shift = 0.7f) { fill(cloud(332f, 40f, 40f), p.paper, 0.6f) }
-    fill(hill(138f, 134f, 136f, 144f, 8f), p.lilac, 0.4f)
-    fill(hill(152f, 148f, 148f, 152f, 5f), p.paper, 0.85f)
-    build(W, H)
 }
 
-internal fun eveningArt(p: ScenePalette) = ArtBuilder(p).run {
-    sky(lerp(p.lilac, p.base, if (p.dark) 0.2f else 0.15f), lerp(p.peach, p.base, 0.15f))
-    move(ay = 2f, grow = 0.02f, px = 130f, py = 112f) {
-        fill(oval(130f, 112f, 110f), radial(130f, 112f, 110f, p.glow, if (p.dark) 0.45f else 0.85f))
-        fill(oval(130f, 112f, 24f), if (p.dark) p.glow else lerp(p.peach, p.paper, 0.4f))
-    }
-    for ((x, y, r) in listOf(Triple(60f, 26f, 1.6f), Triple(300f, 38f, 1.4f), Triple(214f, 18f, 1.8f), Triple(332f, 70f, 1.2f))) fill(oval(x, y, r), p.moon, 0.7f)
-    move(ax = 6f) { fill(oval(250f, 62f, 44f, 3.5f), p.paper, 0.4f); fill(oval(236f, 71f, 26f, 2.8f), p.paper, 0.3f) }
-    fill(hill(116f, 112f, 108f, 118f, 12f), lerp(p.lilac, p.night, if (p.dark) 0.5f else 0.28f), 0.9f)
-    fill(hill(144f, 140f, 138f, 148f, 8f), lerp(p.lilac, p.night, if (p.dark) 0.75f else 0.5f), 0.95f)
-    build(W, H)
+internal fun morningArt() = SceneArt(WideW, WideH, ArtShape.Wide, MascotSpot(MascotPose.Waving, 104f, 188f, 1.05f)) {
+    val top = if (pal.dark) pal.nightTop else pal.mix(pal.lilacSoft, pal.sky, 0.28f)
+    fill(rrect(0f, 0f, WideW, WideH, 0f), Brush.verticalGradient(0f to top, 0.45f to pal.pinkSoft, 0.8f to pal.sunSoft, 1f to pal.sunSoft, startY = 0f, endY = 150f))
+    sun(268f, 118f, 22f)
+    cloud(70f, 42f, 80f, a = 0.9f); cloud(200f, 26f, 54f, a = 0.7f); cloud(318f, 58f, 44f, a = 0.7f)
+    birds(150f, 52f, 1f, 166f, 44f, 0.8f)
+    rollingMeadow(WideW, WideH, 120f, pal.pinkSoft, between = { mascot() })
+    glow(268f, 128f, 70f, pal.glow, 0.4f)
+    butterfly(212f, 150f, 1f, pal.orange)
+    grain(WideW, WideH)
 }
 
-internal fun nightArt(p: ScenePalette) = ArtBuilder(p).run {
-    sky(p.night, p.nightHi)
-    move(grow = 0.04f, px = 92f, py = 50f) { fill(oval(92f, 50f, 64f), radial(92f, 50f, 64f, p.moon, 0.22f)) }
-    fill(Path.combine(PathOperation.Difference, oval(92f, 50f, 18f), oval(101f, 45f, 16f)), p.moon)
-    val stars = listOf(
-        floatArrayOf(150f, 30f, 1.7f, 0.9f), floatArrayOf(196f, 52f, 1.3f, 0.6f), floatArrayOf(238f, 22f, 1.8f, 0.9f),
-        floatArrayOf(280f, 46f, 1.3f, 0.6f), floatArrayOf(322f, 24f, 1.6f, 0.8f), floatArrayOf(40f, 28f, 1.3f, 0.6f),
-        floatArrayOf(52f, 74f, 1.1f, 0.5f), floatArrayOf(330f, 72f, 1.1f, 0.5f), floatArrayOf(214f, 78f, 1.1f, 0.5f),
-    )
-    for (s in stars) fill(oval(s[0], s[1], s[2]), p.moon, s[3])
-    move(grow = 0.12f, px = 238f, py = 22f, shift = 0.3f) {
-        line(path { moveTo(238f, 14f); lineTo(238f, 30f); moveTo(230f, 22f); lineTo(246f, 22f) }, 1.2f, 0.5f, p.moon)
+internal fun afternoonArt() = SceneArt(WideW, WideH, ArtShape.Wide, MascotSpot(MascotPose.Walking, 232f, 190f, 1.05f)) {
+    val top = if (pal.dark) pal.mix(pal.nightTop, pal.sky, 0.25f) else pal.mix(pal.sky, pal.warmWhite, 0.3f)
+    val low = if (pal.dark) pal.mix(pal.nightTop, pal.sunSoft, 0.5f) else pal.mix(pal.sunSoft, pal.warmWhite, 0.4f)
+    fill(rrect(0f, 0f, WideW, WideH, 0f), vgrad(0f, 140f, top, low))
+    sun(86f, 46f, 20f)
+    cloud(250f, 40f, 90f); cloud(160f, 78f, 50f, a = 0.8f); cloud(334f, 82f, 46f, a = 0.7f)
+    birds(206f, 70f, 1f, 224f, 62f, 0.9f, 300f, 28f, 0.7f)
+    rollingMeadow(WideW, WideH, 112f, pal.sunSoft, between = { mascot() })
+    butterfly(150f, 150f, 1.1f, pal.pink); butterfly(60f, 168f, 0.9f, pal.lilac, 20f)
+    grain(WideW, WideH)
+}
+
+internal fun eveningArt() = SceneArt(WideW, WideH, ArtShape.Wide, MascotSpot(MascotPose.Lantern, 240f, 190f, 1.05f)) {
+    val top = if (pal.dark) pal.nightTop else pal.mix(pal.lilac, pal.lilacSoft, 0.35f)
+    val mid = if (pal.dark) pal.mix(pal.nightLow, pal.coralSoft, 0.4f) else pal.mix(pal.pink, pal.coralSoft, 0.5f)
+    fill(rrect(0f, 0f, WideW, WideH, 0f), Brush.verticalGradient(0f to top, 0.55f to mid, 1f to pal.mix(pal.coralSoft, pal.sunSoft, 0.5f), startY = 0f, endY = 140f))
+    if (pal.dark) starsAndSparkles(2L, 12, WideW, 70f)
+    sun(98f, 112f, 24f, rays = false)
+    cloud(220f, 44f, 80f, pal.mix(pal.warmWhite, pal.pink, 0.4f), 0.75f); cloud(60f, 36f, 52f, pal.mix(pal.warmWhite, pal.coral, 0.3f), 0.65f)
+    rollingMeadow(WideW, WideH, 116f, pal.pinkSoft, bloomScale = 0.95f, between = { mascot() })
+    fill(rrect(0f, 0f, WideW, WideH, 0f), pal.mix(pal.coral, pal.lilac, 0.5f), if (pal.dark) 0.0f else 0.07f)
+    fireflies(5L, 11, 10f, 112f, 350f, 190f)
+    grain(WideW, WideH)
+}
+
+internal fun nightArt() = SceneArt(WideW, WideH, ArtShape.Wide, MascotSpot(MascotPose.Blanket, 112f, 190f, 1.05f)) {
+    fill(rrect(0f, 0f, WideW, WideH, 0f), vgrad(0f, 150f, pal.nightTop, pal.nightLow))
+    starsAndSparkles(3L, 40, WideW, 100f)
+    moon(284f, 52f, 20f)
+    cloud(78f, 38f, 56f, pal.mix(pal.nightLow, pal.warmWhite, 0.3f), 0.5f)
+    rollingMeadow(WideW, WideH, 118f, pal.nightLow, flowers = 22, between = { mascot() })
+    // pond with the moon in it
+    val pond = oval(262f, 178f, 62f, 12f)
+    fill(pond, vgrad(166f, 190f, pal.mix(pal.nightLow, pal.leafDeep, 0.35f), pal.nightTop))
+    clip(pond) {
+        glow(264f, 178f, 34f, pal.glow, 0.5f)
+        fill(oval(264f, 178f, 6f, 2.6f), pal.cream, 0.8f)
+        repeat(5) { line(path { moveTo(248f + it * 7f, 172f + it * 2.5f); lineTo(262f + it * 8f, 172.5f + it * 2.5f) }, pal.cream, 0.8f, 0.3f) }
     }
-    fill(path { moveTo(0f, 100f); cubicTo(60f, 90f, 100f, 98f, 160f, 100f); cubicTo(230f, 104f, 290f, 90f, W, 98f); lineTo(W, H); lineTo(0f, H); close() }, lerp(p.night, p.nightHi, 0.25f))
-    fill(rrect(0f, 100f, W, H, 0f), vertical(100f, H, lerp(p.nightHi, p.night, 0.15f), p.night))
-    move(ax = 2.5f, shift = 0.2f) {
-        for ((i, w) in listOf(26f, 20f, 14f, 8f).withIndex()) {
-            val y = 112f + i * 11f
-            line(path { moveTo(92f - w, y); lineTo(92f + w, y) }, 1.7f, 0.5f - i * 0.08f, p.moon)
-        }
+    line(path { addOval(androidx.compose.ui.geometry.Rect(200f, 166f, 324f, 190f)) }, pal.leafLight, 1.2f, 0.4f)
+    blades(204f, 322f, 190f, 24, 5f, 11f, pal.leafDeep, pal.grassDark, 9)
+    fireflies(6L, 9, 140f, 120f, 350f, 180f)
+    grain(WideW, WideH)
+}
+
+/** The signature scene: the companion waving in a flower meadow. */
+internal fun welcomeArt() = SceneArt(WideW, 300f, ArtShape.Wide, MascotSpot(MascotPose.Waving, 178f, 284f, 1.75f)) {
+    val h = 300f
+    val top = if (pal.dark) pal.nightTop else pal.mix(pal.lilacSoft, pal.sky, 0.3f)
+    fill(rrect(0f, 0f, WideW, h, 0f), Brush.verticalGradient(0f to top, 0.5f to pal.pinkSoft, 0.8f to pal.sunSoft, startY = 0f, endY = 190f))
+    sun(286f, 74f, 24f)
+    cloud(70f, 56f, 96f); cloud(200f, 34f, 56f, a = 0.75f); cloud(326f, 128f, 56f, a = 0.7f)
+    birds(130f, 78f, 1.1f, 150f, 68f, 0.9f)
+    rollingMeadow(WideW, h, 170f, pal.pinkSoft, flowers = 40, bloomScale = 1.25f, between = { mascot() })
+    // big botanical whites framing the scene
+    for ((x, y, s) in listOf(Triple(28f, 252f, 26f), Triple(330f, 246f, 24f), Triple(60f, 288f, 19f), Triple(304f, 286f, 20f))) {
+        line(path { moveTo(x, h + 4f); quadraticTo(x + 4f, (y + h) / 2f, x, y) }, pal.leafDeep, 2f)
+        leafAt(x, y + s * 0.9f, -28f, s * 1.2f, s * 0.4f, pal.leaf); leafAt(x, y + s * 1.4f, -152f, s * 1.1f, s * 0.38f, pal.leafLight)
+        flower(Bloom.White, x, y, s)
     }
-    line(path { moveTo(190f, 124f); lineTo(262f, 124f); moveTo(230f, 138f); lineTo(300f, 138f); moveTo(30f, 140f); lineTo(70f, 140f) }, 1.2f, 0.12f, p.moon)
-    build(W, H)
+    butterfly(112f, 208f, 1.3f, pal.orange); butterfly(262f, 190f, 1.1f, pal.lilac, 18f)
+    mushroom(300f, 262f, 11f); stone(46f, 270f, 9f)
+    blades(0f, WideW, h + 1f, 70, 6f, 20f, pal.leafDeep, pal.grassDark, 8, 4f, 2f)
+    grain(WideW, h)
 }
