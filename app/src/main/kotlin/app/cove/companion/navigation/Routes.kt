@@ -34,6 +34,18 @@ object Routes {
     const val JournalEdit = "journal/{id}"
     fun journalEdit(id: String = "new") = "journal/$id"
 
+    const val Training = "training"
+    const val TrainingSetup = "training/setup"
+    const val TrainingPlan = "training/plan"
+    const val TrainingSession = "training/session"
+    const val TrainingRest = "training/rest"
+    const val TrainingSummary = "training/summary/{id}"
+    fun trainingSummary(id: String) = "training/summary/$id"
+    const val TrainingLift = "training/lift/{exerciseId}"
+    fun trainingLift(exerciseId: String) = "training/lift/$exerciseId"
+    const val TrainingWeight = "training/weight"
+    const val TrainingProgress = "training/progress"
+
     const val SyncConflict = "sync/conflict"
     const val Connect = "connect"
 
@@ -47,4 +59,6 @@ class Nav(
     val back: () -> Unit,
     /** Clears the back stack and opens [Routes.Main]. */
     val home: () -> Unit,
+    /** Opens [route] after popping the back stack back to [upTo] (kept), e.g. from a finished workout to its summary. */
+    val goReplacing: (route: String, upTo: String) -> Unit = { route, _ -> go(route) },
 )
