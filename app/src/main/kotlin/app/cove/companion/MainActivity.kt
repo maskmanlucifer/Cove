@@ -183,6 +183,7 @@ class MainActivity : FragmentActivity() {
      * `--ez appLock true|false` switches the app lock setting without authenticating; `--ez lockNow true` locks immediately; `--ez screenshots true` drops FLAG_SECURE so adb screencap works;
      * `--ez plainDb true` rewrites the database as plaintext and kills the process, so the next launch runs the plaintext migration.
      * `--ez noTraining true` (with seed) leaves the workout plan empty to show the empty Training page.
+     * `--ei journalPhotos N` creates entry `debug-photos` with N generated photos (wide, square, tall, very tall, rotated, 24 MP, corrupt) and a voice-note row; then open it with `--es route journal/debug-photos`.
      * `--es voiceState listening|result|partial|saved|micoff --es transcript "..."` opens the Voice screen in that state.
      */
     private fun handleDebugIntent() {
@@ -239,6 +240,9 @@ class MainActivity : FragmentActivity() {
         if (intent.getBooleanExtra("fakeDriveOnly", false)) CoroutineScope(Dispatchers.IO).launch { container.driveKit.useFake() }
         if (intent.getBooleanExtra("fakeDrive", false)) {
             CoroutineScope(Dispatchers.IO).launch { DebugSeed.seedDrive(container, intent.getBooleanExtra("driveRun", false)) }
+        }
+        intent.getIntExtra("journalPhotos", 0).takeIf { it > 0 }?.let { n ->
+            CoroutineScope(Dispatchers.IO).launch { app.cove.companion.data.DebugPhotos.seed(container, n, cacheDir) }
         }
         CoroutineScope(Dispatchers.IO).launch { DebugAlarms.handle(this@MainActivity, container, intent) }
         CoroutineScope(Dispatchers.IO).launch { DebugWidgets.handle(this@MainActivity, container, intent) }

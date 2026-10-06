@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
@@ -104,7 +105,7 @@ fun ProfileCropper(source: Uri, onClose: () -> Unit) {
                     ) {
                         Image(
                             remember(bmp) { bmp.asImageBitmap() }, null,
-                            Modifier.size(with(density) { content.width.toDp() }, with(density) { content.height.toDp() })
+                            Modifier.requiredSize(with(density) { content.width.toDp() }, with(density) { content.height.toDp() })
                                 .graphicsLayer { scaleX = zoom.scale; scaleY = zoom.scale; translationX = zoom.x; translationY = zoom.y },
                             contentScale = ContentScale.FillBounds,
                         )
