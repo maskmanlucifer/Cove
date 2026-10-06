@@ -5,6 +5,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -66,7 +68,8 @@ fun MoneyReviewScreen(nav: Nav) {
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 item {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    @OptIn(ExperimentalLayoutApi::class)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (cross) SmallAction("Back to Other", enabled = !s.busy, onClick = vm::showUnfiled)
                         else SmallAction("Check with AI", enabled = !s.busy, onClick = vm::checkWithAi)
                         SmallAction("Cross-check this month", enabled = !s.busy, onClick = vm::crossCheck)
@@ -103,7 +106,7 @@ private fun SmallAction(text: String, enabled: Boolean, onClick: () -> Unit) {
     Box(
         Modifier.height(40.dp).background(c.card, CoveShapes.Pill).pressable(onClick, enabled = enabled).padding(horizontal = 16.dp),
         contentAlignment = Alignment.Center,
-    ) { CoveText(text, style = CoveType.Button.copy(fontWeight = FontWeight.Normal), color = if (enabled) c.ink else c.tail) }
+    ) { CoveText(text, style = CoveType.Button.copy(fontWeight = FontWeight.Normal), color = if (enabled) c.ink else c.tail, maxLines = 1) }
 }
 
 @Composable
