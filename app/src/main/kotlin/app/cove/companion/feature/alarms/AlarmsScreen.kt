@@ -109,7 +109,7 @@ private fun AlarmList(alarms: List<AlarmEntity>, onToggle: (AlarmEntity, Boolean
             if (i > 0) Hairline()
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 88.dp).pressable({ onOpen(alarm.id) }, onClickLabel = "Edit alarm", role = Role.Button)
-                    .semantics(mergeDescendants = true) {}.padding(vertical = 10.dp),
+                    .semantics(mergeDescendants = true) {}.padding(vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
