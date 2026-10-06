@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import app.cove.companion.AppContainer
 import app.cove.companion.core.newId
 import app.cove.companion.core.toLocalDate
+import app.cove.companion.data.categorize.CategoryTokens
 import app.cove.companion.data.local.entity.ExpenseCategoryEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -86,6 +87,8 @@ data class CategoryFormState(
     val budget: String = "",
     val carryOver: Boolean = false,
     val alertAt80: Boolean = true,
+    /** Comma-separated words that file here; see [ExpenseCategoryEntity.keywords]. */
+    val keywords: String = "",
 )
 
 /** Create or edit a category; [id] is `new` or an existing category id. */
@@ -102,7 +105,7 @@ class CategoryEditViewModel(private val c: AppContainer, private val id: String)
                     _state.value = CategoryFormState(
                         isNew = false, name = e.name, income = e.kind == "income",
                         budget = if (e.budgetPaise > 0) (e.budgetPaise / 100).toString() else "",
-                        carryOver = e.carryOver, alertAt80 = e.alertAt80,
+                        carryOver = e.carryOver, alertAt80 = e.alertAt80, keywords = e.keywords,
                     )
                 }
             }
@@ -114,6 +117,7 @@ class CategoryEditViewModel(private val c: AppContainer, private val id: String)
     fun setBudget(text: String) = _state.update { it.copy(budget = text.filter(Char::isDigit).take(8)) }
     fun setCarryOver(on: Boolean) = _state.update { it.copy(carryOver = on) }
     fun setAlert(on: Boolean) = _state.update { it.copy(alertAt80 = on) }
+    fun setKeywords(text: String) = _state.update { it.copy(keywords = text.take(200)) }
 
     /** Saves the category; false when the name is blank. */
     suspend fun save(): Boolean {
@@ -128,6 +132,7 @@ class CategoryEditViewModel(private val c: AppContainer, private val id: String)
                 budgetPaise = (f.budget.toLongOrNull() ?: 0L) * 100,
                 carryOver = f.carryOver,
                 alertAt80 = f.alertAt80,
+                keywords = CategoryTokens.cleanKeywords(f.keywords),
             ),
         )
         return true

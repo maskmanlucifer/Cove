@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,6 +35,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import app.cove.companion.core.appViewModel
@@ -55,7 +58,7 @@ import kotlinx.coroutines.launch
 
 private val NameStyle = CoveType.Section
 
-/** New or edit category as a floating sheet: name, Spending/Income, budget, carry-over and the 80% alert. */
+/** New or edit category as a floating sheet: name, Spending/Income, budget, carry-over, the 80% alert and the words that file here. */
 @Composable
 fun MoneyCategoryEditScreen(id: String, nav: Nav) {
     val vm = appViewModel(key = "category-edit-$id") { CategoryEditViewModel(it, id) }
@@ -79,6 +82,7 @@ fun MoneyCategoryEditScreen(id: String, nav: Nav) {
                     .shadow(24.dp, CoveShapes.SheetFloating, ambientColor = Color(0x1A141420), spotColor = Color(0x1A141420))
                     .background(c.card, CoveShapes.SheetFloating)
                     .clickable(remember { MutableInteractionSource() }, indication = null) {}
+                    .verticalScroll(rememberScrollState())
                     .padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
@@ -106,8 +110,9 @@ fun MoneyCategoryEditScreen(id: String, nav: Nav) {
                     BudgetRow(s.budget, vm::setBudget)
                     ToggleRow("Carry over what’s left", s.carryOver, vm::setCarryOver)
                     ToggleRow("Tell me at 80%", s.alertAt80, vm::setAlert)
+                    KeywordsRow(s.keywords, vm::setKeywords)
                 }
-                CoveText(hint(s.name), style = MoneyType.Note, color = c.muted)
+                CoveText("Say these when you log by voice and Cove files it here.", style = MoneyType.Note, color = c.muted)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     PillButton(
                         if (s.isNew) "Create" else "Save",
@@ -129,10 +134,32 @@ fun MoneyCategoryEditScreen(id: String, nav: Nav) {
     }
 }
 
-private fun hint(name: String): String {
-    val word = name.trim().lowercase().let { if (it.length > 3 && it.endsWith("s")) it.dropLast(1) else it }
-    return if (word.isEmpty()) "Give it a name, then say it when you log by voice and Cove files it here."
-    else "Say “$word” when you log by voice and Cove files it here."
+/** "Words that file here": the user's own words for this category, comma separated, as a row like the others. */
+@Composable
+private fun KeywordsRow(value: String, onChange: (String) -> Unit) {
+    val c = Cove.colors
+    val requester = remember { FocusRequester() }
+    RowDivider()
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 56.dp).pressable({ requester.requestFocus() }),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        CoveText("Words that file here", style = MoneyType.Row, color = c.muted)
+        BasicTextField(
+            value, onChange,
+            Modifier.weight(1f).focusRequester(requester),
+            singleLine = true,
+            textStyle = MoneyType.Row.copy(color = c.ink, textAlign = TextAlign.End),
+            cursorBrush = SolidColor(c.ink),
+            decorationBox = { inner ->
+                Box(contentAlignment = Alignment.CenterEnd) {
+                    if (value.isEmpty()) CoveText("gift, birthday", style = MoneyType.Row, color = c.placeholder)
+                    inner()
+                }
+            },
+        )
+    }
 }
 
 @Composable

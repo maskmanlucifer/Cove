@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import app.cove.companion.AppContainer
 import app.cove.companion.core.newId
 import app.cove.companion.core.toLocalDate
+import app.cove.companion.data.categorize.ExpenseCategorizer
+import app.cove.companion.data.local.entity.CategoryMemoryEntity
 import app.cove.companion.data.local.entity.ExpenseCategoryEntity
 import app.cove.companion.data.local.entity.ExpenseEntity
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -72,20 +74,27 @@ class ExpenseEditViewModel(private val c: AppContainer, private val id: String, 
         },
     )
 
-    val state: StateFlow<ExpenseEditState> = combine(form, c.money.categories) { f, all ->
+    val state: StateFlow<ExpenseEditState> = combine(form, c.money.categories, c.money.memory) { f, all, memory ->
         val wanted = if (f.received) "income" else "spending"
         val cats = all.filter { it.kind == wanted }
         ExpenseEditState(
             isNew = existingId == null,
             received = f.received,
             amount = f.amount,
-            categoryId = if (f.categoryTouched) f.categoryId else cats.firstOrNull()?.id,
+            categoryId = if (f.categoryTouched) f.categoryId else suggestedId(f, cats, memory),
             note = f.note,
             whenMillis = f.whenMillis,
             paidWith = f.paidWith,
             categories = cats,
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, ExpenseEditState(whenMillis = form.value.whenMillis))
+
+    /** Until the user picks a chip: the categorizer's guess for the typed note, else Other, else the first chip. */
+    private fun suggestedId(f: Form, cats: List<ExpenseCategoryEntity>, memory: Map<String, CategoryMemoryEntity>): String? {
+        if (f.received || f.note.isBlank()) return cats.firstOrNull()?.id
+        return ExpenseCategorizer.suggest(f.note, cats, memory).categoryId
+            ?: (ExpenseCategorizer.fallback(cats) ?: cats.firstOrNull())?.id
+    }
 
     init {
         if (existingId == null) {
@@ -153,6 +162,8 @@ class ExpenseEditViewModel(private val c: AppContainer, private val id: String, 
         )
         val alert = alertFor(entity)
         c.money.save(entity)
+        val picked = if (existing == null) form.value.categoryTouched else s.categoryId != existing?.categoryId
+        if (picked && !s.received && s.categoryId != null) c.money.teach(entity.note, s.categoryId, existing?.categoryId)
         return alert
     }
 

@@ -192,9 +192,26 @@ class VoiceViewModel(private val c: AppContainer) : ViewModel() {
         )
     }
 
-    /** Changes the expense draft's category. */
-    fun setExpenseCategory(name: String) = _state.update { s ->
-        s.copy(drafts = s.drafts.map { if (it is VoiceIntent.LogExpense) it.copy(category = name) else it })
+    /** Changes the expense draft's category; the pick is taught to the categorizer when the draft is saved. */
+    fun setExpenseCategory(name: String) {
+        if (!categoryPicked) {
+            categoryPicked = true
+            categoryBeforePick = _state.value.drafts.filterIsInstance<VoiceIntent.LogExpense>().firstOrNull()?.category
+        }
+        _state.update { s ->
+            s.copy(drafts = s.drafts.map { if (it is VoiceIntent.LogExpense) it.copy(category = name) else it })
+        }
+    }
+
+    private var categoryPicked = false
+    private var categoryBeforePick: String? = null
+
+    private suspend fun teachPickedCategory(drafts: List<VoiceIntent>) {
+        val e = drafts.filterIsInstance<VoiceIntent.LogExpense>().firstOrNull() ?: return
+        if (!categoryPicked || e.received) return
+        val all = c.money.categories.first()
+        val picked = all.firstOrNull { it.name.equals(e.category, true) } ?: return
+        c.money.teach(e.note, picked.id, all.firstOrNull { it.name.equals(categoryBeforePick, true) }?.id)
     }
 
     /** Picks one of the "was it one of these?" guesses as the draft. */
@@ -207,6 +224,7 @@ class VoiceViewModel(private val c: AppContainer) : ViewModel() {
         _state.update { it.copy(busy = true) }
         viewModelScope.launch {
             val r = kit.executor.execute(s.transcript, s.drafts)
+            teachPickedCategory(s.drafts)
             kit.newTodos.add(r.createdTodos)
             kit.feedback.show(r.summary, r.commandId)
             _state.update { it.copy(busy = false, done = true) }
