@@ -45,6 +45,8 @@ fun MeScreen(nav: Nav) {
     val s by vm.settings.collectAsState()
     val alarms by vm.alarms.collectAsState()
     var sheet by rememberSaveable { mutableStateOf<MeSheet?>(null) }
+    val sync by vm.sync.collectAsState()
+    val conflictTitle by vm.conflictTitle.collectAsState()
     val settings = s ?: return
     val context = LocalContext.current
 
@@ -57,6 +59,7 @@ fun MeScreen(nav: Nav) {
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Header(settings.displayName) { sheet = MeSheet.Name }
+        conflictTitle?.let { ConflictBanner(it) { nav.go(Routes.SyncConflict) } }
         SettingsGroup("Day") {
             SettingsRow("Wake-up time", value = clockLabel(settings.wakeMinutes), onClick = { sheet = MeSheet.Wake })
             RowDivider()
@@ -80,7 +83,12 @@ fun MeScreen(nav: Nav) {
             RowDivider()
             SettingsRow("Privacy and data", value = "Your own space", onClick = { sheet = MeSheet.Privacy })
             RowDivider()
-            SettingsRow("Sync", value = "Not signed in", onClick = { SignIn.launcher.signIn(context) {} })
+            SettingsRow("Sync", value = sync.label, onClick = when {
+                sync.canSignIn -> ({ SignIn.launcher.signIn(context) {} })
+                sync.conflicts > 0 -> ({ nav.go(Routes.SyncConflict) })
+                sync.signedIn -> ({ sheet = MeSheet.Sync })
+                else -> null
+            })
             RowDivider()
             SettingsRow("Version", value = BuildConfig.VERSION_NAME)
         }

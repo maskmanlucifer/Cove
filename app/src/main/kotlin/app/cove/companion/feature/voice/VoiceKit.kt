@@ -19,7 +19,7 @@ class VoiceKit(context: Context, container: AppContainer) {
     val parser = IntentParser(
         container.clock,
         MlKitOnDeviceLlm(),
-        KtorAiGateway(BuildConfig.SUPABASE_URL, BuildConfig.SUPABASE_ANON_KEY),
+        KtorAiGateway(BuildConfig.SUPABASE_URL, BuildConfig.SUPABASE_ANON_KEY, tokenProvider = container.auth::accessToken),
     )
     val engines = SpeechEngines(listOf(MlKitSpeechEngine(), AndroidSpeechEngine(context)))
     val speaker = TtsSpeaker(context) { container.settings.settings.first().spokenReplies }

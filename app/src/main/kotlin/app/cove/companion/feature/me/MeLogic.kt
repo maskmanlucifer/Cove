@@ -1,6 +1,8 @@
 package app.cove.companion.feature.me
 
 import app.cove.companion.core.clockText
+import app.cove.companion.data.auth.AuthState
+import app.cove.companion.data.sync.SyncStatus
 import app.cove.companion.design.TextScales
 
 /** Stored `theme` values in the order of the Look segmented control. */
@@ -38,3 +40,31 @@ fun alarmSummary(minutes: List<Int>): String = when {
 /** "System · Default": theme and text size of the Look row. */
 fun lookSummary(theme: String, textScale: Float) =
     theme.replaceFirstChar { it.uppercase() } + " · " + TextScales.label(textScale)
+
+/** What the Me "Sync" row and sheet need to render. */
+data class SyncUi(val label: String, val signedIn: Boolean, val canSignIn: Boolean, val conflicts: Int)
+
+/** "just now", "2 min ago", "3 h ago", "2 d ago" for an age in milliseconds. */
+fun agoText(ageMs: Long): String {
+    val min = ageMs / 60_000
+    return when {
+        min < 1 -> "just now"
+        min < 60 -> "$min min ago"
+        min < 24 * 60 -> "${min / 60} h ago"
+        else -> "${min / (24 * 60)} d ago"
+    }
+}
+
+/** Row text for the sync state: Not set up / Not signed in / Syncing / Up to date · 2 min ago / Error. */
+fun syncUi(auth: AuthState, status: SyncStatus, conflicts: Int, now: Long): SyncUi {
+    val label = when {
+        auth is AuthState.Disabled -> "Not set up"
+        auth is AuthState.SignedOut -> "Not signed in"
+        conflicts > 0 -> if (conflicts == 1) "1 to review" else "$conflicts to review"
+        status is SyncStatus.Syncing -> "Syncing"
+        status is SyncStatus.Failed -> "Error"
+        status is SyncStatus.UpToDate -> "Up to date · ${agoText(now - status.at)}"
+        else -> "Up to date"
+    }
+    return SyncUi(label, auth is AuthState.SignedIn, auth is AuthState.SignedOut, conflicts)
+}

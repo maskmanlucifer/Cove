@@ -67,6 +67,7 @@ class MainActivity : ComponentActivity() {
     /**
      * Debug only. `--es now HH:mm` freezes the clock (`--es date yyyy-MM-dd` picks the day); `--es route <route>` starts on that route.
      * `--ez seed true [--ez dark true] [--ez evening true] [--ez moneyLogged true] [--es plan todos|empty|drag]` loads the design's sample data.
+     * `--ez conflict true` (with seed) adds the sync conflict from frame 31; open it with `--es route sync/conflict`.
      * `--es tab plan --es segment 1 --es sheet categories --es title Dentist` open a Plan tab view directly.
      * `--es voiceState listening|result|partial|saved|micoff --es transcript "..."` opens the Voice screen in that state.
      */
@@ -91,6 +92,7 @@ class MainActivity : ComponentActivity() {
                         container, intent.getBooleanExtra("dark", false), intent.getBooleanExtra("evening", false),
                         intent.getStringExtra("plan"), intent.getBooleanExtra("moneyLogged", false),
                     )
+                    if (intent.getBooleanExtra("conflict", false)) DebugSeed.seedConflict(container)
                 }
                 VoiceDebug.runSaved(container)
             }

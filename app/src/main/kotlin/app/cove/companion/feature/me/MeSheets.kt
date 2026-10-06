@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import app.cove.companion.design.Cove
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.TextScales
+import app.cove.companion.design.components.ButtonKind
 import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.PillButton
 import app.cove.companion.data.local.entity.SettingsEntity
@@ -28,7 +29,7 @@ import app.cove.companion.feature.plan.PlanSheet
 import app.cove.companion.feature.plan.TitleField
 
 /** Which Me sheet is open. */
-enum class MeSheet { Name, Wake, Nudges, Motion, Look, Privacy }
+enum class MeSheet { Name, Wake, Nudges, Motion, Look, Privacy, Sync }
 
 /** Hosts whichever sheet [sheet] names, reading and writing through [vm]. */
 @Composable
@@ -75,6 +76,12 @@ fun MeSheets(sheet: MeSheet?, s: SettingsEntity, vm: MeViewModel, onDismiss: () 
             )
         }
         MeSheet.Privacy -> PrivacySheet(onDismiss)
+        MeSheet.Sync -> PlanSheet(onDismiss, gap = 16) { close ->
+            SheetHeading("Sync")
+            SheetCaption("Your changes are copied to your own space whenever you are online.")
+            PillButton("Sync now", { vm.syncNow(); close() }, Modifier.fillMaxWidth(), height = 52.dp)
+            PillButton("Sign out", { vm.signOut(); close() }, Modifier.fillMaxWidth(), kind = ButtonKind.Destructive, height = 52.dp)
+        }
     }
 }
 

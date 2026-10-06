@@ -34,12 +34,13 @@ interface AiGateway {
     suspend fun parseIntent(transcript: String, now: String, zone: String, todoCategories: List<String>): String?
 }
 
-/** Ktor implementation; URL and key come from `BuildConfig`, and a blank URL disables it. */
+/** Ktor implementation; URL and key come from `BuildConfig`, a blank URL disables it, and [tokenProvider] supplies the signed-in user token the gateway verifies. */
 class KtorAiGateway(
     private val baseUrl: String,
     private val anonKey: String,
     private val client: HttpClient = HttpClient(OkHttp),
     private val timeoutMs: Long = 6_000,
+    private val tokenProvider: suspend () -> String? = { null },
 ) : AiGateway {
     override val enabled: Boolean get() = baseUrl.isNotBlank() && anonKey.isNotBlank()
 
@@ -58,7 +59,7 @@ class KtorAiGateway(
             withTimeoutOrNull(timeoutMs) {
                 val response = client.post(baseUrl.trimEnd('/') + "/functions/v1/ai-gateway") {
                     header("apikey", anonKey)
-                    header(HttpHeaders.Authorization, "Bearer $anonKey")
+                    header(HttpHeaders.Authorization, "Bearer ${tokenProvider() ?: anonKey}")
                     contentType(ContentType.Application.Json)
                     setBody(body.toString())
                 }

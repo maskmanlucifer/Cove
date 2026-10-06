@@ -2,6 +2,8 @@ package app.cove.companion
 
 import android.app.Application
 import android.content.Context
+import app.cove.companion.data.auth.GoogleSignIn
+import app.cove.companion.feature.onboarding.SignIn
 
 /** Application entry point; holds the [AppContainer]. */
 class CoveApp : Application() {
@@ -12,6 +14,9 @@ class CoveApp : Application() {
         super.onCreate()
         container = AppContainer(this)
         container.foreground.attach(this)
+        SignIn.launcher = GoogleSignIn(container.auth, BuildConfig.GOOGLE_WEB_CLIENT_ID, container.appScope)
+        container.foreground.onEnter = container.sync::onForeground
+        container.sync.start()
     }
 }
 

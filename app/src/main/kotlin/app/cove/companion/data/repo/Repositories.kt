@@ -32,12 +32,13 @@ class ChangeLog(private val db: CoveDatabase, private val clock: Clock) {
 }
 
 /** App settings with defaults when nothing is stored yet. */
-class SettingsRepository(private val db: CoveDatabase, private val clock: Clock) {
+class SettingsRepository(private val db: CoveDatabase, private val clock: Clock, private val log: ChangeLog? = null) {
     val settings: Flow<SettingsEntity> = db.settings().observe().map { it ?: SettingsEntity() }
 
     suspend fun update(change: (SettingsEntity) -> SettingsEntity) {
         val current = db.settings().get() ?: SettingsEntity()
         db.settings().upsert(change(current).copy(updatedAt = clock.now()))
+        log?.mark("settings", SettingsEntity.ID)
     }
 }
 
@@ -212,22 +213,32 @@ class JournalRepository(private val db: CoveDatabase, private val clock: Clock, 
 }
 
 /** Suggestions, voice command history and cached briefs. */
-class AssistantRepository(private val db: CoveDatabase, private val clock: Clock) {
+class AssistantRepository(private val db: CoveDatabase, private val clock: Clock, private val log: ChangeLog? = null) {
     val activeDecision: Flow<DecisionEntity?> = db.assistant().observeActiveDecision()
 
     fun brief(day: LocalDate): Flow<BriefEntity?> = db.assistant().observeBrief(day.toEpochDay())
 
-    suspend fun saveBrief(brief: BriefEntity) = db.assistant().upsertBrief(brief)
+    suspend fun saveBrief(brief: BriefEntity) {
+        db.assistant().upsertBrief(brief)
+        log?.mark("briefs", brief.day.toString())
+    }
 
-    suspend fun saveDecision(decision: DecisionEntity) = db.assistant().upsert(decision.copy(updatedAt = clock.now()))
+    suspend fun saveDecision(decision: DecisionEntity) {
+        db.assistant().upsert(decision.copy(updatedAt = clock.now()))
+        log?.mark("decisions", decision.id)
+    }
 
     suspend fun isMuted(kind: String) = db.assistant().isMuted(kind) == true
 
-    suspend fun mute(kind: String) = db.assistant().setPref(SuggestionPrefEntity(kind, true, clock.now()))
+    suspend fun mute(kind: String) {
+        db.assistant().setPref(SuggestionPrefEntity(kind, true, clock.now()))
+        log?.mark("suggestion_prefs", kind)
+    }
 
     suspend fun recordCommand(transcript: String, intent: String, undoPayload: String?): VoiceCommandEntity {
         val cmd = VoiceCommandEntity(newId(), transcript, intent, undoPayload, createdAt = clock.now())
         db.assistant().insertCommand(cmd)
+        log?.mark("voice_commands", cmd.id)
         return cmd
     }
 
@@ -235,7 +246,10 @@ class AssistantRepository(private val db: CoveDatabase, private val clock: Clock
 
     suspend fun commandById(id: String) = db.assistant().command(id)
 
-    suspend fun markUndone(id: String) = db.assistant().markUndone(id)
+    suspend fun markUndone(id: String) {
+        db.assistant().markUndone(id)
+        log?.mark("voice_commands", id)
+    }
 }
 
 /** Today's day number in the habit/journal convention. */
