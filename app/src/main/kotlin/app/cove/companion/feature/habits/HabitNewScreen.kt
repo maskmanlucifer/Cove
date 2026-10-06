@@ -37,6 +37,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.cove.companion.core.OneShot
 import app.cove.companion.core.appViewModel
 import app.cove.companion.core.clockText
 import app.cove.companion.design.Cove
@@ -57,7 +58,6 @@ import app.cove.companion.navigation.Nav
 import java.time.DayOfWeek
 import java.time.format.TextStyle
 import java.util.Locale
-import kotlinx.coroutines.launch
 
 private val NameStyle = CoveType.Section.copy(lineHeight = 32.sp)
 private val ButtonText = CoveType.Body.copy(fontSize = 16.sp, fontWeight = FontWeight.Medium)
@@ -72,7 +72,8 @@ fun HabitNewScreen(nav: Nav, id: String = "new") {
     val focus = remember { FocusRequester() }
     var picking by rememberSaveable { mutableStateOf(false) }
     val blank = vm.name.text.isBlank()
-    val submit: () -> Unit = { scope.launch { if (vm.save()) nav.back() } }
+    val saveGuard = remember { OneShot() }
+    val submit: () -> Unit = { saveGuard.launch(scope) { if (vm.save()) { nav.back(); true } else false } }
     LaunchedEffect(Unit) { if (s.isNew) focus.requestFocus() }
 
     CoveScreen {
@@ -146,7 +147,7 @@ fun HabitNewScreen(nav: Nav, id: String = "new") {
                 }
                 if (!s.isNew) {
                     PillButton(
-                        "Delete habit", { scope.launch { vm.delete(); nav.back() } },
+                        "Delete habit", { saveGuard.launch(scope) { vm.delete(); nav.back(); true } },
                         Modifier.align(Alignment.CenterHorizontally), kind = ButtonKind.Destructive,
                     )
                 }

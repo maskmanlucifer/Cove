@@ -76,12 +76,15 @@ class HabitEditViewModel(private val c: AppContainer, private val id: String) : 
 
     fun cycleShow() = _state.update { it.copy(show = ShowMode.entries[(it.show.ordinal + 1) % ShowMode.entries.size]) }
 
+    /** Id a new habit is saved under, fixed for this screen so a repeated save rewrites one row. */
+    private val newHabitId = newId()
+
     /** Saves the habit; false when the name is blank. */
     suspend fun save(): Boolean {
         val n = name.text.toString().trim()
         if (n.isEmpty()) return false
         val s = _state.value
-        val base = existing ?: HabitEntity(newId(), n, sort = (c.habits.habits.first().maxOfOrNull { it.sort } ?: -1) + 1)
+        val base = existing ?: HabitEntity(newHabitId, n, sort = (c.habits.habits.first().maxOfOrNull { it.sort } ?: -1) + 1)
         c.habits.save(
             base.copy(
                 name = n,

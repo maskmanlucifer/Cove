@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.cove.companion.core.OneShot
 import app.cove.companion.core.appViewModel
 import app.cove.companion.data.local.entity.AlarmEntity
 import app.cove.companion.design.Cove
@@ -104,6 +105,7 @@ fun AlarmEditScreen(id: String, nav: Nav) {
 @Composable
 private fun MainPage(alarm: AlarmEntity, vm: AlarmEditViewModel, close: () -> Unit, open: (Page) -> Unit) {
     val scope = rememberCoroutineScope()
+    val actionGuard = remember { OneShot() }
     DrumPicker(alarm.minutes, { m -> vm.edit { it.copy(minutes = m) } })
     DaysRow(alarm.daysMask) { i -> vm.edit { it.copy(daysMask = AlarmDays.flip(it.daysMask, i)) } }
     Column {
@@ -112,8 +114,8 @@ private fun MainPage(alarm: AlarmEntity, vm: AlarmEditViewModel, close: () -> Un
         GentleRow(alarm.gentleRise) { on -> vm.edit { it.copy(gentleRise = on) } }
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        ActionButton("Save", Modifier.weight(1f), primary = true) { scope.launch { vm.save(); close() } }
-        if (vm.existing) ActionButton("Delete", Modifier.width(104.dp), primary = false) { scope.launch { vm.delete(); close() } }
+        ActionButton("Save", Modifier.weight(1f), primary = true) { actionGuard.launch(scope) { vm.save(); close(); true } }
+        if (vm.existing) ActionButton("Delete", Modifier.width(104.dp), primary = false) { actionGuard.launch(scope) { vm.delete(); close(); true } }
     }
 }
 
