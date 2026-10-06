@@ -84,7 +84,7 @@ object ReviewLogic {
         AiError.Timeout -> "That took too long. Try again."
         AiError.InvalidOutput -> "The answer didn't make sense, so nothing was changed."
         AiError.PrivacyBlocked -> "This stays on your phone."
-        is AiError.Unavailable -> "AI isn't available on this phone right now."
+        is AiError.Unavailable -> "AI isn't available right now. Add a Gemini key in Me, Connect services, or use a phone with on-device AI."
     }
 
     /** "On-device" or "Cloud". */

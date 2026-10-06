@@ -34,6 +34,9 @@ Each screen must be compared with its reference before you finish.
 4. `tools/shot.sh /tmp/x.png && python3 tools/compare.py <NN_Name> /tmp/x.png`: prints a mean difference and writes a side-by-side (design | device | diff). Open the PNG and look at it. Today (`01_Today`) scores about 2 and shows only anti-aliasing noise; aim for the same. Differences in the status-bar band, the real clock, or data you cannot know (for example route times) are fine; layout, spacing, type, colour and copy must match.
 5. `uiautomator dump` gives exact bounds of text nodes if you need to measure.
 
+## Categorising expenses
+Use `ExpenseCategorizer` (rules and learning, offline); see `docs/CATEGORIZATION.md`. Teach it with `MoneyRepository.teach` only on explicit user picks.
+
 ## Quality bar
 - A screen is done when: it matches its frame in light (and dark where a frame exists), its controls actually work (persist to Room, navigate, undo where the design shows undo), empty states exist, and it survives rotation/process death without crashing.
 - `./gradlew :app:compileDebugKotlin` must be clean. Add focused unit tests for pure logic you write (formatting, grouping, scheduling math) under `app/src/test/kotlin`; run `./gradlew :app:testDebugUnitTest`.

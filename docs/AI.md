@@ -33,6 +33,7 @@ Every result is `AiResult.Ok(value, source: ProviderRef)` or `AiResult.Failed(er
 | Speech `openSpeech` / `openTyped` | ML Kit on-device, Android recognizer, typed | Everyday. The Android recognizer counts as Cloud when the phone has no on-device model |
 | Caption `captionImage` | Gemini Nano (foreground) | Journal: on-device only |
 | Summary `summarize` (sentence, tags, mood) | Gemini Nano (foreground) | Journal: on-device only |
+| Category `suggestCategories` | Gemini Nano (foreground), Gemini cloud | Everyday, manual and bulk only (Review screen, batches of at most 40, never in the background). Sends only note text with amounts scrubbed and the category names; notes are identified by position. Reply `{"a":[index or -1,...]}`, validated by `CategorySchema` |
 | Embedding `embed` | none yet (`UnbundledEmbeddingProvider`; EmbeddingGemma planned, PLAN 6a) | Journal: on-device only |
 
 The legacy Edge Function is used only when no Gemini key is set. Cloud speech (Gemini audio) is deliberately not built: it needs raw audio capture and upload for little gain; it would be a new `SpeechProvider` with `Location.Cloud`.
@@ -59,10 +60,12 @@ Tests: `AiRouterTest`, `DefaultAiServiceTest` (a cloud provider is deliberately 
 
 ## Adding a provider
 
-1. Implement the capability interface from `ai/provider/Providers.kt` (`IntentProvider`, `BriefProvider`, `SpeechProvider`, `CaptionProvider`, `SummaryProvider`, `EmbeddingProvider`) with an `id`, a `Location` (Native, Cloud, Rules) and an honest `availability()`. Return `AiResult.Failed` with a typed error, do not throw.
+1. Implement the capability interface from `ai/provider/Providers.kt` (`IntentProvider`, `BriefProvider`, `SpeechProvider`, `CaptionProvider`, `SummaryProvider`, `EmbeddingProvider`, `CategoryProvider`) with an `id`, a `Location` (Native, Cloud, Rules) and an honest `availability()`. Return `AiResult.Failed` with a typed error, do not throw.
 2. Use prompts from `ai/prompt/` and validate model output with `ai/schema/`.
 3. Add it to the right list in `AppContainer.ai`; the order is the priority. Credentials come through `ServiceProvider` so key changes apply live.
 4. Add a fake-based test next to `NanoProviderTest`. Do not touch the policy unless a new privacy rule is needed.
+
+Per-expense categorisation does not use AI at all; see `docs/CATEGORIZATION.md`.
 
 ## Status UI
 

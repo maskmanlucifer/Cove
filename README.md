@@ -62,6 +62,7 @@ Release builds ignore all of these. Debug builds also log StrictMode violations 
 ## Docs
 - `PLAN.md`: product and architecture plan, decisions, phases.
 - `docs/CONTRIBUTING.md`: how features are built and verified.
+- `docs/CATEGORIZATION.md`: how expenses are filed (rules, learning, Review, optional AI cross-check).
 - `docs/SECURITY.md`: database encryption and app lock.
 - `docs/SETUP.md`: connect your own Supabase, Google, Drive and Gemini (15 minutes); `tools/make-setup-code.py` builds a one-paste setup code.
 - `docs/DRIVE_SETUP.md`: pointer to the Drive part of the setup guide.
