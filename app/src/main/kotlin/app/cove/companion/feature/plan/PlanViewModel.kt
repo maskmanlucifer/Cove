@@ -189,6 +189,12 @@ class PlanViewModel(private val c: AppContainer) : ViewModel() {
     fun deleteCategory(category: TodoCategoryEntity, moveTo: String?) = viewModelScope.launch {
         val group = state.value.groups.firstOrNull { it.category.id == category.id }
         val moved = group?.let { it.open + it.doneToday + it.doneEarlier }.orEmpty()
+        val noun = if (moved.size == 1) "to-do" else "to-dos"
+        val message = when {
+            moved.isEmpty() -> "Deleted “${category.name.ellipsize()}”"
+            moveTo == null -> "Deleted “${category.name.ellipsize()}” and ${moved.size} $noun"
+            else -> "Deleted “${category.name.ellipsize()}”, moved ${moved.size} $noun"
+        }
         if (moveTo != null) {
             val tail = state.value.groups.firstOrNull { it.category.id == moveTo }?.open?.size ?: 0
             c.todos.saveAll(moved.filter { !it.done }.mapIndexed { i, t -> t.copy(categoryId = moveTo, sort = tail + i) })
@@ -197,6 +203,10 @@ class PlanViewModel(private val c: AppContainer) : ViewModel() {
             moved.forEach { c.todos.delete(it.id) }
         }
         c.todos.saveCategory(category.copy(deletedAt = c.clock.now()))
+        offerUndo(message) {
+            c.todos.saveCategory(category.copy(deletedAt = null))
+            c.todos.saveAll(moved)
+        }
     }
 }
 

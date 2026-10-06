@@ -13,6 +13,7 @@ object PlanIcons {
     /** The thin "+" used by "Add to ..." rows (stroke 1.6, shorter arms than [app.cove.companion.design.CoveIcons.Plus]). */
     val AddRow: ImageVector = stroke("addRow", 1.6f, "M12 6v12M6 12h12")
     val AddSmall: ImageVector = stroke("addSmall", 1.8f, "M12 5v14M5 12h14")
+    val Pencil: ImageVector = stroke("pencil", 1.7f, "M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4")
     val ChevronUp: ImageVector = stroke("chevronUp", 2f, "M6 15l6-6 6 6")
 
     private fun stroke(name: String, width: Float, d: String) =

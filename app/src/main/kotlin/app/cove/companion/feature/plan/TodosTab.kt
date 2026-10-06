@@ -33,6 +33,7 @@ import app.cove.companion.design.Cove
 import app.cove.companion.design.CoveIcon
 import app.cove.companion.design.CoveIcons
 import app.cove.companion.design.CoveType
+import app.cove.companion.design.components.AccentButton
 import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.Hairline
 import app.cove.companion.design.components.VoiceOrb
@@ -95,11 +96,11 @@ fun TodosTab(groups: List<CategoryGroup>, now: Long, drag: TodoDragState, action
                 CollapsedCard(group, drag, onClick = { choice = id; addingId = null })
             }
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-            Row(
-                Modifier.heightIn(min = 44.dp).pressable(actions.editCategories, role = Role.Button).padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) { CoveText("Edit categories", style = CoveType.Button.copy(fontWeight = FontWeight.Normal), color = Cove.colors.muted) }
+        Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.Center) {
+            AccentButton(
+                "Edit categories", actions.editCategories,
+                leading = { CoveIcon(PlanIcons.Pencil, Cove.colors.accent, size = 16.dp) },
+            )
         }
     }
 }
