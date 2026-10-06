@@ -30,10 +30,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -57,7 +56,6 @@ import app.cove.companion.design.components.CoveScreen
 import app.cove.companion.design.components.CoveSwitch
 import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.PillButton
-import app.cove.companion.design.components.SheetHandle
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.design.components.graphicsLayerAlpha
 import app.cove.companion.design.components.pressable
@@ -89,13 +87,12 @@ fun MoneyCategoryEditScreen(id: String, nav: Nav) {
                 Modifier
                     .padding(8.dp)
                     .fillMaxWidth()
-                    .shadow(24.dp, CoveShapes.SheetFloating, ambientColor = Color(0x1A141420), spotColor = Color(0x1A141420))
-                    .background(c.card, CoveShapes.SheetFloating)
+                    .clip(CoveShapes.SheetFloating)
+                    .background(c.card)
                     .clickable(remember { MutableInteractionSource() }, indication = null) {}
-                    .padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 24.dp),
+                    .padding(start = 24.dp, end = 24.dp, top = 28.dp, bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
-                SheetHandle(Modifier.align(Alignment.CenterHorizontally))
                 // Only the fields scroll, so Create and Cancel stay above the keyboard.
                 Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
