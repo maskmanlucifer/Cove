@@ -55,6 +55,15 @@ fun IllustrationGallery() {
                 }
             }
         }
+        CoveText("Today strips (64 dp) and banners (160 dp)", style = CoveType.Meta, color = Cove.colors.muted)
+        listOf(false, true).forEach { dark ->
+            CoveTheme(dark = dark) {
+                Column(Modifier.fillMaxWidth().background(Cove.colors.canvas).padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Scene.entries.take(4).forEach { SceneBanner(it, 64.dp, Modifier.fillMaxWidth(), animate = false) }
+                    SceneBanner(Scene.Evening, 160.dp, Modifier.fillMaxWidth(), animate = false)
+                }
+            }
+        }
         Box(Modifier.padding(60.dp))
     }
 }

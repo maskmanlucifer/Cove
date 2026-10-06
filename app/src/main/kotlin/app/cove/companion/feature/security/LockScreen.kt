@@ -62,7 +62,7 @@ fun LockScreen(onUnlock: () -> Unit, onTurnOff: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                Illustration(Scene.Secure, Modifier.height(140.dp))
+                Illustration(Scene.Lock, Modifier.height(164.dp))
                 CoveText("Cove", Modifier.padding(top = 28.dp), style = CoveType.Title.copy(fontSize = 36.sp, lineHeight = 42.sp))
                 CoveText("Locked", Modifier.padding(top = 4.dp), style = CoveType.Body, color = Cove.colors.muted)
             }

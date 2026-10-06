@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.Canvas as GfxCanvas
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.withTransform
@@ -67,10 +68,13 @@ fun Illustration(scene: Scene, modifier: Modifier = Modifier, animate: Boolean =
  * (under 100 dp) show the meadow only, without the mascot.
  */
 @Composable
-fun SceneBanner(scene: Scene, height: Dp, modifier: Modifier = Modifier, anchorY: Float = 0.7f, animate: Boolean = true) {
+fun SceneBanner(
+    scene: Scene, height: Dp, modifier: Modifier = Modifier, anchorY: Float = 0.7f, animate: Boolean = true,
+    shape: Shape = RoundedCornerShape(28.dp),
+) {
     val strip = height < 100.dp
     ArtView(
-        scene.name, scene.art, modifier.height(height).clip(RoundedCornerShape(28.dp)),
+        scene.name, scene.art, modifier.height(height).clip(shape),
         Fit.Cover, if (strip) 1f else anchorY, !strip, animate,
     )
 }

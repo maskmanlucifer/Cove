@@ -1,9 +1,17 @@
-# Illustrations and empty states
+# Illustrations and empty states (system v2)
 
-Everything is drawn in code (`design/illustrations/`, no image assets). Review all 19 scenes, light and dark, at `--es route debug/illustrations` (debug builds).
+Everything is drawn in code (`design/illustrations/`, no image assets, no dependencies). Review the 14 mascot poses and all 22 scenes, light and dark, plus the 64/160 dp Today strips, at `--es route debug/illustrations` (debug builds).
 
-## Scenes
-Time of day (wide, own sky): Morning, Afternoon, Evening, Night. Spot scenes: Todos, Schedule, Money, Journal, Habits, Alarms, Training, Voice, Messages, Synced, Offline, Help (lifebuoy), Lantern, Secure, Cleared.
+## Look
+Painterly-flat botanical scenes (layered rolling hills, seeded brush strokes and speckles, paper grain, flowers in orange, sun yellow, lilac, blossom pink and white three-petal with golden centres) with one recurring character: **Cove's companion**, a sage-clay pebble with two oval eyes, a leaf-sprig antenna and stubby arms. Expression is eyes only (size, tilt, gaze, closed or happy lids); no mouth.
+
+* Palette: `IllusPalette` (own file, light and dark). Illustrations never read theme tokens, so re-theming cannot break them.
+* Poses (`MascotPose`): Idle, Waving, Sleeping, Reading, Coin, Tending, Listening, Thinking, Celebrating, Blanket, Lantern, Lifting, Walking, Stargazing.
+* Scenes: time of day (wide): Morning, Afternoon, Evening, Night; Welcome (wide, tall). Round spot scenes: Todos, Schedule, Money, Journal, Habits, Alarms, Training, Voice, Messages, Synced, Offline, Help, Lantern, Secure, Cleared, Celebration, Lock.
+* Small spots: `Mascot(pose)` and `MascotHead()` composables.
+
+## Performance model
+A scene is painted once per (scene, pixel size, theme, mascot variant) on `Dispatchers.Default` into an `ImageBitmap` held in a 24 MB LRU (`ArtCache`); drawing is one `drawImage`. Only the mascot's eyes and antenna are drawn live in a small second canvas (blink about every 3.5 s, leaf sway on a 7 s loop). Motion stops under reduce-motion, when the screen is not resumed, or with `animate = false`. Everything is hidden from semantics and non-interactive.
 
 ## Where they are used
 | Screen / state | Scene | How |
@@ -29,12 +37,13 @@ Time of day (wide, own sky): Morning, Afternoon, Evening, Night. Spot scenes: To
 | Connect services, nothing connected | Synced | 120 dp art |
 | Sync conflict | Synced | on the canvas above the sheet |
 | Recovery | Lantern (key/db problems) or Help (others) | 132 dp art, text kept |
-| Lock screen | Secure | replaces the orb glyph |
+| Lock screen | Lock | replaces the orb glyph |
+| Welcome (onboarding step 0) | Welcome | top 60% of the page, signature mascot-in-meadow |
 | Mic and alarm permission guides | Voice, Alarms | fills the free space (skipped when under 96 dp) |
 | Clear data, cloud done | Cleared | 110 dp art |
 
 ## Not changed
-Welcome (already has its own gradient blob), Journal "day with no entry" (tapping an empty day opens a new entry, so there is no page to fill), Brief generating/offline states (the player has no separate empty page).
+Journal "day with no entry" (tapping an empty day opens a new entry, so there is no page to fill), Brief generating/offline states (the player has no separate empty page). `Secure` and `Celebration` are in the library but not placed yet.
 
 ## Verification
-Checked at 1080x2400 / 420 dpi in light and dark, and at 2.0 font scale. Today p99 frame time on the emulator: 20-23 ms with the banner versus 19-23 ms before; an animated empty Today ran 726 frames with 0 janky. 1000-event monkey run clean, `adb logcat -b crash` empty.
+Checked at 1080x2400 / 420 dpi in light and dark. Today (empty, banner up, mascot idling) on the emulator: 727 frames, 0 janky, p50 17 ms, p99 20 ms (v1: 726 frames, 0 janky, p99 19-23 ms). Unit tests: `IllustrationHelpersTest` (seeded strokes, fit maths, cache key and LRU, blink and sway ranges) and `TimeOfDayTest`.

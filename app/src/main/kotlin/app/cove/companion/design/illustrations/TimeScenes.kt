@@ -98,23 +98,21 @@ internal fun nightArt() = SceneArt(WideW, WideH, ArtShape.Wide, MascotSpot(Masco
     grain(WideW, WideH)
 }
 
-/** The signature scene: the companion waving in a flower meadow. */
-internal fun welcomeArt() = SceneArt(WideW, 300f, ArtShape.Wide, MascotSpot(MascotPose.Waving, 178f, 284f, 1.75f)) {
-    val h = 300f
+/** The signature scene: the companion waving in a flower meadow (tall, so it can fill the top of a phone). */
+internal fun welcomeArt() = SceneArt(WideW, 420f, ArtShape.Wide, MascotSpot(MascotPose.Waving, 178f, 402f, 2.0f)) {
+    val h = 420f
     val top = if (pal.dark) pal.nightTop else pal.mix(pal.lilacSoft, pal.sky, 0.3f)
-    fill(rrect(0f, 0f, WideW, h, 0f), Brush.verticalGradient(0f to top, 0.5f to pal.pinkSoft, 0.8f to pal.sunSoft, startY = 0f, endY = 190f))
-    sun(286f, 74f, 24f)
-    cloud(70f, 56f, 96f); cloud(200f, 34f, 56f, a0 = 0.75f); cloud(326f, 128f, 56f, a0 = 0.7f)
-    birds(130f, 78f, 1.1f, 150f, 68f, 0.9f)
-    rollingMeadow(WideW, h, 170f, pal.pinkSoft, flowers = 40, bloomScale = 1.25f, between = { mascot() })
-    // big botanical whites framing the scene
-    for ((x, y, s) in listOf(Triple(28f, 252f, 26f), Triple(330f, 246f, 24f), Triple(60f, 288f, 19f), Triple(304f, 286f, 20f))) {
+    fill(rrect(0f, 0f, WideW, h, 0f), Brush.verticalGradient(0f to top, 0.42f to pal.pinkSoft, 0.62f to pal.sunSoft, startY = 0f, endY = 300f))
+    sun(284f, 110f, 26f)
+    cloud(76f, 70f, 104f); cloud(210f, 36f, 58f, a0 = 0.75f); cloud(330f, 190f, 60f, a0 = 0.7f); cloud(40f, 200f, 50f, a0 = 0.6f)
+    birds(130f, 120f, 1.1f, 152f, 108f, 0.9f, 220f, 160f, 0.8f)
+    rollingMeadow(WideW, h, 250f, pal.pinkSoft, flowers = 56, bloomScale = 1.3f, between = { mascot() })
+    for ((x, y, s) in listOf(Triple(30f, 352f, 28f), Triple(332f, 346f, 26f), Triple(64f, 396f, 20f), Triple(302f, 394f, 21f))) {
         line(path { moveTo(x, h + 4f); quadraticTo(x + 4f, (y + h) / 2f, x, y) }, pal.leafDeep, 2f)
         leafAt(x, y + s * 0.9f, -28f, s * 1.2f, s * 0.4f, pal.leaf); leafAt(x, y + s * 1.4f, -152f, s * 1.1f, s * 0.38f, pal.leafLight)
         flower(Bloom.White, x, y, s)
     }
-    butterfly(112f, 208f, 1.3f, pal.orange); butterfly(262f, 190f, 1.1f, pal.lilac, 18f)
-    mushroom(300f, 262f, 11f); stone(46f, 270f, 9f)
-    blades(0f, WideW, h + 1f, 70, 6f, 20f, pal.leafDeep, pal.grassDark, 8, 4f, 2f)
+    butterfly(106f, 300f, 1.4f, pal.orange); butterfly(268f, 262f, 1.2f, pal.lilac, 18f)
+    mushroom(298f, 366f, 12f); stone(48f, 372f, 10f)
     grain(WideW, h)
 }

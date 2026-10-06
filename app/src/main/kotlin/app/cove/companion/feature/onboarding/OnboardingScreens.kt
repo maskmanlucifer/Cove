@@ -5,16 +5,15 @@ import androidx.compose.runtime.getValue
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.background
@@ -28,12 +27,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -43,18 +36,17 @@ import app.cove.companion.core.Permissions
 import app.cove.companion.core.appViewModel
 import app.cove.companion.design.Cove
 import app.cove.companion.design.CoveType
-import app.cove.companion.design.OrbColors
 import app.cove.companion.design.components.BalancedText
 import app.cove.companion.design.components.CoveScreen
 import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.Hairline
 import app.cove.companion.design.components.IllustrationFill
+import app.cove.companion.design.illustrations.SceneBanner
 import app.cove.companion.design.illustrations.Scene
 import app.cove.companion.design.components.PillButton
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.navigation.Nav
 import app.cove.companion.navigation.Routes
-import kotlin.math.hypot
 
 /** Step 0: promise, "Get started" and a way in for people who already use Cove. */
 @Composable
@@ -83,31 +75,14 @@ fun WelcomeScreen(nav: Nav) {
     }
 }
 
-/** The soft peach, lilac and sky glow behind the welcome headline. */
+/** The signature meadow scene with the companion waving, filling the top of the page above the headline. */
 @Composable
 private fun WelcomeBlob() {
-    val dark = Cove.colors.isDark
-    Box(Modifier.fillMaxSize()) {
-        Canvas(
-            Modifier
-                .align(Alignment.TopCenter)
-                .offset(y = 130.dp)
-                .size(320.dp)
-                .blur(14.dp),
-        ) {
-            val circle = Path().apply { addOval(androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height)) }
-            fun blob(color: Color, cx: Float, cy: Float, stop: Float) {
-                val center = Offset(size.width * cx, size.height * cy)
-                val reach = hypot(maxOf(center.x, size.width - center.x), maxOf(center.y, size.height - center.y))
-                val tint = if (dark) color.copy(alpha = 0.55f) else color
-                drawRect(Brush.radialGradient(0f to tint, stop to tint.copy(alpha = 0f), center = center, radius = reach))
-            }
-            clipPath(circle) {
-                blob(OrbColors.Sky, 0.50f, 0.65f, 0.50f)
-                blob(OrbColors.Lilac, 0.65f, 0.45f, 0.48f)
-                blob(OrbColors.Peach, 0.40f, 0.40f, 0.45f)
-            }
-        }
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        SceneBanner(
+            Scene.Welcome, maxHeight * 0.6f, Modifier.fillMaxWidth(), anchorY = 1f,
+            shape = RoundedCornerShape(bottomStart = 36.dp, bottomEnd = 36.dp),
+        )
     }
 }
 
