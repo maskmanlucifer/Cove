@@ -9,13 +9,17 @@ class ForegroundTracker : Application.ActivityLifecycleCallbacks, ForegroundStat
     @Volatile
     private var started = 0
 
+    /** Called each time the app goes from fully in the background to on screen. */
+    @Volatile
+    var onEnter: (() -> Unit)? = null
+
     override fun isForeground() = started > 0
 
     /** Starts listening to [app]'s activities. */
     fun attach(app: Application) = app.registerActivityLifecycleCallbacks(this)
 
     override fun onActivityStarted(activity: Activity) {
-        started++
+        if (started++ == 0) onEnter?.invoke()
     }
 
     override fun onActivityStopped(activity: Activity) {

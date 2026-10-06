@@ -85,5 +85,11 @@ dependencies {
     implementation(libs.ktor.client.content)
     implementation(libs.ktor.serialization)
 
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play)
+    implementation(libs.googleid)
+
     testImplementation(libs.junit)
+    testImplementation(libs.ktor.client.mock)
+    testImplementation(libs.coroutines.test)
 }

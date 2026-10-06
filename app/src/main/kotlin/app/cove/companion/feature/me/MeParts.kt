@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cove.companion.design.Cove
@@ -78,3 +79,20 @@ fun SheetCaption(text: String) = CoveText(text, style = CoveType.Meta.copy(lineH
 /** Sheet title, matching the other sheets' title size. */
 @Composable
 fun SheetHeading(text: String) = CoveText(text, style = CoveType.Section.copy(lineHeight = 32.sp))
+
+/** Gentle, non-blocking entry to the conflict screen. */
+@Composable
+fun ConflictBanner(title: String, onReview: () -> Unit) {
+    val c = Cove.colors
+    Row(
+        Modifier.fillMaxWidth().background(c.card, RoundedCornerShape(24.dp)).pressable(onReview).padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Column(Modifier.weight(1f)) {
+            CoveText("Two versions of “$title”", style = CoveType.BodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            CoveText("Changed on another device.", style = CoveType.Meta, color = c.muted)
+        }
+        CoveText("Review", style = CoveType.Button, color = c.ink)
+    }
+}

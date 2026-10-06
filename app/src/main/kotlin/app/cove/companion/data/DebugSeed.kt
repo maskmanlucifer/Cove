@@ -3,6 +3,7 @@ package app.cove.companion.data
 import app.cove.companion.AppContainer
 import app.cove.companion.core.newId
 import app.cove.companion.core.toEpochMillis
+import app.cove.companion.core.toLocalDate
 import app.cove.companion.data.local.entity.AlarmEntity
 import app.cove.companion.data.local.entity.EventEntity
 import app.cove.companion.data.local.entity.ExpenseCategoryEntity
@@ -10,8 +11,13 @@ import app.cove.companion.data.local.entity.ExpenseEntity
 import app.cove.companion.data.local.entity.HabitEntity
 import app.cove.companion.data.local.entity.JournalEntryEntity
 import app.cove.companion.data.local.entity.TodoCategoryEntity
+import app.cove.companion.data.local.entity.SyncConflictEntity
 import app.cove.companion.data.local.entity.TodoEntity
+import app.cove.companion.data.sync.RoomSyncStore
+import app.cove.companion.data.sync.SyncTables
 import kotlinx.coroutines.flow.first
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -161,5 +167,27 @@ object DebugSeed {
                 ),
             )
         }
+    }
+
+    /**
+     * Frame 31: "Call mum" due 6:00 pm here (edited 8:12 am) against 7:30 pm on a tablet (edited 7:50 am).
+     * Needs [load] to have created the to-do.
+     */
+    suspend fun seedConflict(c: AppContainer) {
+        val todo = c.todos.todos.first().firstOrNull { it.title == "Call mum" } ?: return
+        val table = SyncTables.find("todos") ?: return
+        val day = c.clock.now().toLocalDate()
+        fun at(h: Int, m: Int) = LocalDateTime.of(day, LocalTime.of(h, m)).toEpochMillis()
+        val local = RoomSyncStore(c.database).read(table, listOf(todo.id)).getValue(todo.id)
+        val localJson = JsonObject(local + ("updated_at" to JsonPrimitive(at(8, 12))))
+        val remote = JsonObject(
+            local + mapOf(
+                "due_at" to JsonPrimitive(at(19, 30)), "updated_at" to JsonPrimitive(at(7, 50)),
+                "device_id" to JsonPrimitive("tablet"), "device_name" to JsonPrimitive("Tablet"),
+            ),
+        )
+        c.database.sync().saveConflict(
+            SyncConflictEntity("todos", todo.id, localJson.toString(), remote.toString(), "Tablet", at(8, 12), at(7, 50), at(8, 12)),
+        )
     }
 }

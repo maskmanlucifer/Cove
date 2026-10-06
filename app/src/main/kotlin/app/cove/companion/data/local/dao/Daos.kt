@@ -19,6 +19,7 @@ import app.cove.companion.data.local.entity.OutboxEntity
 import app.cove.companion.data.local.entity.SearchIndexEntity
 import app.cove.companion.data.local.entity.SettingsEntity
 import app.cove.companion.data.local.entity.SuggestionPrefEntity
+import app.cove.companion.data.local.entity.SyncConflictEntity
 import app.cove.companion.data.local.entity.SyncStateEntity
 import app.cove.companion.data.local.entity.TodoCategoryEntity
 import app.cove.companion.data.local.entity.TodoEntity
@@ -208,6 +209,9 @@ interface AssistantDao {
     suspend fun upsertBrief(brief: BriefEntity)
 }
 
+/** Outbox row key. */
+data class PendingKey(val tableName: String, val rowId: String)
+
 @Dao
 interface SyncDao {
     @Insert
@@ -227,4 +231,28 @@ interface SyncDao {
 
     @Query("SELECT COUNT(*) FROM outbox")
     fun observePendingCount(): Flow<Int>
+
+    @Query("SELECT * FROM outbox WHERE seq > :after ORDER BY seq LIMIT :limit")
+    suspend fun pendingAfter(after: Long, limit: Int): List<OutboxEntity>
+
+    @Query("DELETE FROM outbox WHERE seq IN (:seqs)")
+    suspend fun clear(seqs: List<Long>)
+
+    @Query("DELETE FROM outbox WHERE tableName = :table AND rowId = :id")
+    suspend fun clearRow(table: String, id: String)
+
+    @Query("SELECT DISTINCT tableName, rowId FROM outbox")
+    suspend fun pendingKeys(): List<PendingKey>
+
+    @Upsert
+    suspend fun saveConflict(conflict: SyncConflictEntity)
+
+    @Query("SELECT * FROM sync_conflicts ORDER BY detectedAt")
+    suspend fun conflicts(): List<SyncConflictEntity>
+
+    @Query("SELECT * FROM sync_conflicts ORDER BY detectedAt")
+    fun observeConflicts(): Flow<List<SyncConflictEntity>>
+
+    @Query("DELETE FROM sync_conflicts WHERE tableName = :table AND rowId = :id")
+    suspend fun deleteConflict(table: String, id: String)
 }
