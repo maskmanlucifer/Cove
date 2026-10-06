@@ -4,12 +4,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,6 +30,8 @@ import app.cove.companion.design.Cove
 import app.cove.companion.design.CoveIcon
 import app.cove.companion.design.CoveIcons
 import app.cove.companion.design.CoveType
+import app.cove.companion.design.MessageIcon
+import app.cove.companion.design.components.AccentButton
 import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.DockClearance
 import app.cove.companion.design.components.DockFloatBottom
@@ -39,6 +42,7 @@ import app.cove.companion.navigation.Nav
 import app.cove.companion.navigation.Routes
 
 /** Money tab: spent so far this month, the daily strip and the busiest categories. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MoneyScreen(nav: Nav) {
     val vm = appViewModel { MoneyViewModel(it) }
@@ -53,13 +57,18 @@ fun MoneyScreen(nav: Nav) {
                 .padding(start = 24.dp, end = 24.dp, top = 20.dp, bottom = DockClearance),
             verticalArrangement = Arrangement.spacedBy(28.dp),
         ) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                CoveText("Money", style = CoveType.Title)
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Box(Modifier.height(44.dp).requiredHeight(48.dp).pressable({ nav.go(Routes.MoneyCategories) }).padding(horizontal = 4.dp), contentAlignment = Alignment.Center) {
-                        CoveText("Categories", style = CoveType.Meta, color = c.muted)
-                    }
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                    CoveText("Money", style = CoveType.Title)
                     RoundIconButton(CoveIcons.Plus, { nav.go(Routes.expenseEdit()) }, "Add expense")
+                }
+                // Two rows when the pair does not fit side by side (narrow phones, large text); never clipped.
+                FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AccentButton("Categories", { nav.go(Routes.MoneyCategories) })
+                    AccentButton(
+                        "Import from messages", { nav.go(Routes.MoneyImport) },
+                        leading = { CoveIcon(MessageIcon.Message, c.accent, size = 18.dp) },
+                    )
                 }
             }
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {

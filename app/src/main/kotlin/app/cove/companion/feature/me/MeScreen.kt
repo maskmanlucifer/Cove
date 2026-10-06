@@ -98,6 +98,8 @@ fun MeScreen(nav: Nav) {
             SettingsRow("Look and text size", value = lookSummary(settings.theme, settings.textScale), onClick = { sheet = MeSheet.Look })
             RowDivider()
             SettingsRow("Privacy and data", value = "Yours", onClick = { sheet = MeSheet.Privacy })
+            RowDivider()
+            SettingsRow("Forget imported-message history", onClick = { sheet = MeSheet.ForgetMessages })
         }
         SettingsGroup("Photos and backup") {
             SettingsRow("Photo quality", value = PhotoQuality.label(settings.photoQuality), onClick = { vm.resetBackup(); sheet = MeSheet.PhotoQuality })

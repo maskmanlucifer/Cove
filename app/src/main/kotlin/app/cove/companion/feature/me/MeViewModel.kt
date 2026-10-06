@@ -29,6 +29,11 @@ class MeViewModel(private val c: AppContainer) : ViewModel() {
     val settings: StateFlow<SettingsEntity?> =
         c.settings.settings.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+    /** Clears the "Import from messages" log; expenses stay. */
+    fun forgetImportedMessages() {
+        viewModelScope.launch { c.smsImport.forgetHistory() }
+    }
+
     /** Enabled alarms, earliest first. */
     val alarms: StateFlow<List<AlarmEntity>> = c.plan.alarms
         .map { list -> list.filter { it.deletedAt == null && it.enabled }.sortedBy { it.minutes } }

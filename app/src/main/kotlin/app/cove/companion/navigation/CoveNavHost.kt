@@ -30,6 +30,7 @@ import app.cove.companion.BuildConfig
 import app.cove.companion.feature.money.ExpenseEditScreen
 import app.cove.companion.feature.money.MoneyLoggedDebugScreen
 import app.cove.companion.feature.money.MoneyReviewScreen
+import app.cove.companion.feature.money.imports.MoneyImportScreen
 import app.cove.companion.feature.money.MoneyCategoriesScreen
 import app.cove.companion.feature.money.MoneyCategoryDetailScreen
 import app.cove.companion.feature.money.MoneyCategoryEditScreen
@@ -108,6 +109,7 @@ fun CoveNavHost(start: String, voiceRequest: Int = 0, briefRequest: Int = 0) {
         composable(Routes.MoneyCategories) { MoneyCategoriesScreen(nav) }
         composable(Routes.MoneyCategory, idArg) { MoneyCategoryEditScreen(id(it), nav) }
         composable(Routes.MoneyReview) { MoneyReviewScreen(nav) }
+        composable(Routes.MoneyImport) { MoneyImportScreen(nav) }
         composable(Routes.MoneyCategoryDetail, idArg) { MoneyCategoryDetailScreen(id(it), nav) }
 
         composable(Routes.Habits) { HabitsScreen(nav) }

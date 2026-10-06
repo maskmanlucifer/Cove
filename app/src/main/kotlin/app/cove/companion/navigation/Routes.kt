@@ -28,6 +28,7 @@ object Routes {
     fun moneyCategoryDetail(id: String) = "money/category-detail/$id"
 
     const val MoneyReview = "money/review"
+    const val MoneyImport = "money/import"
 
     const val Habits = "habits"
     const val HabitNew = "habits/new"

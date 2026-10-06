@@ -20,6 +20,7 @@ import app.cove.companion.design.Cove
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.TextScales
 import app.cove.companion.design.components.CoveText
+import app.cove.companion.design.components.ButtonKind
 import app.cove.companion.design.components.PillButton
 import app.cove.companion.data.local.entity.SettingsEntity
 import app.cove.companion.data.media.PhotoQuality
@@ -31,7 +32,7 @@ import app.cove.companion.feature.security.LockUnavailableSheet
 import app.cove.companion.feature.plan.TitleField
 
 /** Which Me sheet is open. */
-enum class MeSheet { Name, Wake, Brief, OneThing, Spoken, Nudges, Motion, Look, Privacy, PhotoQuality, Backup, Restore, LockAfter, LockUnavailable }
+enum class MeSheet { Name, Wake, Brief, OneThing, Spoken, Nudges, Motion, Look, Privacy, PhotoQuality, Backup, Restore, LockAfter, LockUnavailable, ForgetMessages }
 
 /** Hosts whichever sheet [sheet] names, reading and writing through [vm]. */
 @Composable
@@ -94,6 +95,12 @@ fun MeSheets(sheet: MeSheet?, s: SettingsEntity, vm: MeViewModel, briefPlay: () 
             )
         }
         MeSheet.Privacy -> PrivacySheet(onDismiss)
+        MeSheet.ForgetMessages -> PlanSheet(onDismiss, gap = 16) { close ->
+            SheetHeading("Forget imported-message history")
+            SheetCaption("Cove will no longer remember which messages it has already looked at. Your expenses stay exactly as they are. Next time, Cove checks for repeats against your expenses.")
+            PillButton("Forget history", { vm.forgetImportedMessages(); close() }, Modifier.fillMaxWidth(), height = 52.dp)
+            PillButton("Cancel", close, Modifier.fillMaxWidth(), kind = ButtonKind.Secondary, height = 52.dp)
+        }
         MeSheet.LockAfter -> LockAfterSheet(s.lockAfter, { v -> vm.update { it.copy(lockAfter = v.key) } }, onDismiss)
         MeSheet.LockUnavailable -> LockUnavailableSheet(onDismiss)
         MeSheet.PhotoQuality -> PlanSheet(onDismiss, gap = 16) {
@@ -145,6 +152,7 @@ private val privacyGroups = listOf(
         "What stays on this phone",
         listOf(
             "Your entries" to "Alarms, to-dos, habits, money and journal are saved on this phone first, in an encrypted database. Cove works with no signal.",
+            "Your messages" to "Money can read bank and UPI messages on this phone to find your spending. The text is read here only: never sent, synced or backed up. Only the payments you choose become expenses.",
             "Your journal" to "Journal text, photos and voice notes are never sent to an AI service. Mood and pattern summaries are made on this phone.",
         ),
     ),

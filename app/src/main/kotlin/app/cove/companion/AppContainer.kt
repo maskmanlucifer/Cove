@@ -45,6 +45,9 @@ import app.cove.companion.data.repo.HabitRepository
 import app.cove.companion.data.repo.JournalRepository
 import app.cove.companion.data.categorize.LiveCategoryResolver
 import app.cove.companion.data.repo.MoneyRepository
+import app.cove.companion.data.sms.ContentResolverSmsInbox
+import app.cove.companion.data.sms.SmsImportRepository
+import app.cove.companion.data.sms.SmsSource
 import app.cove.companion.data.repo.PlanRepository
 import app.cove.companion.data.repo.SettingsRepository
 import app.cove.companion.data.repo.TodoRepository
@@ -154,6 +157,12 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
     val todos = TodoRepository(database, clock, changeLog)
     val habits = HabitRepository(database, clock, changeLog)
     val money = MoneyRepository(database, clock, changeLog)
+
+    /** "Import from messages": local scan, dedupe and log (see `docs/SMS_IMPORT.md`). */
+    val smsImport = SmsImportRepository(database, clock, money)
+
+    /** The phone's SMS inbox; reading needs the READ_SMS permission the Import screen asks for. */
+    val smsInbox: SmsSource = ContentResolverSmsInbox(context.applicationContext)
 
     /** Programme, sessions, sets and body weight (see `docs/TRAINING.md`). */
     val training = TrainingRepository(database, clock, changeLog)
