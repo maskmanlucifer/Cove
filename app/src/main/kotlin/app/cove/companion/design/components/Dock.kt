@@ -1,25 +1,19 @@
 package app.cove.companion.design.components
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -33,7 +27,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.layoutId
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import kotlin.math.roundToInt
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalAccessibilityManager
@@ -76,9 +75,9 @@ object DockSwitcher {
 }
 
 /**
- * Compact bottom bar: a pill showing the current tab and the voice orb. Tapping the pill raises a row of the five
- * destinations (the design's expanded state); choosing one, tapping elsewhere, Back, or four seconds of nothing
- * settles it away again. Place it at the bottom of a full-size box (see [DockBarHeight]).
+ * Compact bottom bar: a pill showing the current tab and the voice orb. Tapping the pill morphs it into the row of
+ * the five destinations; the orb never moves and the current tab's icon keeps its x (see [DockMotion]). Choosing a
+ * tab, tapping elsewhere, Back, or four seconds of nothing closes it again. Place it at the bottom of a full-size box.
  */
 @Composable
 fun CoveDock(selected: Tab, onSelect: (Tab) -> Unit, onVoice: () -> Unit, modifier: Modifier = Modifier) {
@@ -92,97 +91,132 @@ fun CoveDock(selected: Tab, onSelect: (Tab) -> Unit, onVoice: () -> Unit, modifi
         expanded = false
     }
     BackHandler(enabled = expanded) { expanded = false }
+    val reduce = LocalReduceMotion.current
+    val progress = remember { Animatable(0f) }
+    LaunchedEffect(expanded, reduce) {
+        val spec = if (reduce) tween<Float>(ReducedMotionMillis, easing = LinearEasing) else tween(DockMotion.DURATION_MS, easing = DockMotion.Ease)
+        progress.animateTo(if (expanded) 1f else 0f, spec)
+    }
     val density = LocalDensity.current
     CompositionLocalProvider(LocalDensity provides Density(density.density, density.fontScale.coerceAtMost(DOCK_MAX_FONT_SCALE))) {
         Box(modifier.fillMaxSize()) {
             if (expanded) {
                 Box(Modifier.fillMaxSize().clickable(remember { MutableInteractionSource() }, indication = null) { expanded = false })
             }
-            Box(Modifier.align(Alignment.BottomCenter)) {
-                Collapsed(selected, expanded, onToggle = { expanded = DockSwitcher.toggle(expanded) }, onVoice)
-                Expanded(selected, expanded, onPick = { expanded = false; onSelect(it) }, onCollapse = { expanded = false }, onVoice)
+            Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(DockBarHeight).padding(bottom = 22.dp)) {
+                DockMorph(
+                    selected, expanded, progress, reduce,
+                    onToggle = { expanded = DockSwitcher.toggle(expanded) },
+                    onPick = { expanded = false; if (it != selected) onSelect(it) },
+                    Modifier.align(Alignment.BottomStart),
+                )
+                Box(Modifier.align(Alignment.BottomEnd).padding(end = 28.dp)) { Orb(onVoice) }
             }
         }
     }
 }
 
+/**
+ * The pill and the five tab slots in one layout of fixed size, so nothing re-measures or reflows while it opens:
+ * the card background grows around the current icon, the other icons slide out from it, and the label fades.
+ */
 @Composable
-private fun Collapsed(selected: Tab, expanded: Boolean, onToggle: () -> Unit, onVoice: () -> Unit) {
+private fun DockMorph(
+    selected: Tab,
+    expanded: Boolean,
+    progress: Animatable<Float, AnimationVector1D>,
+    reduce: Boolean,
+    onToggle: () -> Unit,
+    onPick: (Tab) -> Unit,
+    modifier: Modifier,
+) {
     val c = Cove.colors
-    val reduce = LocalReduceMotion.current
-    val ms = if (reduce) ReducedMotionMillis else MOTION_MS
-    AnimatedVisibility(!expanded, enter = fadeIn(tween(ms)), exit = fadeOut(tween(ms))) {
-        Row(
-            Modifier.fillMaxWidth().height(DockBarHeight).padding(start = 28.dp, end = 28.dp, bottom = 22.dp),
-            verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Spacer(Modifier.size(44.dp))
+    Layout(
+        content = {
+            Box(Modifier.layoutId("bg").shadow(0.5.dp, CoveShapes.Pill, ambientColor = shadowColor(), spotColor = shadowColor()).background(c.card, CoveShapes.Pill))
             Row(
-                Modifier
-                    .heightIn(min = 44.dp)
-                    .shadow(0.5.dp, CoveShapes.Pill, ambientColor = shadowColor(), spotColor = shadowColor())
-                    .background(c.card, CoveShapes.Pill)
-                    .semantics(mergeDescendants = true) {
-                        contentDescription = "Switch section"
-                        stateDescription = "${selected.label}, collapsed"
-                        role = Role.Button
-                    }
-                    .clickable(onClickLabel = "Show menu", role = Role.Button, onClick = onToggle)
-                    .padding(start = 14.dp, end = 16.dp),
+                Modifier.layoutId("label").graphicsLayer { alpha = DockMotion.frame(progress.value, reduce).labelAlpha },
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                CoveIcon(selected.icon, c.ink, size = 18.dp)
-                CoveText(selected.label, style = CoveType.Button, color = c.ink)
+                CoveText(selected.label, style = CoveType.Button, color = c.ink, maxLines = 1)
                 CoveIcon(CoveIcons.ChevronUp, c.muted, size = 14.dp)
             }
-            Orb(onVoice)
-        }
-    }
-}
-
-@Composable
-private fun Expanded(selected: Tab, expanded: Boolean, onPick: (Tab) -> Unit, onCollapse: () -> Unit, onVoice: () -> Unit) {
-    val c = Cove.colors
-    val reduce = LocalReduceMotion.current
-    val ms = if (reduce) ReducedMotionMillis else MOTION_MS
-    val ease = tween<Float>(ms, easing = FastOutSlowInEasing)
-    AnimatedVisibility(
-        expanded,
-        enter = fadeIn(ease) + if (reduce) androidx.compose.animation.EnterTransition.None else slideInVertically(tween(ms, easing = FastOutSlowInEasing)) { it / 3 },
-        exit = fadeOut(ease) + if (reduce) androidx.compose.animation.ExitTransition.None else slideOutVertically(tween(ms, easing = FastOutSlowInEasing)) { it / 3 },
-    ) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .height(DockBarHeight + 8.dp)
-                .background(Brush.verticalGradient(0f to c.canvas.copy(alpha = 0f), 0.45f to c.canvas, 1f to c.canvas))
-                .padding(start = 28.dp, end = 28.dp, bottom = 22.dp)
-                .semantics { contentDescription = "Sections" },
-            verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
             Tab.entries.forEach { tab ->
                 val on = tab == selected
-                val tint = if (on) c.ink else c.dockInactive
-                Column(
+                Box(
                     Modifier
-                        .size(44.dp)
-                        .semantics(mergeDescendants = true) {
-                            role = Role.Tab
-                            this.selected = on
-                            contentDescription = DockSwitcher.tabDescription(tab)
-                        }
-                        .clickable(onClick = { if (on) onCollapse() else onPick(tab) }, indication = null, interactionSource = remember { MutableInteractionSource() }),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
+                        .layoutId(tab)
+                        .then(
+                            if (expanded) Modifier.semantics(mergeDescendants = true) {
+                                role = Role.Tab
+                                this.selected = on
+                                contentDescription = DockSwitcher.tabDescription(tab)
+                            }.clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { if (on) onToggle() else onPick(tab) }
+                            else Modifier.clearAndSetSemantics { },
+                        ),
                 ) {
-                    CoveIcon(tab.icon, tint, size = 20.dp)
-                    Box(Modifier.size(4.dp).background(if (on) c.ink else Color.Transparent, CircleShape))
+                    CoveIcon(
+                        tab.icon, if (on) c.ink else c.dockInactive, size = 20.dp,
+                        modifier = Modifier.align(Alignment.Center).graphicsLayer { translationY = -3.dp.toPx() * DockMotion.frame(progress.value, reduce).geom },
+                    )
+                    Box(
+                        Modifier.align(Alignment.BottomCenter).padding(bottom = 7.dp).size(4.dp)
+                            .graphicsLayer { alpha = DockMotion.frame(progress.value, reduce).geom }
+                            .background(if (on) c.ink else Color.Transparent, CircleShape),
+                    )
                 }
             }
-            Orb(onVoice)
+            if (!expanded) {
+                Box(
+                    Modifier
+                        .layoutId("hit")
+                        .semantics(mergeDescendants = true) {
+                            contentDescription = "Switch section"
+                            stateDescription = "${selected.label}, collapsed"
+                            role = Role.Button
+                        }
+                        .clickable(onClickLabel = "Show menu", role = Role.Button, onClick = onToggle),
+                )
+            }
+        },
+        modifier = modifier.fillMaxWidth().height(44.dp),
+    ) { measurables, constraints ->
+        val w = constraints.maxWidth
+        val h = 44.dp.roundToPx()
+        val slot = 44.dp.roundToPx()
+        fun px(dp: Float) = (dp * density).roundToInt()
+        val label = measurables.first { it.layoutId == "label" }.measure(Constraints())
+        val geo = DockMotion.geometry(w / density, selected.ordinal, label.width / density)
+        val f = DockMotion.frame(progress.value, reduce)
+        val bgW = px(DockMotion.lerp(geo.collapsedRight - geo.collapsedLeft, geo.expandedRight - geo.expandedLeft, f.geom))
+        val bgX = px(DockMotion.lerp(geo.collapsedLeft, geo.expandedLeft, f.geom))
+        val labelX = if (selected.ordinal < DockMotion.LEFT_EXTENDING_FROM) geo.iconCenter + 18f else geo.iconCenter - 18f - label.width / density
+        val placed = measurables.filter { it.layoutId != "label" }.map { m ->
+            val id = m.layoutId
+            val size = when (id) {
+                "bg" -> Constraints.fixed(bgW, h)
+                "hit" -> Constraints.fixed(px(geo.collapsedRight - geo.collapsedLeft), h)
+                else -> Constraints.fixed(slot, slot)
+            }
+            id to m.measure(size)
+        }
+        layout(w, h) {
+            placed.forEach { (id, pl) ->
+                when (id) {
+                    "bg" -> pl.place(bgX, 0)
+                    "hit" -> pl.place(px(geo.collapsedLeft), 0)
+                    is Tab -> {
+                        val cx = geo.slotCenter(id.ordinal)
+                        if (id == selected) pl.place(px(cx) - slot / 2, 0)
+                        else pl.placeWithLayer(px(cx) - slot / 2, 0) {
+                            alpha = f.otherAlpha
+                            translationX = px((geo.slotCenter(selected.ordinal) - cx) * (1f - f.geom)).toFloat()
+                        }
+                    }
+                }
+                if (id == "bg") label.place(px(labelX), (h - label.height) / 2)
+            }
         }
     }
 }
@@ -196,4 +230,3 @@ private fun Orb(onVoice: () -> Unit) {
 private fun shadowColor(): Color = if (Cove.colors.isDark) Color(0x4D000000) else Color(0x0F141420)
 
 private const val DOCK_MAX_FONT_SCALE = 1.3f
-private const val MOTION_MS = 200
