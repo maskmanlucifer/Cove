@@ -39,6 +39,24 @@ class BriefPlayerTest {
     }
 
     @Test
+    fun aBrokenEngineStopsPlayingAndIsReportedThenRetried() {
+        val fake = FakeSpeech()
+        val p = BriefPlayer({ fake }, { brief })
+        p.load(brief)
+        p.play()
+        assertTrue(p.state.value.playing)
+        fake.listener!!.onProblem(TtsProblem.NoEngine)
+        assertFalse(p.state.value.playing)
+        assertEquals(TtsProblem.NoEngine, p.state.value.problem)
+        // A late callback from the dead run must not revive it.
+        fake.listener!!.onStart("0:0:0")
+        assertFalse(p.state.value.playing)
+        p.play()
+        assertTrue(p.state.value.playing)
+        assertEquals(null, p.state.value.problem)
+    }
+
+    @Test
     fun nextSpeedAndPauseControls() {
         val fake = FakeSpeech()
         val p = BriefPlayer({ fake }, { brief })
