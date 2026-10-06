@@ -30,6 +30,7 @@ import app.cove.companion.design.components.CoveScreen
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.feature.money.MoneyTopBar
 import app.cove.companion.feature.money.MoneyUndoBar
+import app.cove.companion.feature.money.RetroTagBar
 import app.cove.companion.feature.permissions.openFix
 import app.cove.companion.feature.permissions.FixTarget
 import app.cove.companion.navigation.Nav
@@ -81,6 +82,7 @@ fun MoneyImportScreen(nav: Nav) {
                 ImportStage.Done -> DoneStage(s, nav.back)
             }
         }
+        RetroTagBar(Modifier.align(Alignment.TopCenter), belowHeader = true)
         MoneyUndoBar(Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = 24.dp))
     }
 }

@@ -121,6 +121,7 @@ fun MoneyCategoryDetailScreen(id: String, nav: Nav) {
                 CoveText("Add", style = CoveType.Button, color = c.onInk)
             }
         }
+        RetroTagBar(Modifier.align(Alignment.TopCenter))
         MoneyUndoBar(Modifier.align(Alignment.TopCenter))
         MoneyDock(nav)
     }

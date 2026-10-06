@@ -57,7 +57,7 @@ object UndoPlacement {
 /**
  * The one Undo bar: a dark pill that slides down from the top under the status bar, with a message and an action.
  * Place it with `Modifier.align(Alignment.TopCenter)` in a full-screen `Box`; [belowHeader] pushes it under a screen's
- * own title/back row. Callers own the timing (auto-dismiss) and compose it only while an offer exists, or pass [visible].
+ * own title/back row. An optional [secondaryAction] (for example "Not now") sits before the main action. Callers own the timing (auto-dismiss) and compose it only while an offer exists, or pass [visible].
  */
 @Composable
 fun TopUndoBar(
@@ -67,6 +67,8 @@ fun TopUndoBar(
     action: String = "Undo",
     belowHeader: Boolean = false,
     visible: Boolean = true,
+    secondaryAction: String? = null,
+    onSecondary: (() -> Unit)? = null,
 ) {
     val c = Cove.colors
     val reduce = LocalReduceMotion.current
@@ -97,6 +99,12 @@ fun TopUndoBar(
                     message, Modifier.weight(1f).padding(vertical = 8.dp),
                     style = CoveType.Button.copy(fontWeight = FontWeight.Normal, fontSize = 15.sp), color = c.onInk, maxLines = 2, overflow = TextOverflow.Ellipsis,
                 )
+                if (secondaryAction != null && onSecondary != null) {
+                    Box(
+                        Modifier.heightIn(min = 40.dp).pressable(onSecondary, role = Role.Button).padding(horizontal = 6.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { CoveText(secondaryAction, style = CoveType.Button.copy(fontSize = 15.sp, fontWeight = FontWeight.Normal), color = c.onInk.copy(alpha = 0.7f)) }
+                }
                 if (onAction != null) {
                     Box(
                         Modifier.heightIn(min = 40.dp).background(c.onInk.copy(alpha = 0.14f), CoveShapes.Pill).pressable(onAction, role = Role.Button).padding(horizontal = 16.dp),

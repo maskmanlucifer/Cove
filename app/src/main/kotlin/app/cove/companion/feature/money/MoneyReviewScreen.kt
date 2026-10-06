@@ -34,7 +34,10 @@ import androidx.compose.ui.unit.dp
 import app.cove.companion.core.appViewModel
 import app.cove.companion.core.rupees
 import app.cove.companion.core.toLocalDate
+import app.cove.companion.data.categorize.PastProposal
 import app.cove.companion.data.categorize.ReviewRow
+import app.cove.companion.data.sms.PayeeKey
+import androidx.compose.ui.text.style.TextOverflow
 import app.cove.companion.data.local.entity.ExpenseCategoryEntity
 import app.cove.companion.design.Cove
 import app.cove.companion.design.CoveShapes
@@ -73,8 +76,10 @@ fun MoneyReviewScreen(nav: Nav) {
                         if (cross) SmallAction("Back to Other", enabled = !s.busy, onClick = vm::showUnfiled)
                         else SmallAction("Check with AI", enabled = !s.busy, onClick = vm::checkWithAi)
                         SmallAction("Cross-check this month", enabled = !s.busy, onClick = vm::crossCheck)
+                        if (!cross && s.proposals.isNotEmpty()) SmallAction("Learn from my past payments", enabled = !s.busy, onClick = vm::toggleLearn)
                     }
                 }
+                if (!cross && s.explaining && s.proposals.isNotEmpty()) item { LearnCard(s.proposals, s.categories, vm::learnFromPast, vm::toggleLearn) }
                 if (s.busy) item { CoveText("Checking with AI…", Modifier.padding(horizontal = 4.dp), style = MoneyType.Note, color = c.muted) }
                 s.message?.let { m -> item { CoveText(m, Modifier.padding(horizontal = 4.dp), style = MoneyType.Note, color = c.muted) } }
                 s.provenance?.let { p -> item { CoveText("Answered by: $p", Modifier.padding(horizontal = 4.dp), style = MoneyType.Small, color = c.muted) } }
@@ -96,7 +101,31 @@ fun MoneyReviewScreen(nav: Nav) {
                 height = 56.dp, textStyle = MoneyType.Row.copy(fontWeight = FontWeight.Medium),
             )
         }
+        MoneyUndoBar(Modifier.align(Alignment.TopCenter))
         if (s.undoCount > 0) TopUndoBar("Filed ${s.undoCount}", vm::undoLast, Modifier.align(Alignment.TopCenter), belowHeader = true)
+    }
+}
+
+/** Explains "Learn from my past payments" and lists what would be remembered; one tap, undoable. */
+@Composable
+private fun LearnCard(proposals: List<PastProposal>, categories: List<ExpenseCategoryEntity>, onLearn: () -> Unit, onClose: () -> Unit) {
+    val c = Cove.colors
+    val shown = proposals.take(4)
+    Column(Modifier.fillMaxWidth().background(c.card, CoveShapes.Card).padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        CoveText("${proposals.size} payee${if (proposals.size == 1) "" else "s"} you have filed the same way", style = CoveType.Body)
+        CoveText(
+            "Cove can remember them, so a new payment to the same payee is tagged for you. This uses only your own expenses and stays on your phone.",
+            style = MoneyType.Note, color = c.muted,
+        )
+        shown.forEach { p ->
+            val cat = categories.firstOrNull { it.id == p.categoryId }?.name ?: "Other"
+            CoveText("${p.displayName.ifBlank { PayeeKey.handleOf(p.payeeKey) ?: "Payee" }} · $cat", style = MoneyType.Small, color = c.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        if (proposals.size > shown.size) CoveText("and ${proposals.size - shown.size} more", style = MoneyType.Small, color = c.muted)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            ChipButton("Remember ${proposals.size}", selected = true, onClick = onLearn)
+            TextAction("Not now", strong = false, onClick = onClose)
+        }
     }
 }
 

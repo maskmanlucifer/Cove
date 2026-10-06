@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -25,9 +27,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.cove.companion.container
 import app.cove.companion.core.rupees
@@ -38,6 +43,7 @@ import app.cove.companion.design.Cove
 import app.cove.companion.design.CoveShapes
 import app.cove.companion.design.CoveType
 import app.cove.companion.data.sms.ImportRange
+import app.cove.companion.data.sms.PayeeKey
 import app.cove.companion.design.components.AccentButton
 import app.cove.companion.design.components.CheckCircle
 import app.cove.companion.design.components.CoveText
@@ -141,8 +147,10 @@ private fun ImportRowItem(row: ImportRow, today: java.time.LocalDate, cats: List
     val c = Cove.colors
     val tx = row.item.candidate.tx
     var picking by remember { mutableStateOf(false) }
+    var renaming by remember { mutableStateOf(false) }
     val stacked = LocalDensity.current.fontScale > 1.3f
-    val note = tx.merchant ?: if (row.kind == "received") "Money received" else "Payment"
+    val note = row.note
+    val handle = if (tx.merchant == null) PayeeKey.handleOf(tx.payeeKey) else null
     val account = listOfNotNull(tx.bank, tx.last4?.let { "··$it" }).joinToString(" ").ifBlank { null }
     val meta = listOfNotNull(MoneyMath.dayLabel(tx.at.toLocalDate(), today), account, tx.paidWith).joinToString(" · ")
     val spoken = "$note, ${rupeesSpoken(tx.amountPaise)}, ${if (row.kind == "received") "received" else "spent"}, ${if (row.checked) "will be imported" else "skipped"}"
@@ -156,6 +164,7 @@ private fun ImportRowItem(row: ImportRow, today: java.time.LocalDate, cats: List
                 CoveText(note, style = CoveType.Body, maxLines = 2)
                 if (stacked) AmountText(tx.amountPaise, row.kind)
                 CoveText(meta, style = MoneyType.Small, color = c.muted)
+                handle?.let { CoveText(it, style = MoneyType.Small, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 row.item.match?.let { m ->
                     CoveText("Possible duplicate: already added \"${m.note.ifBlank { "an expense" }} ${rupees(m.amountPaise)}\"", style = MoneyType.Small, color = c.alert)
                 }
@@ -168,7 +177,12 @@ private fun ImportRowItem(row: ImportRow, today: java.time.LocalDate, cats: List
                 Pill(name ?: "Pick a category", selected = false, accent = name != null) { picking = !picking }
             }
             KindToggle(row.kind) { vm.setKind(row.id, it) }
+            if (row.kind == "spent") Pill("Rename", selected = renaming) { renaming = !renaming }
         }
+        if (row.recalled && row.kind == "spent" && !row.picked) {
+            CoveText("Learned from your earlier payment", Modifier.padding(start = 38.dp), style = MoneyType.Small, color = c.accent)
+        }
+        if (renaming) LabelField(row.note, { vm.setLabel(row.id, it) }, Modifier.padding(start = 38.dp))
         if (picking && row.kind == "spent") {
             Row(Modifier.fillMaxWidth().padding(start = 38.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 cats.forEach { cat ->
@@ -176,6 +190,20 @@ private fun ImportRowItem(row: ImportRow, today: java.time.LocalDate, cats: List
                 }
             }
         }
+    }
+}
+
+/** One-line field for the note an imported payment is saved with; Cove remembers it for this payee once the row is imported. */
+@Composable
+private fun LabelField(text: String, onChange: (String) -> Unit, modifier: Modifier = Modifier) {
+    val c = Cove.colors
+    var value by remember { mutableStateOf(text) }
+    Box(modifier.fillMaxWidth().heightIn(min = 44.dp).background(c.well, CoveShapes.Pill).padding(horizontal = 16.dp), contentAlignment = Alignment.CenterStart) {
+        BasicTextField(
+            value, { value = it; onChange(it) }, Modifier.fillMaxWidth(), singleLine = true,
+            textStyle = CoveType.Body.copy(color = c.ink), cursorBrush = SolidColor(c.ink),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+        )
     }
 }
 

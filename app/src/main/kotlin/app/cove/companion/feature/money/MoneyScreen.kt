@@ -90,6 +90,7 @@ fun MoneyScreen(nav: Nav) {
             }
             s.reviewBanner?.let { ReviewLink(it) { nav.go(Routes.MoneyReview) } }
         }
+        RetroTagBar(Modifier.align(Alignment.TopCenter))
         MoneyUndoBar(Modifier.align(Alignment.TopCenter))
     }
 }
