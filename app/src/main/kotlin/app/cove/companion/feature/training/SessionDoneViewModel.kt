@@ -40,7 +40,7 @@ class SessionDoneViewModel(private val c: AppContainer, private val id: String) 
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SessionDoneUi())
 
     private fun build(snap: TrainingSnapshot): SessionDoneUi {
-        val s = snap.tables.sessions.firstOrNull { it.id == id } ?: return SessionDoneUi(loaded = true)
+        val s = (if (id == "last") snap.finished.lastOrNull() else snap.tables.sessions.firstOrNull { it.id == id }) ?: return SessionDoneUi(loaded = true)
         val mins = ((s.endedAt ?: s.startedAt ?: s.plannedAt) - (s.startedAt ?: s.plannedAt)).div(60_000).toInt().coerceAtLeast(1)
         val ids = s.exerciseIds.split(',').filter { it.isNotBlank() }
         val rows = ids.mapNotNull { snap.exercise(it) }.filter { snap.liftSets(s.id, it.id).isNotEmpty() }.map { e ->

@@ -1,5 +1,6 @@
 package app.cove.companion.feature.training.voice
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.cove.companion.design.Cove
+import app.cove.companion.design.CoveShapes
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.BalancedText
 import app.cove.companion.design.components.CoveSheet
@@ -31,7 +33,6 @@ import app.cove.companion.feature.training.ui.SecondaryButton
 import app.cove.companion.feature.training.ui.StepRow
 import app.cove.companion.feature.training.ui.TrainingType
 import app.cove.companion.feature.voice.Quote
-import app.cove.companion.feature.voice.RowsCard
 import app.cove.companion.feature.voice.VoiceState
 import app.cove.companion.feature.voice.VoiceViewModel
 import app.cove.companion.feature.voice.ActionPair
@@ -52,14 +53,15 @@ fun LogSetsDraft(s: VoiceState, vm: VoiceViewModel) {
                 if (s.transcript.isNotBlank()) Quote(s.transcript)
                 val (head, tail) = TrainingText.setsHeadline(p.sets.size) to " ${p.exercise}."
                 BalancedText(head, tail, CoveType.Title)
-                RowsCard(p.sets.mapIndexed { i, set ->
-                    @Composable {
+                Column(Modifier.fillMaxWidth().background(c.card, CoveShapes.Card).padding(horizontal = 20.dp)) {
+                    p.sets.forEachIndexed { i, set ->
+                        if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(c.well))
                         Row(Modifier.fillMaxWidth().heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                             CoveText("Set ${i + 1}", style = CoveType.Body)
                             CoveText(if (p.bodyweight) "${set.reps} reps" else WeightFormat.set(set.weightKg, set.reps, p.unit), style = CoveType.Body)
                         }
                     }
-                })
+                }
                 CoveText(p.note, style = CoveType.Meta.copy(fontSize = androidx.compose.ui.unit.TextUnit(15f, androidx.compose.ui.unit.TextUnitType.Sp), lineHeight = androidx.compose.ui.unit.TextUnit(22f, androidx.compose.ui.unit.TextUnitType.Sp)), color = c.muted)
             }
             ActionPair("Save sets", vm::save, "Edit", 104) { editing = true }

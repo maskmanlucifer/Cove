@@ -33,6 +33,7 @@ object ProgressModel {
     fun build(snap: TrainingSnapshot, range: ProgressRange): ProgressState {
         val today = snap.today
         val from = today.minusDays(TrainingStats.rangeDays(range) - 1L)
+        val bodyFrom = if (range == ProgressRange.Month) today.minusDays(30) else from
         val inRange = snap.finished.filter { snap.sessionDate(it) in from..today }
         val dates = inRange.map { snap.sessionDate(it) }
         val changes = snap.exercises.sortedBy { it.sort }.mapNotNull { e ->
@@ -42,7 +43,7 @@ object ProgressModel {
             LiftChange(HomeModel.shortName(e.name), e.sort, bw, pts.first().topKg, pts.last().topKg, pts.first().topReps, pts.last().topReps, pts.size) to e
         }
         val body = snap.tables.bodyWeights.filter { it.deletedAt == null }.map { LocalDate.ofEpochDay(it.day) to it.kg }
-            .filter { it.first in from..today }.sortedBy { it.first }
+            .filter { it.first in bodyFrom..today }.sortedBy { it.first }
         val perWeek = snap.daysPerWeek
         val (bars, title, goalText, goal) = when (range) {
             ProgressRange.Week -> {
@@ -60,7 +61,7 @@ object ProgressModel {
             }
         }
         val maxNow = changes.maxOfOrNull { (ch, _) -> if (ch.bodyweight) ch.nowReps.toDouble() else ch.nowKg } ?: 1.0
-        val top = changes.take(5).map { (ch, e) ->
+        val top = changes.take(3).map { (ch, e) ->
             val u = snap.unit
             val fmt = { kg: Double, reps: Int -> if (ch.bodyweight) reps.toString() else app.cove.companion.feature.training.engine.WeightFormat.number(kg, u) }
             val start = fmt(ch.startKg, ch.startReps)

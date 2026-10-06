@@ -63,10 +63,10 @@ fun LiftHistoryScreen(exerciseId: String, nav: Nav) {
         Column(Modifier.fillMaxSize().coveTopInset()) {
             TrainingTopBar("Training", { BackChevron(nav.back) })
             val s = snap
-            val e = s?.exercise(exerciseId)
+            val e = s?.exercise(exerciseId) ?: s?.exercises?.firstOrNull { it.name.equals(exerciseId, true) }
             if (s != null && e != null) {
                 val spec = s.spec(e)
-                val all = s.points(exerciseId)
+                val all = s.points(e.id)
                 val shown = range.filter(all, s.today).ifEmpty { all.takeLast(1) }
                 val unit = s.unit
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
