@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -52,6 +53,7 @@ private fun TimeLabel(minutes: Int, modifier: Modifier = Modifier, strong: Boole
         modifier,
         style = if (strong) CoveType.MetaMedium else CoveType.Meta,
         color = if (strong) c.ink else c.muted,
+        maxLines = 1,
     )
 }
 
@@ -67,7 +69,7 @@ private fun EntryRow(row: TimelineRow.Entry, onOpenTodo: (String) -> Unit) {
             .let { if (open != null) it.pressable({ onOpenTodo(open) }) else it },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        TimeLabel(item.minutes, Modifier.width(TimeColumn))
+        TimeLabel(item.minutes, Modifier.widthIn(min = TimeColumn))
         Column {
             val style: TextStyle = if (row.past) CoveType.Body.copy(textDecoration = TextDecoration.LineThrough) else CoveType.Body
             CoveText(item.title, style = style, color = if (row.past) c.tail else c.ink)
@@ -80,7 +82,7 @@ private fun EntryRow(row: TimelineRow.Entry, onOpenTodo: (String) -> Unit) {
 private fun NowLine(minutes: Int) {
     val c = Cove.colors
     Row(Modifier.fillMaxWidth().height(20.dp), verticalAlignment = Alignment.CenterVertically) {
-        CoveText(clockText(minutes).digits, Modifier.width(TimeColumn), style = NowLabel)
+        CoveText(clockText(minutes).digits, Modifier.widthIn(min = TimeColumn), style = NowLabel)
         Box(Modifier.weight(1f).height(1.5.dp).background(c.ink, RoundedCornerShape(1.dp)))
     }
 }
@@ -89,7 +91,7 @@ private fun NowLine(minutes: Int) {
 private fun EventCard(row: TimelineRow.Entry) {
     val c = Cove.colors
     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-        TimeLabel(row.item.minutes, Modifier.width(TimeColumn).padding(top = 20.dp), strong = true)
+        TimeLabel(row.item.minutes, Modifier.widthIn(min = TimeColumn).padding(top = 20.dp), strong = true)
         Column(
             Modifier
                 .weight(1f)

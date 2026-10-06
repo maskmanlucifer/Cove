@@ -14,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,18 +68,18 @@ fun AddToPlanSheet(
 ) {
     val nowTime = now.toLocalDateTime()
     val startDefault = ((nowTime.hour * 60 + nowTime.minute) / 60 + 1).coerceAtMost(22) * 60
-    var isEvent by remember { mutableStateOf(defaults.event) }
-    var title by remember { mutableStateOf(defaults.title) }
-    var page by remember { mutableStateOf(AddPage.Main) }
-    var day by remember { mutableStateOf(now.toLocalDate()) }
-    var start by remember { mutableIntStateOf(startDefault) }
-    var end by remember { mutableIntStateOf(startDefault + 45) }
-    var repeat by remember { mutableStateOf("none") }
-    var remindBefore by remember { mutableStateOf<Int?>(30) }
-    var place by remember { mutableStateOf("") }
-    var categoryId by remember { mutableStateOf(categories.firstOrNull()?.id) }
-    var dueAt by remember { mutableStateOf<Long?>(null) }
-    var remind by remember { mutableStateOf(false) }
+    var isEvent by rememberSaveable { mutableStateOf(defaults.event) }
+    var title by rememberSaveable { mutableStateOf(defaults.title) }
+    var page by rememberSaveable { mutableStateOf(AddPage.Main) }
+    var day by rememberSaveable { mutableStateOf(now.toLocalDate()) }
+    var start by rememberSaveable { mutableIntStateOf(startDefault) }
+    var end by rememberSaveable { mutableIntStateOf(startDefault + 45) }
+    var repeat by rememberSaveable { mutableStateOf("none") }
+    var remindBefore by rememberSaveable { mutableStateOf<Int?>(30) }
+    var place by rememberSaveable { mutableStateOf("") }
+    var categoryId by rememberSaveable { mutableStateOf(categories.firstOrNull()?.id) }
+    var dueAt by rememberSaveable { mutableStateOf<Long?>(null) }
+    var remind by rememberSaveable { mutableStateOf(false) }
 
     PlanSheet(onDismiss, gap = 20) { close ->
         val back = { page = AddPage.Main }

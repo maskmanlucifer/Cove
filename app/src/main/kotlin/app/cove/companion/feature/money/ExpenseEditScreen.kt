@@ -43,7 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
-import app.cove.companion.core.appViewModel
+import app.cove.companion.core.appSavedViewModel
 import app.cove.companion.core.rupees
 import app.cove.companion.core.toEpochMillis
 import app.cove.companion.core.toLocalDate
@@ -68,7 +68,7 @@ import java.time.LocalDateTime
 /** Add or edit an expense: Spent/Received, amount on a custom keypad, category, note, time and payment method. */
 @Composable
 fun ExpenseEditScreen(id: String, nav: Nav) {
-    val vm = appViewModel(key = "expense-$id") { ExpenseEditViewModel(it, id) }
+    val vm = appSavedViewModel(key = "expense-$id") { c, saved -> ExpenseEditViewModel(c, id, saved) }
     val s by vm.state.collectAsState()
     val context = LocalContext.current
     val focus = LocalFocusManager.current

@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -35,31 +38,37 @@ enum class Tab(val label: String, val icon: ImageVector, val selectedIcon: Image
 fun CoveDock(selected: Tab, onSelect: (Tab) -> Unit, onVoice: () -> Unit, modifier: Modifier = Modifier) {
     val c = Cove.colors
     val shadow = if (c.isDark) Color(0x4D000000) else Color(0x0F141420)
-    Row(
-        modifier
-            .fillMaxWidth()
-            .height(72.dp)
-            .shadow(24.dp, CoveShapes.Pill, ambientColor = shadow, spotColor = shadow)
-            .background(c.card, CoveShapes.Pill)
-            .padding(horizontal = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Tab.entries.forEach { tab ->
-            val on = tab == selected
-            val tint = if (on) c.ink else c.dockInactive
-            Column(
-                Modifier.weight(1f).height(60.dp).pressable({ onSelect(tab) }),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
-            ) {
-                CoveIcon(if (on) tab.selectedIcon else tab.icon, tint, size = 22.dp)
-                CoveText(
-                    tab.label,
-                    style = if (on) CoveType.Label else CoveType.Label.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Normal),
-                    color = tint,
-                )
+    // The dock has a fixed height and five equal slots: keep its labels readable but never wider than their slot.
+    val density = LocalDensity.current
+    CompositionLocalProvider(LocalDensity provides Density(density.density, density.fontScale.coerceAtMost(DOCK_MAX_FONT_SCALE))) {
+        Row(
+            modifier
+                .fillMaxWidth()
+                .height(72.dp)
+                .shadow(24.dp, CoveShapes.Pill, ambientColor = shadow, spotColor = shadow)
+                .background(c.card, CoveShapes.Pill)
+                .padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Tab.entries.forEach { tab ->
+                val on = tab == selected
+                val tint = if (on) c.ink else c.dockInactive
+                Column(
+                    Modifier.weight(1f).height(60.dp).pressable({ onSelect(tab) }),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
+                ) {
+                    CoveIcon(if (on) tab.selectedIcon else tab.icon, tint, size = 22.dp)
+                    CoveText(
+                        tab.label,
+                        style = if (on) CoveType.Label else CoveType.Label.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Normal),
+                        color = tint,
+                    )
+                }
             }
+            Box(Modifier.padding(start = 4.dp)) { VoiceOrb(onClick = onVoice) }
         }
-        Box(Modifier.padding(start = 4.dp)) { VoiceOrb(onClick = onVoice) }
     }
 }
+
+private const val DOCK_MAX_FONT_SCALE = 1.1f

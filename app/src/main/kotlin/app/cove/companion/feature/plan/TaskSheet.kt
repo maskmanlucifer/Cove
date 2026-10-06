@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -34,12 +35,12 @@ fun TaskSheet(
     onDelete: (TodoEntity) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var title by remember { mutableStateOf(todo.title) }
-    var categoryId by remember { mutableStateOf(todo.categoryId) }
-    var dueAt by remember { mutableStateOf(todo.dueAt) }
-    var remind by remember { mutableStateOf(todo.remind) }
-    var page by remember { mutableStateOf(TaskPage.Main) }
-    var discard by remember { mutableStateOf(false) }
+    var title by rememberSaveable { mutableStateOf(todo.title) }
+    var categoryId by rememberSaveable { mutableStateOf(todo.categoryId) }
+    var dueAt by rememberSaveable { mutableStateOf(todo.dueAt) }
+    var remind by rememberSaveable { mutableStateOf(todo.remind) }
+    var page by rememberSaveable { mutableStateOf(TaskPage.Main) }
+    var discard by rememberSaveable { mutableStateOf(false) }
 
     fun edited() = todo.copy(title = title.trim().ifEmpty { todo.title }, categoryId = categoryId, dueAt = dueAt, remind = remind)
     fun commit() {

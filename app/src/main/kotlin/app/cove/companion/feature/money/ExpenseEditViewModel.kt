@@ -1,5 +1,6 @@
 package app.cove.companion.feature.money
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.cove.companion.AppContainer
@@ -38,7 +39,7 @@ data class ExpenseEditState(
  * Form state for the Add expense screen. [id] is `new`, `new@<categoryId>` to preselect a category,
  * or the id of an expense being edited.
  */
-class ExpenseEditViewModel(private val c: AppContainer, private val id: String) : ViewModel() {
+class ExpenseEditViewModel(private val c: AppContainer, private val id: String, private val saved: SavedStateHandle = SavedStateHandle()) : ViewModel() {
     private data class Form(
         val received: Boolean = false,
         val amount: String = "",
@@ -52,11 +53,23 @@ class ExpenseEditViewModel(private val c: AppContainer, private val id: String) 
     private val existingId = id.takeUnless { it == "new" || it.startsWith("new@") }
     private var existing: ExpenseEntity? = null
     private val form = MutableStateFlow(
-        Form(
-            whenMillis = c.clock.now(),
-            categoryId = id.substringAfter("new@", "").ifEmpty { null },
-            categoryTouched = id.startsWith("new@"),
-        ),
+        if (existingId == null && saved.contains(SAVED_AMOUNT)) {
+            Form(
+                received = saved[SAVED_RECEIVED] ?: false,
+                amount = saved[SAVED_AMOUNT] ?: "",
+                categoryId = saved[SAVED_CATEGORY],
+                categoryTouched = saved[SAVED_TOUCHED] ?: false,
+                note = saved[SAVED_NOTE] ?: "",
+                whenMillis = saved[SAVED_WHEN] ?: c.clock.now(),
+                paidWith = saved[SAVED_PAID] ?: "UPI",
+            )
+        } else {
+            Form(
+                whenMillis = c.clock.now(),
+                categoryId = id.substringAfter("new@", "").ifEmpty { null },
+                categoryTouched = id.startsWith("new@"),
+            )
+        },
     )
 
     val state: StateFlow<ExpenseEditState> = combine(form, c.money.categories) { f, all ->
@@ -75,6 +88,19 @@ class ExpenseEditViewModel(private val c: AppContainer, private val id: String) 
     }.stateIn(viewModelScope, SharingStarted.Eagerly, ExpenseEditState(whenMillis = form.value.whenMillis))
 
     init {
+        if (existingId == null) {
+            viewModelScope.launch {
+                form.collect {
+                    saved[SAVED_RECEIVED] = it.received
+                    saved[SAVED_AMOUNT] = it.amount
+                    saved[SAVED_CATEGORY] = it.categoryId
+                    saved[SAVED_TOUCHED] = it.categoryTouched
+                    saved[SAVED_NOTE] = it.note
+                    saved[SAVED_WHEN] = it.whenMillis
+                    saved[SAVED_PAID] = it.paidWith
+                }
+            }
+        }
         existingId?.let { eid ->
             viewModelScope.launch {
                 c.money.expense(eid)?.let { e ->
@@ -152,3 +178,11 @@ class ExpenseEditViewModel(private val c: AppContainer, private val id: String) 
         }
     }
 }
+
+private const val SAVED_RECEIVED = "received"
+private const val SAVED_AMOUNT = "amount"
+private const val SAVED_CATEGORY = "category"
+private const val SAVED_TOUCHED = "touched"
+private const val SAVED_NOTE = "note"
+private const val SAVED_WHEN = "when"
+private const val SAVED_PAID = "paid"
