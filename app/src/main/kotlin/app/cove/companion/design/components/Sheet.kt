@@ -1,0 +1,58 @@
+package app.cove.companion.design.components
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import app.cove.companion.design.Cove
+import app.cove.companion.design.CoveShapes
+
+/**
+ * Floating bottom sheet over a dimmed scrim. Rises in 280 ms; tap outside to dismiss.
+ * Place at the end of a full-screen `Box` so it overlays the page.
+ */
+@Composable
+fun CoveSheet(visible: Boolean, onDismiss: () -> Unit, content: @Composable () -> Unit) {
+    val c = Cove.colors
+    AnimatedVisibility(visible, enter = fadeIn(tween(280)), exit = fadeOut(tween(200))) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(c.scrim)
+                .clickable(remember { MutableInteractionSource() }, indication = null, onClick = onDismiss),
+        )
+    }
+    AnimatedVisibility(
+        visible,
+        enter = slideInVertically(tween(280)) { it },
+        exit = slideOutVertically(tween(200)) { it },
+    ) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+            Column(
+                Modifier
+                    .navigationBarsPadding()
+                    .padding(horizontal = 8.dp, vertical = 8.dp)
+                    .fillMaxWidth()
+                    .background(c.card, CoveShapes.SheetFloating)
+                    .clickable(remember { MutableInteractionSource() }, indication = null) {}
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
+            ) { content() }
+        }
+    }
+}
