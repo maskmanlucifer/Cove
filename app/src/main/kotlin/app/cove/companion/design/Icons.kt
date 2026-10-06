@@ -66,6 +66,7 @@ object CoveIcons {
     val Check = line("check", 3f, "M5 12.5l4.5 4.5L19 7.5")
     val ChevronRight = line("chevronRight", 2f, "M9 6l6 6-6 6")
     val ChevronLeft = line("chevronLeft", 1.6f, "M15 5l-7 7 7 7")
+    val ChevronUp = line("chevronUp", 2f, "M6 15l6-6 6 6")
     val ChevronDown = line("chevronDown", 2f, "M6 9l6 6 6-6")
     val Backspace = line("backspace", 1.6f, "M9 6h11v12H9l-5-6z", "M12.5 10l4 4M16.5 10l-4 4")
     val Grip = filled(

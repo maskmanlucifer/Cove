@@ -35,10 +35,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import app.cove.companion.core.rupeesSpoken
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -47,7 +46,6 @@ import app.cove.companion.core.appViewModel
 import app.cove.companion.core.clockText
 import app.cove.companion.core.inText
 import app.cove.companion.core.longLabel
-import app.cove.companion.core.rupees
 import app.cove.companion.core.shortTime
 import app.cove.companion.design.Cove
 import app.cove.companion.design.CoveType
@@ -58,6 +56,8 @@ import app.cove.companion.design.components.Chip
 import app.cove.companion.design.components.CoveCard
 import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.DockClearance
+import app.cove.companion.design.components.pressable
+import app.cove.companion.design.components.DockFloatBottom
 import app.cove.companion.design.components.PillButton
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.design.components.OfflineNotice
@@ -127,12 +127,12 @@ fun TodayScreen(nav: Nav) {
         PermissionGuides(permissionIssues, alarmsInUse = false)
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (!offline) CoveText(state.date.longLabel(), style = CoveType.Meta, color = c.muted)
-            BalancedText(greeting(state), suggestion?.let { " ${it.title}" } ?: headline(state).let { h -> if (offline) h.replace(Regex(", nothing before .*\\.$"), ".") else h }, CoveType.Title)
+            BalancedText(greeting(state), suggestion?.let { " ${it.title}" } ?: headline(state, offline), CoveType.Title)
         }
         if (suggestion != null) SuggestionCard(suggestion, sug.detail, suggest)
-        else if (!offline) state.next?.let { NextCard(it, actions) }
+        else if (!offline) state.next?.let { NextCard(it, actions, Modifier.padding(top = if (it.windDown) 0.dp else 12.dp)) }
         if (offline) OfflineTodos(state.todos, sug.pendingTodoIds) { id, d -> vm.toggle(id, d) }
-        else Column {
+        else Column(Modifier.padding(top = 4.dp)) {
             state.todos.forEachIndexed { index, row ->
                 Row(
                     Modifier
@@ -174,25 +174,18 @@ fun TodayScreen(nav: Nav) {
                     listOf("Calm", "Good", "Tired", "Low").forEach { Chip(it, onClick = { vm.setMood(it.lowercase()) }) }
                 }
             }
-        } else {
-            Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-                Stat("Spent today") { CoveText(rupees(state.spentTodayPaise), Modifier.semantics { contentDescription = rupeesSpoken(state.spentTodayPaise) }, style = CoveType.Value) }
-                Stat("Habits") {
-                    CoveText("${state.habitsDone}", " of ${state.habitsTotal}", style = CoveType.Value)
-                }
-            }
         }
     }
     val done by vm.completed.collectAsState()
     done?.let { d ->
-        PlanUndoBar("Done “${d.title}”", vm::undoComplete, Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = 112.dp))
+        PlanUndoBar("Done “${d.title}”", vm::undoComplete, Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = DockFloatBottom))
     }
     undo?.let { gone ->
         LaunchedEffect(gone.id) {
             delay(6000)
             undo = null
         }
-        PlanUndoBar("Deleted “${gone.title}”", { vm.restoreEvent(gone); undo = null }, Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = 112.dp))
+        PlanUndoBar("Deleted “${gone.title}”", { vm.restoreEvent(gone); undo = null }, Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = DockFloatBottom))
     }
     }
     editing?.let { event ->
@@ -206,28 +199,22 @@ fun TodayScreen(nav: Nav) {
     if (suggestion != null && sug.whyOpen) WhySheet(sug.detail, suggest)
 }
 
-@Composable
-private fun Stat(label: String, value: @Composable () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        CoveText(label, style = CoveType.Meta, color = Cove.colors.muted)
-        value()
-    }
-}
-
 /** What the Next card's buttons do: open the event editor, start the wind-down, or hide the card for a while. */
 private class NextActions(val move: (EventEntity) -> Unit, val startWindDown: () -> Unit, val later: () -> Unit)
 
 @Composable
-private fun NextCard(next: NextItem, actions: NextActions) {
+private fun NextCard(next: NextItem, actions: NextActions, modifier: Modifier = Modifier) {
     val c = Cove.colors
     val context = LocalContext.current
     val time = clockText(next.minutes)
-    CoveCard {
+    CoveCard(modifier) {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                CoveText("Next", style = CoveType.Meta, color = c.muted)
-                CoveText(inText(next.inMinutes), style = CoveType.Meta, color = c.muted)
-            }
+            if (next.windDown) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    CoveText("Next", style = CoveType.Meta, color = c.muted)
+                    CoveText(inText(next.inMinutes), style = CoveType.Meta, color = c.muted)
+                }
+            } else CoveText("Next · ${inText(next.inMinutes)}", style = CoveType.Meta, color = c.muted)
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 CoveText(time.digits, time.suffix, style = CoveType.Hero)
                 CoveText(next.title, style = CoveType.Heading)
@@ -240,7 +227,12 @@ private fun NextCard(next: NextItem, actions: NextActions) {
                 } else {
                     val place = next.event?.place?.takeIf { it.isNotBlank() }
                     if (place != null) PillButton("Directions", { openDirections(context, place) })
-                    PillButton("Move", { next.event?.let(actions.move) }, kind = ButtonKind.Secondary, container = c.canvas)
+                    CoveText(
+                        "Move",
+                        Modifier.heightIn(min = 44.dp).pressable({ next.event?.let(actions.move) }, role = Role.Button).padding(horizontal = 14.dp).wrapContentHeight(Alignment.CenterVertically),
+                        style = CoveType.Button.copy(fontWeight = FontWeight.Normal),
+                        color = c.muted,
+                    )
                 }
             }
         }
@@ -266,7 +258,7 @@ private fun greeting(s: TodayState): String {
     return if (s.name.isBlank()) "$word." else "$word, ${s.name}."
 }
 
-private fun headline(s: TodayState): String {
+private fun headline(s: TodayState, offline: Boolean): String {
     if (s.phase == DayPhase.Evening && s.doneCount > 0) {
         return " ${numberWords.getOrElse(s.doneCount) { s.doneCount.toString() }} done. That’s enough."
     }
@@ -274,8 +266,8 @@ private fun headline(s: TodayState): String {
     if (count == 0) return if (s.next != null) " Nothing else on your list." else " Nothing planned. Enjoy the quiet."
     val things = if (count == 1) "thing" else "things"
     val first = s.next?.event?.let { clockText(s.next.minutes) }
-    val tail = if (first != null && s.next.minutes >= 180) ", nothing before ${hourWord(s.next.minutes / 60)}" else ""
-    return " ${numberWords.getOrElse(count) { count.toString() }} $things today$tail."
+    if (!offline && first != null && s.next.minutes >= 180) return " Nothing before ${hourWord(s.next.minutes / 60)}."
+    return " ${numberWords.getOrElse(count) { count.toString() }} $things today."
 }
 
 private fun hourWord(h24: Int): String {

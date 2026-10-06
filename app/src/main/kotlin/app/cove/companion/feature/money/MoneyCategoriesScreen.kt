@@ -1,5 +1,6 @@
 package app.cove.companion.feature.money
 
+import app.cove.companion.design.components.DockClearance
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,7 +41,7 @@ fun MoneyCategoriesScreen(nav: Nav) {
             MoneyTopBar(s.month, "Done", nav.back, nav.back, actionStrong = true)
             Column(
                 Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())
-                    .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 120.dp),
+                    .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = DockClearance),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -66,7 +67,7 @@ fun MoneyCategoriesScreen(nav: Nav) {
                 CoveText("Anything without a category goes to Other.", style = MoneyType.Note, color = c.muted)
             }
         }
-        MoneyDock(nav, Modifier.align(Alignment.BottomCenter).padding(start = 12.dp, end = 12.dp, bottom = 24.dp))
+        MoneyDock(nav)
     }
 }
 

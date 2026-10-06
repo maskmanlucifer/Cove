@@ -122,7 +122,7 @@ fun MoneyCategoryDetailScreen(id: String, nav: Nav) {
             }
         }
         MoneyUndoBar(Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = 176.dp))
-        MoneyDock(nav, Modifier.align(Alignment.BottomCenter).padding(start = 12.dp, end = 12.dp, bottom = 24.dp))
+        MoneyDock(nav)
     }
 }
 

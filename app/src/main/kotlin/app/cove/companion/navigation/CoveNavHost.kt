@@ -40,6 +40,7 @@ import app.cove.companion.feature.onboarding.WelcomeScreen
 import app.cove.companion.feature.sync.SyncConflictScreen
 import app.cove.companion.feature.connect.ConnectScreen
 import app.cove.companion.feature.today.OneThingScreen
+import app.cove.companion.feature.training.TrainingScreen
 import app.cove.companion.feature.voice.VoiceScreen
 
 
@@ -98,6 +99,7 @@ fun CoveNavHost(start: String, voiceRequest: Int = 0, briefRequest: Int = 0) {
         ) { VoiceScreen(nav) }
         composable(Routes.Brief) { BriefScreen(nav) }
         composable(Routes.OneThing) { OneThingScreen(nav) }
+        composable(Routes.Training) { TrainingScreen(nav) }
 
         composable(Routes.Alarms) { AlarmsScreen(nav) }
         composable(Routes.AlarmEdit, idArg) { AlarmEditScreen(id(it), nav) }

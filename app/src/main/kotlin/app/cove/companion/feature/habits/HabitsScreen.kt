@@ -91,18 +91,16 @@ fun HabitsScreen(nav: Nav) {
                 HabitCard(row, onOpen = { nav.go(Routes.habitEdit(row.id)) }, onToggleToday = { vm.toggleToday(row.id) })
             }
         }
-        Box(Modifier.align(Alignment.BottomCenter).padding(start = 12.dp, end = 12.dp, bottom = 24.dp)) {
-            CoveDock(
-                Tab.Me,
-                onSelect = { tab ->
-                    if (tab == Tab.Me) nav.back() else {
-                        DebugLaunch.tab = tab.name
-                        nav.home()
-                    }
-                },
-                onVoice = { nav.go(Routes.Voice) },
-            )
-        }
+        CoveDock(
+            Tab.Me,
+            onSelect = { tab ->
+                if (tab == Tab.Me) nav.back() else {
+                    DebugLaunch.tab = tab.name
+                    nav.home()
+                }
+            },
+            onVoice = { nav.go(Routes.Voice) },
+        )
     }
 }
 

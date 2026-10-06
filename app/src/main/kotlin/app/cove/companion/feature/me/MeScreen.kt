@@ -63,8 +63,8 @@ fun MeScreen(nav: Nav) {
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .coveTopInset()
-            .padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = DockClearance),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+            .padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = DockClearance),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Header(settings.displayName) { sheet = MeSheet.Name }
         PermissionGuides(
@@ -82,6 +82,10 @@ fun MeScreen(nav: Nav) {
             BriefSettingsRows()
             RowDivider()
             SettingsRow("Nudges", value = nudgeLabel(settings.nudgeMode), onClick = { sheet = MeSheet.Nudges })
+        }
+        SettingsGroup("Body") {
+            val training by TrainingSummaries.current.value.collectAsState()
+            SettingsRow("Training", value = training, onClick = { nav.go(Routes.Training) })
         }
         SettingsGroup("Calm") {
             SettingsRow("One-thing mode", value = onOff(settings.oneThingMode), onClick = { sheet = MeSheet.OneThing })

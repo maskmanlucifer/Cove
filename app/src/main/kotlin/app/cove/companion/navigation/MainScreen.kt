@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.cove.companion.design.components.CoveDock
 import app.cove.companion.design.components.CoveScreen
+import app.cove.companion.design.components.DockFloatBottom
 import app.cove.companion.design.components.Tab
 import app.cove.companion.feature.journal.JournalScreen
 import app.cove.companion.feature.me.MeScreen
@@ -58,13 +59,7 @@ fun MainScreen(nav: Nav) {
             Modifier.align(Alignment.TopCenter).fillMaxWidth().height(maxOf(topInset, 48.dp))
                 .background(Brush.verticalGradient(listOf(Cove.colors.canvas, Cove.colors.canvas, Color.Transparent))),
         )
-        if (!(oneThing && tab == Tab.Today)) Box(
-            Modifier
-                .align(Alignment.BottomCenter)
-                .padding(start = 12.dp, end = 12.dp, bottom = 24.dp),
-        ) {
-            CoveDock(tab, onSelect = { tab = it }, onVoice = { nav.go(Routes.Voice) })
-        }
-        UndoToastHost(Modifier.align(Alignment.BottomCenter).padding(bottom = 112.dp))
+        if (!(oneThing && tab == Tab.Today)) CoveDock(tab, onSelect = { tab = it }, onVoice = { nav.go(Routes.Voice) })
+        UndoToastHost(Modifier.align(Alignment.BottomCenter).padding(bottom = DockFloatBottom))
     }
 }
