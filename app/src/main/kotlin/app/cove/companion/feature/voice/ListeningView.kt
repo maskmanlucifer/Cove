@@ -29,6 +29,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cove.companion.design.Cove
@@ -61,7 +65,11 @@ fun ListeningView(s: VoiceState, onClose: () -> Unit, onType: () -> Unit, onFini
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
                 GlassPill("Type instead", onType)
-                Box(Modifier.size(76.dp).background(c.ink, CoveShapes.Circle).pressable(onFinish), contentAlignment = Alignment.Center) {
+                Box(
+                    Modifier.size(76.dp).background(c.ink, CoveShapes.Circle).pressable(onFinish)
+                        .semantics { contentDescription = "Stop listening"; role = Role.Button },
+                    contentAlignment = Alignment.Center,
+                ) {
                     Box(Modifier.size(22.dp).background(c.onInk, androidx.compose.foundation.shape.RoundedCornerShape(6.dp)))
                 }
                 GlassPill("Done", onFinish)

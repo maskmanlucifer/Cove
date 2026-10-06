@@ -13,6 +13,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -31,7 +35,8 @@ import app.cove.companion.design.components.pressable
 @Composable
 fun CloseButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     Box(
-        modifier.size(44.dp).background(Cove.colors.card, CoveShapes.Circle).pressable(onClick),
+        modifier.size(44.dp).background(Cove.colors.card, CoveShapes.Circle).pressable(onClick)
+            .semantics { contentDescription = "Close"; role = Role.Button },
         contentAlignment = Alignment.Center,
     ) { CoveIcon(CoveIcons.Close, Cove.colors.ink, size = 18.dp) }
 }

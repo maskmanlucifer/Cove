@@ -218,7 +218,8 @@ interface AssistantDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCommand(command: VoiceCommandEntity)
 
-    @Query("SELECT * FROM voice_commands ORDER BY createdAt DESC LIMIT 1")
+    /** The newest command not yet undone; rowid breaks ties between commands with the same timestamp. */
+    @Query("SELECT * FROM voice_commands WHERE undone = 0 ORDER BY createdAt DESC, rowid DESC LIMIT 1")
     suspend fun lastCommand(): VoiceCommandEntity?
 
     @Query("SELECT * FROM voice_commands WHERE id = :id")

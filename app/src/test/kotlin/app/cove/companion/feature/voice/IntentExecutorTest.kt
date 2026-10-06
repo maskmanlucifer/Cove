@@ -44,6 +44,9 @@ private class FakeStore : VoiceStore {
     override suspend fun deleteAlarm(id: String) { alarmMap.remove(id) }
     override suspend fun saveExpense(expense: ExpenseEntity) { expenses[expense.id] = expense }
     override suspend fun deleteExpense(id: String) { expenses.remove(id) }
+    val newHabits = mutableMapOf<String, HabitEntity>()
+    override suspend fun saveHabit(habit: HabitEntity) { newHabits[habit.id] = habit }
+    override suspend fun deleteHabit(id: String) { newHabits.remove(id) }
     override suspend fun isHabitTicked(habitId: String, day: LocalDate) = (habitId to day) in ticks
     override suspend fun toggleHabit(habitId: String, day: LocalDate) {
         if (!ticks.remove(habitId to day)) ticks += habitId to day
@@ -52,7 +55,7 @@ private class FakeStore : VoiceStore {
     override suspend fun deleteJournal(id: String) { journal.remove(id) }
     override suspend fun recordCommand(transcript: String, intent: String, undoPayload: String?) =
         VoiceCommandEntity("cmd${n++}", transcript, intent, undoPayload, createdAt = commands.size.toLong()).also { commands += it }
-    override suspend fun lastCommand() = commands.lastOrNull()
+    override suspend fun lastCommand() = commands.lastOrNull { !it.undone }
     override suspend fun commandById(id: String) = commands.firstOrNull { it.id == id }
     override suspend fun markUndone(id: String) {
         val i = commands.indexOfFirst { it.id == id }
@@ -103,7 +106,7 @@ class IntentExecutorTest {
         run(VoiceIntent.ChangeAlarm(450))
         assertEquals(450, store.alarmMap.getValue("a").minutes)
         val r = run(VoiceIntent.UndoLast)
-        assertEquals("Undone", r.summary)
+        assertEquals("Undone: alarm moved back", r.summary)
         assertEquals(390, store.alarmMap.getValue("a").minutes)
         assertEquals("Nothing to undo", run(VoiceIntent.UndoLast).summary)
     }
@@ -121,5 +124,23 @@ class IntentExecutorTest {
         assertEquals(null, r.commandId)
         assertEquals(1, r.failed.size)
         assertTrue(run(VoiceIntent.QueryNext).summary.startsWith("Nothing coming up"))
+    }
+
+    @Test
+    fun addHabitCanBeUndoneAndSaysWhat() {
+        val r = run(VoiceIntent.AddHabit("Run"))
+        assertEquals("Added habit Run", r.summary)
+        assertEquals("Run", store.newHabits.values.single().name)
+        assertEquals("Undone: removed habit 'Run'", runBlocking { exec.undo(r.commandId) }.summary)
+        assertTrue(store.newHabits.isEmpty())
+    }
+
+    @Test
+    fun undoNamesTheTodoAndStepsBackThroughCommands() {
+        run(VoiceIntent.AddTodos(listOf(TodoDraft("Buy milk", "Shopping"))))
+        run(VoiceIntent.LogExpense(25000, "Food", null, "Lunch"))
+        assertEquals("Undone: removed ₹250 expense", run(VoiceIntent.UndoLast).summary)
+        assertEquals("Undone: removed 'Buy milk'", run(VoiceIntent.UndoLast).summary)
+        assertEquals("Nothing to undo", run(VoiceIntent.UndoLast).summary)
     }
 }

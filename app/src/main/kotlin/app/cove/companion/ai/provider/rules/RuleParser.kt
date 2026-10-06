@@ -41,11 +41,23 @@ class RuleParser(private val clock: Clock, private val categories: CategoryResol
     /** Likely readings of a half-heard transcript that contains a time (frame 19); empty when none. */
     fun guesses(raw: String): List<VoiceIntent> {
         val text = SpokenNumbers.digitize(raw)
-        val t = WhenParser.findTime(text) ?: return emptyList()
+        val t = WhenParser.findTime(text) ?: return doneGuesses(raw)
         val now = clock.now().toLocalDateTime()
         return listOf(
             VoiceIntent.AddReminder("Reminder", WhenParser.reminderAt(t, null, now, text)),
-            VoiceIntent.SetAlarm(WhenParser.alarmMinutes(t, text)),
+            VoiceIntent.SetAlarm(WhenParser.alarmMinutes(t, text, now.hour * 60 + now.minute)),
+        )
+    }
+
+    private val doneLead = Regex("^(?:i\\s+)?(?:just\\s+)?(?:log|did|had|went for|went on|finished)\\s+(?:an?\\s+|my\\s+|the\\s+)?(.{2,40})$", opts)
+
+    /** "log a run": no habit by that name, so offer to start one or to keep it as a journal note. */
+    private fun doneGuesses(raw: String): List<VoiceIntent> {
+        val said = doneLead.find(clean(raw).trimEnd('.', '!', '?', ' '))?.groupValues?.get(1)?.trim().orEmpty()
+        if (said.isEmpty()) return emptyList()
+        return listOf(
+            VoiceIntent.AddHabit(tidyTitle(said)),
+            VoiceIntent.JournalNote(tidyTitle(clean(raw))),
         )
     }
 
@@ -91,12 +103,14 @@ class RuleParser(private val clock: Clock, private val categories: CategoryResol
 
     private fun alarm(c: String): List<VoiceIntent> {
         val t = WhenParser.findTime(c) ?: return emptyList()
-        val minutes = WhenParser.alarmMinutes(t, c)
+        val now = clock.now().toLocalDateTime()
         if (Regex("\\b(?:change|move|shift|push|update|reschedule|make)\\b", opts).containsMatchIn(c) &&
             !Regex("\\b(?:set|create)\\b", opts).containsMatchIn(c)
         ) {
-            return listOf(VoiceIntent.ChangeAlarm(minutes, if (c.contains("bedtime", true)) "bedtime" else null))
+            // A moved alarm is a standing one, so a bare hour stays a morning hour.
+            return listOf(VoiceIntent.ChangeAlarm(WhenParser.alarmMinutes(t, c), if (c.contains("bedtime", true)) "bedtime" else null))
         }
+        val minutes = WhenParser.alarmMinutes(t, c, now.hour * 60 + now.minute)
         val label = Regex("\\b(?:called|named|labell?ed)\\s+(.+)$", opts).find(c)?.groupValues?.get(1)?.trim()?.takeIf { it.isNotEmpty() }
         return listOf(VoiceIntent.SetAlarm(minutes, label?.replaceFirstChar { it.uppercase() } ?: "Alarm", repeatMask(c)))
     }
@@ -216,7 +230,7 @@ class RuleParser(private val clock: Clock, private val categories: CategoryResol
     // ---- to-dos -------------------------------------------------------------------------------
 
     private val todoLead = Regex(
-        "^(?:(add|put|create|new|todo|to-do|to do|note down|note)\\s+(?:an?\\s+)?(?:new\\s+)?(?:to-?do\\s+)?|(buy|get|grab)\\s+|(need to|i need to|i have to|i should|don't forget to|do not forget to|remember to|i must)\\s+)",
+        "^(?:(add|put|create|new|todo|to-do|to do|note down|note)\\s+(?:an?\\s+)?(?:new\\s+)?(?:(?:to[- ]?do|task)\\s*[:,-]?\\s+)?|(buy|get|grab)\\s+|(need to|i need to|i have to|i should|don't forget to|do not forget to|remember to|i must)\\s+)",
         opts,
     )
     private val listTarget = Regex("\\s+(?:to|on|in|into|under)\\s+(?:my\\s+|the\\s+)?(?:([a-z]+)\\s+)?(?:to-?do\\s+)?(?:list|todos?|to-dos?|category)$", opts)

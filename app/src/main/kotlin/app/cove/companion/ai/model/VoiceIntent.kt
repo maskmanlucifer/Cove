@@ -37,6 +37,11 @@ sealed interface VoiceIntent {
         override val type get() = "log_expense"
     }
 
+    /** Starts a new daily habit called [name]. */
+    data class AddHabit(val name: String) : VoiceIntent {
+        override val type get() = "add_habit"
+    }
+
     /** Ticks today's habit called [name]. */
     data class LogHabit(val name: String) : VoiceIntent {
         override val type get() = "log_habit"

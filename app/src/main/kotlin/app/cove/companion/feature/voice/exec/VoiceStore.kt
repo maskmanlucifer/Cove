@@ -29,6 +29,8 @@ interface VoiceStore {
     suspend fun deleteAlarm(id: String)
     suspend fun saveExpense(expense: ExpenseEntity)
     suspend fun deleteExpense(id: String)
+    suspend fun saveHabit(habit: HabitEntity)
+    suspend fun deleteHabit(id: String)
     suspend fun isHabitTicked(habitId: String, day: LocalDate): Boolean
     suspend fun toggleHabit(habitId: String, day: LocalDate)
     suspend fun saveJournal(entry: JournalEntryEntity)
@@ -60,6 +62,8 @@ class RepoVoiceStore(private val c: AppContainer) : VoiceStore {
     override suspend fun deleteAlarm(id: String) = c.plan.deleteAlarm(id)
     override suspend fun saveExpense(expense: ExpenseEntity) = c.money.save(expense)
     override suspend fun deleteExpense(id: String) = c.money.delete(id)
+    override suspend fun saveHabit(habit: HabitEntity) = c.habits.save(habit)
+    override suspend fun deleteHabit(id: String) = c.habits.delete(id)
     override suspend fun isHabitTicked(habitId: String, day: LocalDate) =
         c.database.habits().log(habitId, day.toEpochDay())?.let { it.deletedAt == null } == true
 

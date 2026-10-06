@@ -113,14 +113,36 @@ object WhenParser {
     }
 
     /**
-     * Alarm minutes since midnight. Without am/pm, 1-11 mean morning unless the text says evening or night.
+     * Alarm minutes since midnight. Rule for a bare hour (no am/pm said): if the text says morning, evening or night
+     * that wins; otherwise, when [nowMinutes] is known, the next upcoming occurrence of that hour (10:35 am and "at 4"
+     * gives 4:00 pm today, 10:35 pm gives 4:00 am tomorrow); without [nowMinutes], or when another day is named, 1-11 mean morning. "am"/"pm"
+     * and 24-hour times are always taken as said.
      */
-    fun alarmMinutes(t: TimeMatch, text: String): Int {
+    fun alarmMinutes(t: TimeMatch, text: String, nowMinutes: Int? = null): Int {
         var hour = t.hour
-        if (t.meridiem == null && hour in 1..11 && partOfDay(text) == true) hour += 12
-        if (t.meridiem == null && hour == 12 && partOfDay(text) == false) hour = 0
+        if (t.meridiem == null && hour in 1..12) {
+            val hint = partOfDay(text)
+            val morning = hour % 12 * 60 + t.minute
+            when {
+                hint == true -> hour = hour % 12 + 12
+                hint == false -> hour %= 12
+                nowMinutes != null && !namesAnotherDay(text) -> {
+                    val evening = morning + 12 * 60
+                    return listOf(morning, evening).firstOrNull { it > nowMinutes } ?: morning
+                }
+                hour == 12 -> hour = 12
+            }
+        }
         return hour * 60 + t.minute
     }
+
+    private val anchor = LocalDate.of(2000, 1, 3)
+
+    /** True when the text names a day other than today ("tomorrow", "Friday"), where a bare hour is read as morning. */
+    private fun namesAnotherDay(text: String) = findDay(text, anchor)?.date?.let { it != anchor } == true
+
+    /** True when [minutes] (from [alarmMinutes]) is still ahead of [nowMinutes] today, false when it rings tomorrow. */
+    fun isLaterToday(minutes: Int, nowMinutes: Int): Boolean = minutes > nowMinutes
 
     /**
      * Reminder instant. Same-day without am/pm picks the next occurrence; other days assume 1-6 mean pm and 7-11 am.
