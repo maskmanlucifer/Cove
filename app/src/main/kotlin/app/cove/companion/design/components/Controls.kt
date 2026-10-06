@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -23,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
@@ -75,11 +77,19 @@ fun CoveSwitch(checked: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier
 
 /** Two-to-four way segmented control on a tinted track. */
 @Composable
-fun Segmented(options: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
+fun Segmented(
+    options: List<String>,
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    height: Dp = 44.dp,
+    fillWidth: Boolean = false,
+) {
     val c = Cove.colors
+    val base = if (height < 44.dp) CoveType.Meta else CoveType.Button
     Row(
         modifier
-            .height(44.dp)
+            .height(height)
             .background(c.wellStrong, CoveShapes.Pill)
             .padding(4.dp),
     ) {
@@ -87,7 +97,8 @@ fun Segmented(options: List<String>, selected: Int, onSelect: (Int) -> Unit, mod
             val on = i == selected
             Box(
                 Modifier
-                    .height(36.dp)
+                    .let { if (fillWidth) it.weight(1f) else it }
+                    .fillMaxHeight()
                     .clip(CoveShapes.Pill)
                     .background(if (on) c.card else Color.Transparent)
                     .pressable({ onSelect(i) })
@@ -96,7 +107,7 @@ fun Segmented(options: List<String>, selected: Int, onSelect: (Int) -> Unit, mod
             ) {
                 CoveText(
                     label,
-                    style = CoveType.Button.copy(fontWeight = if (on) FontWeight.Medium else FontWeight.Normal),
+                    style = base.copy(fontWeight = if (on) FontWeight.Medium else FontWeight.Normal),
                     color = if (on) c.ink else c.muted,
                 )
             }

@@ -24,7 +24,7 @@ import app.cove.companion.feature.today.TodayScreen
 /** The five dock destinations. Each tab screen draws its own content and leaves room for the dock. */
 @Composable
 fun MainScreen(nav: Nav) {
-    var tab by rememberSaveable { mutableStateOf(Tab.Today) }
+    var tab by rememberSaveable { mutableStateOf(Tab.entries.firstOrNull { it.name.equals(DebugLaunch.tab, true) } ?: Tab.Today) }
     CoveScreen {
         Crossfade(tab, animationSpec = tween(150), label = "tab") { current ->
             when (current) {

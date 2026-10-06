@@ -9,6 +9,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import app.cove.companion.design.CoveTheme
 import app.cove.companion.navigation.CoveNavHost
+import app.cove.companion.navigation.DebugLaunch
 import app.cove.companion.navigation.Routes
 import app.cove.companion.core.Clock
 import app.cove.companion.core.toEpochMillis
@@ -42,16 +43,21 @@ class MainActivity : ComponentActivity() {
 
     /**
      * Debug only. `--es now HH:mm` freezes the clock; `--ez seed true [--ez dark true] [--ez evening true]`
-     * loads the design's sample data.
+     * loads the design's sample data (`--es plan todos` swaps in the to-do frames' lists).
+     * `--es tab plan --es segment 1 --es sheet categories --es title Dentist` open a Plan tab view directly.
      */
     private fun handleDebugIntent() {
         intent.getStringExtra("now")?.let { hm ->
             val (h, m) = hm.split(":").map(String::toInt)
             Clock.frozenAt = LocalDateTime.of(LocalDate.now(), LocalTime.of(h, m)).toEpochMillis()
         }
+        DebugLaunch.tab = intent.getStringExtra("tab")
+        DebugLaunch.segment = intent.getStringExtra("segment")?.toIntOrNull()
+        DebugLaunch.sheet = intent.getStringExtra("sheet")
+        DebugLaunch.title = intent.getStringExtra("title")
         if (intent.getBooleanExtra("seed", false)) {
             CoroutineScope(Dispatchers.IO).launch {
-                DebugSeed.load(container, intent.getBooleanExtra("dark", false), intent.getBooleanExtra("evening", false))
+                DebugSeed.load(container, intent.getBooleanExtra("dark", false), intent.getBooleanExtra("evening", false), intent.getStringExtra("plan"))
             }
         }
     }

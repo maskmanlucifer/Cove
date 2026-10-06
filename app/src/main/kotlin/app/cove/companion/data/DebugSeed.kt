@@ -9,13 +9,17 @@ import app.cove.companion.data.local.entity.ExpenseCategoryEntity
 import app.cove.companion.data.local.entity.ExpenseEntity
 import app.cove.companion.data.local.entity.HabitEntity
 import app.cove.companion.data.local.entity.TodoCategoryEntity
+import app.cove.companion.data.local.entity.TodoEntity
+import kotlinx.coroutines.flow.first
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.temporal.TemporalAdjusters
 
 /** Debug-only sample data matching the design frames, used to compare screens pixel by pixel. */
 object DebugSeed {
-    suspend fun load(c: AppContainer, dark: Boolean, evening: Boolean) {
+    suspend fun load(c: AppContainer, dark: Boolean, evening: Boolean, plan: String? = null) {
         c.settings.update {
             it.copy(displayName = "Maya", onboarded = true, theme = if (dark) "dark" else "light", wakeMinutes = 6 * 60 + 30)
         }
@@ -58,5 +62,49 @@ object DebugSeed {
         add("Transport", 245_000, earlier.plusDays(2))
         add("Fun", 221_000, earlier.plusDays(3))
         add("Other", 184_050, earlier.plusDays(4))
+        seedPlan(c, day, plan)
+    }
+
+    /**
+     * Plan frames: a daily Vitamins event and the 2-4 pm Deep work block for the schedule, and for
+     * [variant] `todos` | `empty` | `drag` a replacement set of to-dos matching frames 05, 23 and 21.
+     */
+    private suspend fun seedPlan(c: AppContainer, day: LocalDate, variant: String?) {
+        fun at(h: Int, m: Int = 0, d: LocalDate = day) = LocalDateTime.of(d, LocalTime.of(h, m)).toEpochMillis()
+        c.plan.saveEvent(EventEntity(newId(), "Vitamins", at(8), null, repeat = "daily"))
+        c.plan.saveEvent(EventEntity(newId(), "Deep work", at(14), at(16), notes = "notifications held"))
+        if (variant == null) return
+
+        c.todos.todos.first().forEach { c.todos.delete(it.id) }
+        c.todos.categories.first().forEach { c.todos.saveCategory(it.copy(sort = if (it.name == "Home") 1 else if (it.name == "Shopping") 0 else it.sort)) }
+        val cats = c.todos.categories.first().associate { it.name to it.id }
+        val saturday = day.with(TemporalAdjusters.next(DayOfWeek.SATURDAY))
+        suspend fun todo(cat: String, title: String, sort: Int, done: Boolean = false, due: Long? = null, daysAgo: Long = 0) {
+            val entity = TodoEntity(newId(), cats.getValue(cat), title, due, remind = due != null, done = done, sort = sort)
+            c.todos.save(if (done) entity.copy(doneAt = at(9, 0, day.minusDays(daysAgo))) else entity)
+        }
+        when (variant) {
+            "drag" -> {
+                todo("Shopping", "Milk", 0, done = true)
+                listOf("Batteries", "Light bulbs", "Birthday card for Ana", "Coffee beans", "Dish soap").forEachIndexed { i, t -> todo("Shopping", t, i + 1) }
+                todo("Shopping", "Tea", 9, done = true, daysAgo = 2)
+                todo("Shopping", "Bin bags", 10, done = true, daysAgo = 3)
+                todo("Home", "Water the plants", 0)
+                todo("Home", "Fix the shelf", 1)
+            }
+            else -> {
+                if (variant == "todos") {
+                    todo("Shopping", "Milk", 0)
+                    todo("Shopping", "Batteries", 1)
+                    todo("Shopping", "Dish soap", 2, done = true)
+                    todo("Shopping", "Birthday card for Ana", 3, due = at(10, 0, saturday))
+                } else {
+                    listOf("Milk", "Batteries", "Dish soap", "Birthday card for Ana", "Coffee beans").forEachIndexed { i, t -> todo("Shopping", t, i) }
+                }
+                todo("Home", "Water the plants", 0)
+                todo("Home", "Fix the shelf", 1)
+                todo("Errands", "Return the parcel", 0)
+            }
+        }
     }
 }

@@ -38,7 +38,7 @@ val LightColors = CoveColors(
     dockInactive = Color(0xFF6B6D73),
     alert = Color(0xFFB5562F),
     saved = Color(0xFF3F7A5A),
-    scrim = Color(0x66161719),
+    scrim = Color(0x2E16171A),
     isDark = false,
 )
 

@@ -59,6 +59,9 @@ class PlanRepository(private val db: CoveDatabase, private val clock: Clock, pri
     fun eventsOn(day: LocalDate): Flow<List<EventEntity>> =
         db.events().observeBetween(day.startOfDayMillis(), day.plusDays(1).startOfDayMillis() - 1)
 
+    /** Events that repeat and have started by the end of [day]; filter with their repeat rule. */
+    fun repeatingEvents(day: LocalDate): Flow<List<EventEntity>> = db.events().observeRepeating(day.plusDays(1).startOfDayMillis() - 1)
+
     fun upcomingEvents(limit: Int = 5): Flow<List<EventEntity>> = db.events().observeUpcoming(clock.now(), limit)
 
     suspend fun saveEvent(event: EventEntity) {
@@ -83,6 +86,13 @@ class TodoRepository(private val db: CoveDatabase, private val clock: Clock, pri
     suspend fun save(todo: TodoEntity) {
         db.todos().upsert(todo.copy(updatedAt = clock.now()))
         log.mark("todos", todo.id)
+    }
+
+    suspend fun saveAll(todos: List<TodoEntity>) {
+        if (todos.isEmpty()) return
+        val now = clock.now()
+        db.todos().upsertAll(todos.map { it.copy(updatedAt = now) })
+        todos.forEach { log.mark("todos", it.id) }
     }
 
     suspend fun setDone(id: String, done: Boolean) {

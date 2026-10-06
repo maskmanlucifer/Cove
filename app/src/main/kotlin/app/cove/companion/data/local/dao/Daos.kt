@@ -84,6 +84,9 @@ interface EventDao {
     @Query("SELECT * FROM events WHERE deletedAt IS NULL AND startAt >= :from ORDER BY startAt LIMIT :limit")
     fun observeUpcoming(from: Long, limit: Int): Flow<List<EventEntity>>
 
+    @Query("SELECT * FROM events WHERE deletedAt IS NULL AND `repeat` != 'none' AND startAt <= :to")
+    fun observeRepeating(to: Long): Flow<List<EventEntity>>
+
     @Upsert
     suspend fun upsert(event: EventEntity)
 }
