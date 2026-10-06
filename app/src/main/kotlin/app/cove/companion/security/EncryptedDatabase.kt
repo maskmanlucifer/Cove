@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
 import app.cove.companion.data.local.CoveDatabase
+import app.cove.companion.resilience.CrashHandler
 import app.cove.companion.resilience.MigrationStageException
 import kotlinx.coroutines.flow.MutableStateFlow
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
@@ -62,7 +63,29 @@ class DeferredFactory(private val context: Context) : SupportSQLiteOpenHelper.Fa
     }
 
     override fun create(configuration: SupportSQLiteOpenHelper.Configuration): SupportSQLiteOpenHelper =
-        DeferredHelper(configuration, real)
+        DeferredHelper(withoutAutoDelete(configuration), real)
+
+    /**
+     * Android's default reaction to a database it thinks is corrupt is to delete the file and start empty. For
+     * Cove that would silently destroy data that may only be locked or briefly unreadable, so corruption is
+     * reported (and shown on the Recovery screen) but the file is never touched.
+     */
+    private fun withoutAutoDelete(c: SupportSQLiteOpenHelper.Configuration): SupportSQLiteOpenHelper.Configuration {
+        val inner = c.callback
+        val keep = object : SupportSQLiteOpenHelper.Callback(inner.version) {
+            override fun onConfigure(db: SupportSQLiteDatabase) = inner.onConfigure(db)
+            override fun onCreate(db: SupportSQLiteDatabase) = inner.onCreate(db)
+            override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = inner.onUpgrade(db, oldVersion, newVersion)
+            override fun onDowngrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = inner.onDowngrade(db, oldVersion, newVersion)
+            override fun onOpen(db: SupportSQLiteDatabase) = inner.onOpen(db)
+            override fun onCorruption(db: SupportSQLiteDatabase) {
+                CrashHandler.report("db-corruption", IllegalStateException("database reported corrupt"))
+            }
+        }
+        return SupportSQLiteOpenHelper.Configuration.builder(c.context)
+            .name(c.name).callback(keep).noBackupDirectory(c.useNoBackupDirectory)
+            .allowDataLossOnRecovery(false).build()
+    }
 }
 
 private class DeferredHelper(
