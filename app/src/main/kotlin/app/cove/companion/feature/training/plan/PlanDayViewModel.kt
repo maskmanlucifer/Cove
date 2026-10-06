@@ -30,10 +30,11 @@ class PlanDayViewModel(private val c: AppContainer, val weekday: Int) : ViewMode
 
     val state: StateFlow<PlanDayUi> = repo.tables.map { t ->
         val known = repo.knownNames()
+        val rows = t.plan.filter { it.weekday == weekday }.sortedWith(compareBy({ it.sort }, { it.name }))
+        val onDay = rows.map { WeekPlan.nameKey(it.name) }.toSet()
         PlanDayUi(
-            true, WeightUnit.of(t.settings?.unit),
-            t.plan.filter { it.weekday == weekday }.sortedWith(compareBy({ it.sort }, { it.name })),
-            (known + ExerciseNames.defaults + COMMON).distinctBy { WeekPlan.nameKey(it) },
+            true, WeightUnit.of(t.settings?.unit), rows,
+            (known + ExerciseNames.defaults + COMMON).distinctBy { WeekPlan.nameKey(it) }.filter { WeekPlan.nameKey(it) !in onDay },
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PlanDayUi())
 

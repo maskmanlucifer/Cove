@@ -26,7 +26,7 @@ import app.cove.companion.core.appViewModel
 import app.cove.companion.data.local.entity.PlanExerciseEntity
 import app.cove.companion.design.Cove
 import app.cove.companion.design.CoveType
-import app.cove.companion.design.components.Chip
+import app.cove.companion.feature.training.ui.WellChip
 import app.cove.companion.design.components.CoveSheet
 import app.cove.companion.design.components.CoveText
 import app.cove.companion.feature.training.engine.TrainingText
@@ -72,7 +72,7 @@ fun ExerciseSheet(
             SimpleField(name, { name = it }, "Exercise name")
             if (suggestions.isNotEmpty() && initial == null) FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 suggestions.forEach { s ->
-                    Chip(s, { name = s; if (!jumpTouched) jump = WeekPlan.defaultIncrement(s) }, height = 48)
+                    WellChip(s, { name = s; if (!jumpTouched) jump = WeekPlan.defaultIncrement(s) })
                 }
             }
             SimpleField(weight, { weight = it }, "Weight in ${unit.label} (blank for bodyweight)", decimal = true, label = "Weight in ${unit.label}")

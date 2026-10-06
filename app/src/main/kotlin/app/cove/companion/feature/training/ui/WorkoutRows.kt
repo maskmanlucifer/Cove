@@ -4,8 +4,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -46,7 +44,6 @@ fun spokenRow(row: WorkoutRow, unit: WeightUnit): String {
 }
 
 /** One exercise of today: check, name, "60 kg · 3 x 8" (or what was done), and the suggestion below it. */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun WorkoutRowView(
     row: WorkoutRow,

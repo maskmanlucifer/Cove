@@ -501,4 +501,4 @@ Sources checked: Gemini API pricing write-ups (morphllm.com, geotoolbox.ai, agen
 
 
 ## Training (added)
-Workout tracking with a double-progression engine, rest timer, voice logging and progress screens: see `docs/TRAINING.md`. Room 7, Supabase `0005_training.sql`.
+Deliberately small: today's exercises (also a card on Today), my weight, a Mon-Sun plan, a rules-first weight suggestion and a progress screen; planned by voice too. No programme, rest timer or session flow. See `docs/TRAINING.md`. Room 8, Supabase `0006_training_simple.sql`.

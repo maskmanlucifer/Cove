@@ -36,7 +36,7 @@ import app.cove.companion.design.CoveIcons
 import app.cove.companion.design.CoveShapes
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.AccentButton
-import app.cove.companion.design.components.Chip
+import app.cove.companion.feature.training.ui.WellChip
 import app.cove.companion.design.components.CoveScreen
 import app.cove.companion.design.components.CoveSheet
 import app.cove.companion.design.components.CoveText
@@ -166,7 +166,7 @@ private fun TemplateSheet(visible: Boolean, weekday: Int, onDismiss: () -> Unit,
         Column(Modifier.fillMaxWidth().heightIn(max = 600.dp).verticalScroll(rememberScrollState()).padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             CoveText("Start from", style = CoveType.Heading)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TodayWorkout.starters.forEachIndexed { i, s -> Chip(s.name, { pick = i }, selected = i == pick, height = 48) }
+                TodayWorkout.starters.forEachIndexed { i, s -> WellChip(s.name, { pick = i }, selected = i == pick) }
             }
             CoveText(t.lifts.joinToString(", ") { it.first }, style = CoveType.Meta, color = Cove.colors.muted)
             CoveText("On", style = CoveType.Meta, color = Cove.colors.muted)

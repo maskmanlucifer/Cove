@@ -27,7 +27,6 @@ import androidx.compose.ui.unit.dp
 import app.cove.companion.core.OneShot
 import app.cove.companion.design.Cove
 import app.cove.companion.design.CoveType
-import app.cove.companion.design.components.Chip
 import app.cove.companion.design.components.CoveSheet
 import app.cove.companion.design.components.CoveText
 import app.cove.companion.feature.money.AmountKeypad
@@ -81,7 +80,7 @@ fun LogSheet(
             CoveText("Reps per set", Modifier.padding(top = 4.dp), style = CoveType.Meta, color = c.muted)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 reps.forEachIndexed { i, r ->
-                    Chip("$r", { sel = i }, selected = i == sel.coerceAtMost(reps.lastIndex), height = 48, modifier = Modifier.semantics { contentDescription = "Set ${i + 1}, $r reps" })
+                    WellChip("$r", { sel = i }, selected = i == sel.coerceAtMost(reps.lastIndex), modifier = Modifier.semantics { contentDescription = "Set ${i + 1}, $r reps" })
                 }
             }
             val s = sel.coerceIn(0, maxOf(0, reps.lastIndex))

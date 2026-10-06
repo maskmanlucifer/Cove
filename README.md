@@ -44,7 +44,7 @@ Send with `adb shell am start -n app.cove.companion/.MainActivity <extras>`.
 | `--es setupCode cove-setup:1:...`, `--ez forgetCredentials true`, `--es sheet supabase\|google\|drive\|gemini\|code` (with `--es route connect`) | Fill or wipe stored credentials; open a Connect services sheet |
 | `--ez offline true` | Force the offline look |
 | `--es voiceState listening\|result\|partial\|saved\|micoff --es transcript "..." --ei voiceSeconds N` | Open the Voice screen in that state |
-| `--ez trainingDone true`, `--ez trainingStart true`, `--ez trainingProgress true`, `--ei restLeft N`, `--ez noTraining true` | Training: today's finished session, start it, log sets, show a rest, show setup (see `docs/TRAINING.md`) |
+| `--ez noTraining true` | Training: seed no workout plan, to see the empty page (see `docs/TRAINING.md`) |
 | `--ez fakeDrive true --ez driveRun true` | Folder-backed fake Drive with a pending photo; `driveRun` uploads and backs up |
 | `--ei alarm_in_min N` | Add a one-time test alarm N minutes from now |
 | `--ez alarm_preview true --ei minutes M` | Open the ring screen without the service |
@@ -66,7 +66,7 @@ Release builds ignore all of these. Debug builds also log StrictMode violations 
 - `PLAN.md`: product and architecture plan, decisions, phases.
 - `docs/CONTRIBUTING.md`: how features are built and verified.
 - `docs/CATEGORIZATION.md`: how expenses are filed (rules, learning, Review, optional AI cross-check).
-- `docs/TRAINING.md`: workout tracking, progression rules, voice phrases.
+- `docs/TRAINING.md`: the simple weekday workout plan, weight suggestion rules, voice phrases.
 - `docs/SECURITY.md`: database encryption and app lock.
 - `docs/RESILIENCE.md`: what happens when the database, key or app fails, and what the user sees.
 - `docs/SETUP.md`: connect your own Supabase, Google, Drive and Gemini (15 minutes); `tools/make-setup-code.py` builds a one-paste setup code.

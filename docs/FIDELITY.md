@@ -44,14 +44,6 @@ Mean absolute pixel difference (0-255, `tools/compare.py`, status band ignored) 
 | 38 Alarms | 1.7 |  |
 | 39 Edit alarm | 1.9 | |
 | 40 New habit | 43.3 | frame has text typed and no keyboard; capture has the keyboard open |
-| 41 Training | 5.1 | extra "Plan" row (editing entry point); seeded Push has three lifts, so "3 exercises"; dock drawn by the host screen |
-| 42 Log a set | 5.0 | seeded Push has three lifts ("2 of 3") |
-| 43 Rest | 1.9 | |
-| 44 Heard you · sets | 3.7 | |
-| 45 Session done | 3.8 | |
-| 46 Lift history | 4.6 | chart dates come from the seed (10 Sep start), list shows more sessions |
-| 47 Body weight | 3.4 | |
-| 48 Progress | 5.6 | weekly bars are 7-day windows ending today (9 Sep ... Now), list ends after three lifts |
 
 ## Known deviations
 - Frames 06, 18, 22, 35, 37, 39, 40 show a dimmed copy of the page behind the sheet that the design draws with a slightly different scrim and a stripped background; the sheet geometry itself matches.

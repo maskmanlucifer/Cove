@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -26,7 +27,6 @@ import androidx.compose.ui.unit.dp
 import app.cove.companion.design.Cove
 import app.cove.companion.design.CoveShapes
 import app.cove.companion.design.CoveType
-import app.cove.companion.design.components.Chip
 import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.pressable
 import app.cove.companion.feature.training.engine.TrainingText
@@ -80,7 +80,18 @@ fun WeekdayChips(selected: Set<Int>, onToggle: (Int) -> Unit, disabled: Int? = n
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
         for (d in 1..7) {
             if (d == disabled) continue
-            Chip(TrainingText.weekdayShort(d), { onToggle(d) }, selected = d in selected, height = 48)
+            WellChip(TrainingText.weekdayShort(d), { onToggle(d) }, selected = d in selected)
         }
     }
+}
+
+/** 48dp pill that shows up on a white sheet: well grey, ink when [selected]. */
+@Composable
+fun WellChip(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, selected: Boolean = false) {
+    val c = Cove.colors
+    Box(
+        modifier.heightIn(min = 48.dp).background(if (selected) c.ink else c.well, CoveShapes.Pill)
+            .pressable(onClick, role = Role.Button).semantics { this.selected = selected }.padding(horizontal = 18.dp),
+        contentAlignment = Alignment.Center,
+    ) { CoveText(text, style = CoveType.Meta, color = if (selected) c.onInk else c.ink, maxLines = 1) }
 }

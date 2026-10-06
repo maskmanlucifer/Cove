@@ -2,9 +2,7 @@ package app.cove.companion.feature.training
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -19,9 +17,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import app.cove.companion.core.appViewModel
 import app.cove.companion.design.Cove
@@ -33,11 +28,9 @@ import app.cove.companion.design.components.CoveScreen
 import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.DockClearance
 import app.cove.companion.design.components.Hairline
-import app.cove.companion.design.components.PillButton
 import app.cove.companion.design.components.Segmented
 import app.cove.companion.design.components.UndoHost
 import app.cove.companion.design.components.coveTopInset
-import app.cove.companion.design.components.pressable
 import app.cove.companion.feature.training.engine.TrainingStats
 import app.cove.companion.feature.training.engine.TrainingText
 import app.cove.companion.feature.training.engine.WeightFormat
@@ -47,7 +40,6 @@ import app.cove.companion.feature.training.ui.LabelRow
 import app.cove.companion.feature.training.ui.LogSheet
 import app.cove.companion.feature.training.ui.PrimaryButton
 import app.cove.companion.feature.training.ui.Sparkline
-import app.cove.companion.feature.training.ui.TrainingType
 import app.cove.companion.feature.training.ui.WeightSheet
 import app.cove.companion.feature.training.ui.WorkoutRowView
 import app.cove.companion.navigation.Nav

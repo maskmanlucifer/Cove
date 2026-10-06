@@ -104,5 +104,10 @@ private fun planHeadline(plans: List<VoiceIntent.PlanExercise>, today: LocalDate
     else "Your plan." to " ${countWord(n)} exercises. Check the days."
 }
 
-private fun setsText(i: VoiceIntent.LogSets): String =
-    i.sets.joinToString(", ") { s -> (s.weight?.let { trainingWeight(it) + " × " } ?: "") + s.reps }
+private fun setsText(i: VoiceIntent.LogSets): String {
+    val weights = i.sets.map { it.weight }.distinct()
+    val unit = i.unit ?: "kg"
+    val reps = i.sets.joinToString(", ") { it.reps.toString() }
+    return if (weights.size == 1) (weights.single()?.let { trainingWeight(it) + " $unit · " } ?: "") + "$reps reps"
+    else i.sets.joinToString(", ") { s -> (s.weight?.let { trainingWeight(it) + " $unit × " } ?: "") + s.reps }
+}

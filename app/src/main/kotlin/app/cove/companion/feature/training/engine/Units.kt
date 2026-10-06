@@ -40,10 +40,6 @@ object WeightFormat {
         return if (frac == 0L) whole.toString() else String.format(Locale.ENGLISH, "%s%d.%d", if (tenths < 0 && whole == 0L) "-" else "", whole, frac)
     }
 
-    /** "62.5 × 8" style pair for a set. */
-    fun set(kg: Double, reps: Int, unit: WeightUnit = WeightUnit.Kg, withUnit: Boolean = true): String =
-        (if (withUnit) withUnit(kg, unit) else number(kg, unit)) + " × " + reps
-
     /** The number typed in [text] (comma or point as decimal separator), or null when it is not a usable weight. */
     fun parse(text: String): Double? = text.trim().replace(',', '.').toDoubleOrNull()?.takeIf { it >= 0 && it < 1000 }
 }
