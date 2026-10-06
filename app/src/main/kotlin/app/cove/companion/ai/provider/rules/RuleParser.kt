@@ -20,14 +20,15 @@ class RuleParser(private val clock: Clock, private val categories: CategoryResol
      * Parses [raw] into intents (empty when nothing was understood).
      *
      * @param habits names of the user's habits, so "I did my walk" can tick the right one.
+     * @param exercises names of the user's lifts, so "bench 60 for 8" is logged against the right one.
      */
-    fun parse(raw: String, habits: List<String> = emptyList()): List<VoiceIntent> {
+    fun parse(raw: String, habits: List<String> = emptyList(), exercises: List<String> = emptyList()): List<VoiceIntent> {
         val text = clean(SpokenNumbers.digitize(raw))
         if (text.isBlank()) return emptyList()
         val clauses = if (journalPrefix.containsMatchIn(text)) listOf(text) else splitClauses(text)
         val out = mutableListOf<VoiceIntent>()
         for (clause in clauses) {
-            val intents = parseClause(clause.trim().trimEnd('.', ',', '!', '?', ' '), habits)
+            val intents = parseClause(clause.trim().trimEnd('.', ',', '!', '?', ' '), habits, exercises)
             for (i in intents) {
                 val prev = out.lastOrNull()
                 if (i is VoiceIntent.AddTodos && prev is VoiceIntent.AddTodos) {
@@ -76,7 +77,7 @@ class RuleParser(private val clock: Clock, private val categories: CategoryResol
 
     private fun splitClauses(text: String) = text.split(splitter).filter { it.isNotBlank() }
 
-    private fun parseClause(c: String, habits: List<String>): List<VoiceIntent> {
+    private fun parseClause(c: String, habits: List<String>, exercises: List<String>): List<VoiceIntent> {
         if (c.isBlank()) return emptyList()
         undo.find(c)?.let { return listOf(VoiceIntent.UndoLast) }
         if (queryNext.containsMatchIn(c)) return listOf(VoiceIntent.QueryNext)
@@ -86,6 +87,7 @@ class RuleParser(private val clock: Clock, private val categories: CategoryResol
         }
         reminder.find(c)?.let { return listOf(reminder(it.groupValues[1], c)) }
         if (Regex("\\balarm\\b|\\bwake me\\b", opts).containsMatchIn(c)) return alarm(c)
+        TrainingRules.parse(c, exercises)?.let { return listOf(it) }
         expense(c)?.let { return listOf(it) }
         habit(c, habits)?.let { return listOf(it) }
         todo(c)?.let { return it }

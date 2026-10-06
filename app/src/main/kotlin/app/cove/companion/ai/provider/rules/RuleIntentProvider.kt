@@ -16,7 +16,7 @@ class RuleIntentProvider(private val rules: RuleParser) : IntentProvider {
     override suspend fun availability() = Availability.Available
 
     override suspend fun parse(request: IntentRequest): AiResult<ParsedIntents> =
-        rules.parse(request.transcript, request.context.habits).takeIf { it.isNotEmpty() }
+        rules.parse(request.transcript, request.context.habits, request.context.exercises).takeIf { it.isNotEmpty() }
             ?.let { AiResult.Ok(ParsedIntents(it), ref) }
             ?: AiResult.Failed(AiError.Unavailable("No rule matched"), listOf(ref))
 }

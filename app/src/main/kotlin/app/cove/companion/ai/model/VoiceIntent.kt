@@ -52,6 +52,29 @@ sealed interface VoiceIntent {
         override val type get() = "journal_note"
     }
 
+    /**
+     * Sets of one lift said aloud ("bench, sixty-two and a half for eight, eight and six"). [exercise] is the lift's
+     * name as understood (matched to the user's lifts by the executor); [unit] is `kg` or `lb` only when the user said so.
+     */
+    data class LogSets(val exercise: String, val sets: List<SpokenSet>, val unit: String? = null) : VoiceIntent {
+        override val type get() = "log_sets"
+    }
+
+    /** Starts today's workout, or the [day] type ("Push", "Pull", "Legs") when given. */
+    data class StartWorkout(val day: String? = null) : VoiceIntent {
+        override val type get() = "start_workout"
+    }
+
+    /** A morning weigh-in of [weight] in [unit] (`kg` or `lb`; null means the user's own unit). */
+    data class LogBodyWeight(val weight: Double, val unit: String? = null) : VoiceIntent {
+        override val type get() = "log_body_weight"
+    }
+
+    /** "What is my next workout?" */
+    data object QueryNextWorkout : VoiceIntent {
+        override val type get() = "next_workout"
+    }
+
     data object QueryNext : VoiceIntent {
         override val type get() = "query_next"
     }
@@ -63,3 +86,6 @@ sealed interface VoiceIntent {
 
 /** A to-do the user has not saved yet; [category] is a category name or null. */
 data class TodoDraft(val title: String, val category: String?, val dueAt: Long? = null)
+
+/** One set as spoken: [weight] is null when only reps were said (the executor then uses the planned weight). */
+data class SpokenSet(val weight: Double?, val reps: Int)

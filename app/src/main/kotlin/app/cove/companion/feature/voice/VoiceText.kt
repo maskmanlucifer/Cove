@@ -5,6 +5,8 @@ import app.cove.companion.core.rupees
 import app.cove.companion.core.shortTime
 import app.cove.companion.core.toLocalDateTime
 import app.cove.companion.ai.model.VoiceIntent
+import app.cove.companion.feature.training.engine.TrainingText
+import app.cove.companion.feature.training.engine.WeightFormat
 import java.time.LocalDate
 
 private val numberWords = listOf("Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten")
@@ -59,6 +61,10 @@ fun describe(intent: VoiceIntent, today: LocalDate, nowMinutes: Int? = null): St
     is VoiceIntent.AddHabit -> "Add a habit called ${intent.name}"
     is VoiceIntent.JournalNote -> "Journal: " + intent.text.take(40) + if (intent.text.length > 40) "…" else ""
     is VoiceIntent.AddTodos -> intent.items.joinToString { it.title }
+    is VoiceIntent.LogSets -> "${intent.exercise} · " + setsText(intent)
+    is VoiceIntent.StartWorkout -> "Start " + (intent.day?.let { "$it day" } ?: "today's workout")
+    is VoiceIntent.LogBodyWeight -> "Body weight " + trainingWeight(intent.weight) + " " + (intent.unit ?: "kg")
+    VoiceIntent.QueryNextWorkout -> "What's my next workout"
     VoiceIntent.QueryNext -> "What's next"
     VoiceIntent.UndoLast -> "Undo the last thing"
 }
@@ -75,7 +81,15 @@ fun resultHeadline(intents: List<VoiceIntent>, today: LocalDate, nowMinutes: Int
         single is VoiceIntent.AddReminder -> "A reminder." to (single.at?.let { " ${reminderWhen(it, today).replaceFirstChar { c -> c.uppercase() }}." } ?: " No time set.")
         single is VoiceIntent.AddHabit -> "A new habit." to " Called ${single.name}."
         single is VoiceIntent.LogHabit -> "Tick ${single.name}." to " Just one tap."
+        single is VoiceIntent.StartWorkout -> "Start the workout." to (single.day?.let { " $it day." } ?: " Today's session.")
+        single is VoiceIntent.LogBodyWeight -> (trainingWeight(single.weight) + " " + (single.unit ?: "kg") + ".") to " A weigh-in for today."
+        single is VoiceIntent.LogSets -> TrainingText.setsHeadline(single.sets.size) to " ${single.exercise}."
         single is VoiceIntent.JournalNote -> "A journal note." to " Kept on this phone."
         else -> "${countWord(intents.size)} things." to " Check them over."
     }
 }
+
+private fun trainingWeight(value: Double) = WeightFormat.trim(value)
+
+private fun setsText(i: VoiceIntent.LogSets): String =
+    i.sets.joinToString(", ") { s -> (s.weight?.let { trainingWeight(it) + " × " } ?: "") + s.reps }

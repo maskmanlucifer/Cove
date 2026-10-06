@@ -1,5 +1,6 @@
 package app.cove.companion.ai.schema
 
+import app.cove.companion.ai.model.SpokenSet
 import app.cove.companion.ai.model.TodoDraft
 import app.cove.companion.ai.model.VoiceIntent
 import app.cove.companion.core.toEpochMillis
@@ -55,6 +56,7 @@ object IntentSchema {
     private val TYPES = setOf(
         "set_alarm", "change_alarm", "add_todo", "add_reminder", "log_expense",
         "log_habit", "journal_note", "query_next", "undo_last",
+        "log_sets", "start_workout", "log_body_weight", "next_workout",
     )
 
     private fun intent(o: JsonObject): VoiceIntent? = when (o.str("type")) {
@@ -88,10 +90,43 @@ object IntentSchema {
         }
         "log_habit" -> o.str("name")?.trim()?.takeIf { it.isNotEmpty() }?.let { VoiceIntent.LogHabit(it) }
         "journal_note" -> o.str("text")?.trim()?.takeIf { it.isNotEmpty() }?.let { VoiceIntent.JournalNote(it) }
+        "log_sets" -> logSets(o)
+        "start_workout" -> VoiceIntent.StartWorkout(o.optStr("day")?.takeIf { it.length <= 12 })
+        "log_body_weight" -> {
+            val w = (o["weight"] as? JsonPrimitive)?.doubleOrNull
+            val unit = unit(o)
+            if (o.optStr("unit") != null && unit == null) return null
+            val kg = if (unit == "lb") w?.div(2.2046) else w
+            if (w == null || kg == null || kg < 20 || kg > 400) null else VoiceIntent.LogBodyWeight(w, unit)
+        }
+        "next_workout" -> VoiceIntent.QueryNextWorkout
         "query_next" -> VoiceIntent.QueryNext
         "undo_last" -> VoiceIntent.UndoLast
         else -> null
     }
+
+    private const val MAX_SETS = 20
+
+    /** `{"type":"log_sets","exercise":"Bench press","unit":"kg","sets":[{"weight":62.5,"reps":8}]}`; weight may be null. */
+    private fun logSets(o: JsonObject): VoiceIntent? {
+        val exercise = o.str("exercise")?.trim()?.takeIf { it.isNotEmpty() && it.length <= 60 } ?: return null
+        val unit = unit(o)
+        val sets = (o["sets"] as? JsonArray)?.takeIf { it.size in 1..MAX_SETS }?.map { e ->
+            val item = e as? JsonObject ?: return null
+            val reps = (item["reps"] as? JsonPrimitive)?.doubleOrNull?.takeIf { it % 1.0 == 0.0 && it in 1.0..100.0 }?.toInt() ?: return null
+            val weightRaw = item["weight"]
+            val weight = when (weightRaw) {
+                null, JsonNull -> null
+                is JsonPrimitive -> weightRaw.doubleOrNull?.takeIf { it in 0.0..1000.0 } ?: return null
+                else -> return null
+            }
+            SpokenSet(weight, reps)
+        } ?: return null
+        return VoiceIntent.LogSets(exercise, sets, unit)
+    }
+
+    /** `kg` or `lb` when present and valid; null when absent or unrecognised. */
+    private fun unit(o: JsonObject): String? = o.optStr("unit")?.lowercase()?.takeIf { it == "kg" || it == "lb" }
 
     private fun mask(days: JsonArray): Int? {
         var m = 0

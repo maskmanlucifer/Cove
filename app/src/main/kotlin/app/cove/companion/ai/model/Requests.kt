@@ -4,6 +4,8 @@ package app.cove.companion.ai.model
 data class IntentContext(
     val habits: List<String> = emptyList(),
     val todoCategories: List<String> = emptyList(),
+    /** Names of the user's lifts, so "bench" can be matched to the right one. */
+    val exercises: List<String> = emptyList(),
 )
 
 /** What one intent request carries; [now] is local `yyyy-MM-ddTHH:mm`. */
