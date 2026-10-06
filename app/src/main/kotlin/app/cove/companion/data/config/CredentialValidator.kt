@@ -70,7 +70,7 @@ object CredentialValidator {
 
     private fun geminiKey(v: String): String? = when {
         v.any(Char::isWhitespace) -> "The key should be one line with no spaces."
-        !v.startsWith("AIza") || v.length < 30 -> "A Gemini API key starts with AIza."
+        !(v.startsWith("AIza") || v.startsWith("AQ.")) || v.length < 30 -> "A Gemini API key starts with AQ. (new keys) or AIza (older keys)."
         else -> null
     }
 

@@ -79,6 +79,6 @@ Deno.serve(async (request) => {
   if (!parsed.ok) return json({ error: parsed.error }, parsed.status);
 
   const result = (await attempt(Deno.env.get("GEMINI_MODEL"), parsed.req)) ??
-    (await attempt(Deno.env.get("GEMINI_RETRY_MODEL") ?? "gemini-2.5-flash", parsed.req));
+    (await attempt(Deno.env.get("GEMINI_RETRY_MODEL") ?? "gemini-3.1-flash-lite", parsed.req));
   return result ? json(result) : unavailable();
 });

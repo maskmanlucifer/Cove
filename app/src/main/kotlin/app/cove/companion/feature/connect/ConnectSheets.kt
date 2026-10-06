@@ -166,9 +166,9 @@ private fun GeminiSheet(ui: ConnectUi, vm: ConnectViewModel, onDismiss: () -> Un
         Steps(
             listOf(
                 "Open Google AI Studio and sign in.",
-                "Create an API key and copy it.",
+                "Create an API key and copy it. New keys start with AQ. and older ones with AIza; both work.",
                 "Paste it here and tap Test connection.",
-                "In Google Cloud billing, set a budget alert so costs never surprise you.",
+                "The free plan is enough. Google may use free-plan prompts to improve its products; Cove only sends short non-journal text. If you turn on billing, set a budget alert.",
             ),
         )
         SheetAction("Open dashboard", { openLink(context, ConnectLinks.AI_STUDIO_KEYS) })
