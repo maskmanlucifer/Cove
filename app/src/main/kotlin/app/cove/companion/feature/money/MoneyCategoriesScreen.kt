@@ -25,6 +25,8 @@ import app.cove.companion.design.CoveIcons
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.CoveScreen
 import app.cove.companion.design.components.CoveText
+import app.cove.companion.design.components.EmptyState
+import app.cove.companion.design.illustrations.Scene
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.design.components.pressable
 import app.cove.companion.navigation.Nav
@@ -48,6 +50,7 @@ fun MoneyCategoriesScreen(nav: Nav) {
                     CoveText("Categories", style = CoveType.Title)
                     CoveText(subtitle(s), style = MoneyType.Sub, color = c.muted)
                 }
+                if (s.items.isEmpty()) EmptyState(Scene.Money, "No categories yet.", "Add one to start sorting your spending.", compact = true)
                 RowsCard(vertical = 4.dp) {
                     DragList(
                         items = s.items,

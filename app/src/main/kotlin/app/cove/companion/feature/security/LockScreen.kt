@@ -2,14 +2,11 @@ package app.cove.companion.feature.security
 
 import android.content.Intent
 import android.provider.Settings
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -18,19 +15,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import app.cove.companion.design.Cove
-import app.cove.companion.design.CoveIcon
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.CoveScreen
 import app.cove.companion.design.components.CoveText
+import androidx.compose.foundation.layout.height
+import app.cove.companion.design.illustrations.Illustration
+import app.cove.companion.design.illustrations.Scene
 import app.cove.companion.design.components.coveTopInset
-import app.cove.companion.design.components.drawOrbGradient
 import app.cove.companion.feature.onboarding.BigButton
 import app.cove.companion.feature.onboarding.HelperText
 import app.cove.companion.feature.onboarding.TextAction
@@ -65,7 +62,7 @@ fun LockScreen(onUnlock: () -> Unit, onTurnOff: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                LockOrb()
+                Illustration(Scene.Secure, Modifier.height(140.dp))
                 CoveText("Cove", Modifier.padding(top = 28.dp), style = CoveType.Title.copy(fontSize = 36.sp, lineHeight = 42.sp))
                 CoveText("Locked", Modifier.padding(top = 4.dp), style = CoveType.Body, color = Cove.colors.muted)
             }
@@ -84,14 +81,5 @@ fun LockScreen(onUnlock: () -> Unit, onTurnOff: () -> Unit) {
                 AuthAvailability.CredentialOnly -> BigButton("Use device PIN", { ask(true) })
             }
         }
-    }
-}
-
-/** The voice orb's gradient with a lock glyph. */
-@Composable
-private fun LockOrb() {
-    Box(Modifier.size(96.dp).clip(CircleShape), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.size(96.dp)) { drawOrbGradient() }
-        CoveIcon(LockIcon, androidx.compose.ui.graphics.Color(0xFF16171A), size = 30.dp)
     }
 }

@@ -35,6 +35,8 @@ import app.cove.companion.design.CoveIcons
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.AccentButton
 import app.cove.companion.design.components.CoveText
+import app.cove.companion.design.illustrations.Illustration
+import app.cove.companion.design.illustrations.Scene
 import app.cove.companion.design.components.Hairline
 import app.cove.companion.design.components.VoiceOrb
 import app.cove.companion.design.components.pressable
@@ -72,11 +74,18 @@ fun TodosTab(groups: List<CategoryGroup>, now: Long, drag: TodoDragState, action
     }
 
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        if (groups.isEmpty()) {
+            app.cove.companion.design.components.EmptyState(
+                Scene.Todos, "Nothing to do.", "Say what you need, or make a category to start.", Modifier.padding(top = 16.dp),
+                primary = app.cove.companion.design.components.EmptyAction("Say it", actions.voice),
+            )
+        }
         groups.forEach { group ->
             val id = group.category.id
             if (id == expanded) {
                 ExpandedCard(
                     group, now, drag, actions,
+                    allEmpty = groups.all { it.isEmpty },
                     showAll = id in showAll,
                     doneOpen = id in doneOpen,
                     adding = addingId == id,
@@ -137,6 +146,7 @@ private fun ExpandedCard(
     now: Long,
     drag: TodoDragState,
     actions: TodosActions,
+    allEmpty: Boolean,
     showAll: Boolean,
     doneOpen: Boolean,
     adding: Boolean,
@@ -176,7 +186,7 @@ private fun ExpandedCard(
             CoveText(group.category.name, Modifier.weight(1f), style = Heading)
             CoveText(countText(group), Modifier.offset(y = CountOffset), style = CoveType.Meta, color = c.muted)
         }
-        if (empty) EmptyState(actions.voice)
+        if (empty) EmptyState(actions.voice, big = allEmpty)
         (visibleOpen + group.doneToday).sortedBy { it.sort }.forEach { todo ->
             val index = openIds.indexOf(todo.id)
             if (index < 0) {
@@ -263,12 +273,13 @@ private fun AddRow(
 }
 
 @Composable
-private fun EmptyState(onVoice: () -> Unit) {
+private fun EmptyState(onVoice: () -> Unit, big: Boolean) {
     Column(
-        Modifier.fillMaxWidth().padding(top = 36.dp, bottom = 28.dp).padding(horizontal = 20.dp),
+        Modifier.fillMaxWidth().padding(top = if (big) 20.dp else 12.dp, bottom = 28.dp).padding(horizontal = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+        Illustration(Scene.Todos, Modifier.height(if (big) 168.dp else 112.dp))
         CoveText(
             "Nothing here.", " Tell me what you need.",
             style = CoveType.Value.copy(lineHeight = 28.sp, letterSpacing = (-0.4).sp),

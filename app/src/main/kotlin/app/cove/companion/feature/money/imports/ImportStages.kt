@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -36,6 +37,8 @@ import app.cove.companion.design.components.AccentButton
 import app.cove.companion.design.components.ButtonKind
 import app.cove.companion.design.components.CheckCircle
 import app.cove.companion.design.components.CoveText
+import app.cove.companion.design.illustrations.Illustration
+import app.cove.companion.design.illustrations.Scene
 import app.cove.companion.design.components.GuideBanner
 import app.cove.companion.design.components.PillButton
 import app.cove.companion.design.components.graphicsLayerAlpha
@@ -62,6 +65,7 @@ internal fun IntroStage(message: String?, step: PermissionStep, deniedBefore: Bo
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 40.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
+        Illustration(Scene.Messages, Modifier.align(Alignment.CenterHorizontally).height(120.dp))
         CoveText("Find your spending in your messages", style = CoveType.Section)
         CoveText(
             "Cove reads bank and UPI messages on this phone to find your spending. Messages are read here and never leave your phone.",
@@ -137,6 +141,7 @@ internal fun ScanningStage(s: ImportState, onCancel: () -> Unit) {
     val c = Cove.colors
     val p = s.progress
     Column(Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        Illustration(Scene.Messages, Modifier.align(Alignment.CenterHorizontally).height(120.dp))
         CoveText("Looking through your messages", style = CoveType.Section)
         val total = p?.total
         BudgetBar(if (p == null || total == null || total == 0) 0.02f else (p.scanned.toFloat() / total).coerceIn(0.02f, 1f), over = false)
@@ -186,6 +191,7 @@ internal fun PasteStage(message: String?, granted: Boolean, onFind: (String) -> 
 internal fun DoneStage(s: ImportState, onDone: () -> Unit) {
     val c = Cove.colors
     Column(Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        Illustration(if (s.added > 0) Scene.Synced else Scene.Cleared, Modifier.align(Alignment.CenterHorizontally).height(120.dp))
         CoveText(s.summaryText.orEmpty(), Modifier.semantics { liveRegion = LiveRegionMode.Polite }, style = CoveType.Section)
         CoveText(
             if (s.undone) "Your expenses are as they were. You can look again any time."

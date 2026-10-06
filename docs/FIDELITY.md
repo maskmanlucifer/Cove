@@ -57,3 +57,5 @@ Mean absolute pixel difference (0-255, `tools/compare.py`, status band ignored) 
 
 ## Flows pass (feat/flows)
 Measured on a 411dp emulator against the old build (the 390dp table above is not comparable): 01 13.0 -> 13.3, 04 6.9 -> 7.1, 05 8.2 -> 8.5, 10 15.0 -> 15.4, 24 9.9 -> 10.0, 27 10.7 -> 9.6, 38 9.9 -> 10.4. Deliberate changes from owner feedback: the collapsed pill is anchored on the current tab's slot (not centred) so its icon never moves when the bar opens; Undo bars sit at the top; Today's Next card says "Edit"; Alarms has a single Wind down row with a caption; Me regrouped with an Advanced row; the add sheets lost the To-do/Event switch (frame 37 now shows the event form only); to-do and event sheets use "Save"/quiet "Cancel".
+
+Note: frames 01 (Today) and 10 (Today, dark) now differ by design: Today adds a time-of-day scene under the list (banner, strip or empty state, see `docs/audit/ILLUSTRATIONS.md`). Empty-state pages (frames 23, 24, 38 and friends) gain illustrations too.

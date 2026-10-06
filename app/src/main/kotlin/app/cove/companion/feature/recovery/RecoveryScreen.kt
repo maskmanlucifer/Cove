@@ -45,6 +45,9 @@ import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.ButtonKind
 import app.cove.companion.design.components.CoveScreen
 import app.cove.companion.design.components.CoveText
+import androidx.compose.foundation.layout.height
+import app.cove.companion.design.illustrations.Illustration
+import app.cove.companion.design.illustrations.Scene
 import app.cove.companion.design.components.PillButton
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.design.components.pressable
@@ -146,6 +149,11 @@ private fun RecoveryContent(reason: RecoveryReason) {
         ) {
             when (mode) {
                 Mode.Main -> {
+                    val scene = when (reason) {
+                        RecoveryReason.Corrupt, RecoveryReason.KeyMissing, RecoveryReason.KeyInvalid -> Scene.Lantern
+                        else -> Scene.Help
+                    }
+                    Illustration(scene, Modifier.align(Alignment.CenterHorizontally).height(132.dp))
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         CoveText(copy.title, style = CoveType.Title)
                         CoveText(copy.body, style = CoveType.Body, color = c.muted)

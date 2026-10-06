@@ -55,6 +55,8 @@ import app.cove.companion.design.CoveShapes
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.CoveScreen
 import app.cove.companion.design.components.CoveText
+import app.cove.companion.design.illustrations.Illustration
+import app.cove.companion.design.illustrations.Scene
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.design.components.pressable
 import app.cove.companion.design.components.rememberIsOffline
@@ -95,7 +97,7 @@ fun BriefScreen(nav: Nav) {
                 Column {
                     s.segments.forEachIndexed { i, seg -> ChipRow(i, seg.title, s.index) { vm.player.jumpTo(i) } }
                 }
-                Spacer(Modifier.weight(1f))
+                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { Illustration(Scene.Voice, Modifier.height(150.dp)) }
             }
             Scrubber(s)
             Controls(s, vm.player, textMode) { textMode = !textMode }

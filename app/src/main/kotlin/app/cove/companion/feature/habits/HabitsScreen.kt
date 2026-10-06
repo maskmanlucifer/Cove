@@ -42,6 +42,8 @@ import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.CoveDock
 import app.cove.companion.design.components.CoveScreen
 import app.cove.companion.design.components.CoveText
+import app.cove.companion.design.components.EmptyState
+import app.cove.companion.design.illustrations.Scene
 import app.cove.companion.design.components.DockClearance
 import app.cove.companion.design.components.Tab
 import app.cove.companion.design.components.coveTopInset
@@ -85,7 +87,7 @@ fun HabitsScreen(nav: Nav) {
                 color = c.muted,
             )
             if (s.loaded && s.rows.isEmpty()) {
-                CoveText("No habits yet. Tap the plus to add one.", style = CoveType.Meta, color = c.muted)
+                EmptyState(Scene.Habits, "No habits yet.", "Start with one small thing. Tap the plus when you are ready.")
             }
             s.rows.forEach { row ->
                 HabitCard(row, onOpen = { nav.go(Routes.habitEdit(row.id)) }, onToggleToday = { vm.toggleToday(row.id) })

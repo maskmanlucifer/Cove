@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -38,6 +39,8 @@ import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.ButtonKind
 import app.cove.companion.design.components.CheckCircle
 import app.cove.companion.design.components.CoveText
+import app.cove.companion.design.illustrations.Illustration
+import app.cove.companion.design.illustrations.Scene
 import app.cove.companion.design.components.PillButton
 import app.cove.companion.design.components.pressable
 import app.cove.companion.feature.connect.ShareCodeSheet
@@ -156,6 +159,7 @@ private fun CloudOption(ui: ClearUi, vm: ClearDataViewModel) {
 
 @Composable
 private fun CloudDoneContent(report: CloudReport, vm: ClearDataViewModel, close: () -> Unit) {
+    if (report.ok) Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { Illustration(Scene.Cleared, Modifier.height(110.dp)) }
     SheetCaption(if (report.ok) "Your cloud copies are deleted. This is exactly what was removed:" else "Some cloud copies are not deleted. This is exactly what happened:")
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         report.lines().forEach { CoveText(it, style = CoveType.Meta) }

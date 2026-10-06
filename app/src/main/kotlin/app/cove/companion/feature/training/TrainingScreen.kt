@@ -27,6 +27,9 @@ import app.cove.companion.design.components.AccentButton
 import app.cove.companion.design.components.CoveCard
 import app.cove.companion.design.components.CoveScreen
 import app.cove.companion.design.components.CoveText
+import androidx.compose.foundation.layout.height
+import app.cove.companion.design.illustrations.Illustration
+import app.cove.companion.design.illustrations.Scene
 import app.cove.companion.design.components.DockClearance
 import app.cove.companion.design.components.Hairline
 import app.cove.companion.design.components.Segmented
@@ -103,6 +106,7 @@ private fun TodayBlock(ui: TrainingUi, vm: TrainingViewModel, onOpen: (String) -
         CoveText("Today's workout", style = CoveType.Meta, color = c.muted)
         if (ui.rows.isEmpty()) {
             Column(Modifier.padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Illustration(Scene.Training, Modifier.align(Alignment.CenterHorizontally).height(128.dp))
                 CoveText("Nothing planned for today.", style = CoveType.Heading)
                 PrimaryButton("Plan today", onPlan, Modifier.fillMaxWidth())
                 CoveText("You can also say it with the mic: “plan today, bench 60 for 8”.", style = CoveType.Meta, color = c.muted)

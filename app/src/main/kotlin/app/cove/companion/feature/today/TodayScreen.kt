@@ -47,6 +47,17 @@ import app.cove.companion.core.clockText
 import app.cove.companion.core.inText
 import app.cove.companion.core.longLabel
 import app.cove.companion.core.shortTime
+import app.cove.companion.core.toLocalDateTime
+import app.cove.companion.design.components.EmptyAction
+import app.cove.companion.design.components.EmptyState
+import app.cove.companion.design.illustrations.BannerMode
+import app.cove.companion.design.illustrations.Illustration
+import app.cove.companion.design.illustrations.Scene
+import androidx.compose.foundation.layout.height
+import app.cove.companion.design.illustrations.SceneBanner
+import app.cove.companion.design.illustrations.sceneForHour
+import app.cove.companion.design.illustrations.todayBannerMode
+import app.cove.companion.navigation.Routes
 import app.cove.companion.design.Cove
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.BalancedText
@@ -74,6 +85,8 @@ import app.cove.companion.navigation.Nav
 import androidx.compose.runtime.produceState
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+
+private fun clockHour(context: Context) = context.container.clock.now().toLocalDateTime().hour
 
 private val numberWords = listOf("Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten")
 
@@ -157,14 +170,12 @@ fun TodayScreen(nav: Nav) {
             }
             if (state.moreCount > 0) CoveText("+ ${state.moreCount} more in Plan", style = CoveType.Meta, color = c.muted, modifier = Modifier.padding(top = 4.dp))
         }
-        if (!offline && suggestion == null && state.todos.isEmpty() && state.next == null) {
-            CoveText("Add something in Plan, or just say it.", style = CoveType.Meta, color = c.muted)
-        }
         if (offline) {
             CoveText(
                 "Voice, alarms and your journal work offline. Only weather and the brief’s one thing to read wait for a connection.",
                 style = CoveType.Meta.copy(lineHeight = 21.sp), color = c.muted,
             )
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { Illustration(Scene.Offline, Modifier.height(150.dp)) }
         } else if (state.askMood) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 CoveText("How was today?", style = CoveType.Meta, color = c.muted)
@@ -172,6 +183,22 @@ fun TodayScreen(nav: Nav) {
                     listOf("Calm", "Good", "Tired", "Low").forEach { Chip(it, onClick = { vm.setMood(it.lowercase()) }) }
                 }
             }
+        }
+        val workoutRows = appViewModel { WorkoutCardViewModel(it) }.state.collectAsState().value?.rows?.size ?: 0
+        val hour by produceState(clockHour(context)) {
+            while (true) { delay(60_000); value = clockHour(context) }
+        }
+        val nothingPlanned = suggestion == null && state.next == null && state.todos.isEmpty() && workoutRows == 0
+        val blocks = (if (suggestion != null || state.next != null) 3 else 0) + (if (workoutRows > 0) 3 else 0) +
+            state.todos.size + (if (state.moreCount > 0) 1 else 0) + (if (state.askMood && !offline) 2 else 0) + (if (permissionIssues.isNotEmpty()) 2 else 0)
+        val scene = sceneForHour(hour)
+        when (val mode = todayBannerMode(blocks, nothingPlanned, offline)) {
+            BannerMode.Empty -> EmptyState(
+                scene, "A quiet day", "Add something in Plan, or just say it.",
+                Modifier.padding(top = 8.dp), primary = EmptyAction("Say it") { nav.go(Routes.Voice) },
+            )
+            BannerMode.Hidden -> Unit
+            else -> SceneBanner(scene, mode.heightDp.dp, Modifier.fillMaxWidth().padding(top = 4.dp))
         }
     }
     val done by vm.completed.collectAsState()

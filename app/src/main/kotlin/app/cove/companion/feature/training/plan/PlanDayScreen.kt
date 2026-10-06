@@ -40,6 +40,9 @@ import app.cove.companion.feature.training.ui.WellChip
 import app.cove.companion.design.components.CoveScreen
 import app.cove.companion.design.components.CoveSheet
 import app.cove.companion.design.components.CoveText
+import androidx.compose.foundation.layout.height
+import app.cove.companion.design.illustrations.Illustration
+import app.cove.companion.design.illustrations.Scene
 import app.cove.companion.design.components.DockClearance
 import app.cove.companion.design.components.Hairline
 import app.cove.companion.design.components.UndoHost
@@ -79,6 +82,7 @@ fun PlanDayScreen(weekday: Int, nav: Nav) {
                 if (ui.loaded) {
                     if (ui.rows.isEmpty()) {
                         Column(Modifier.fillMaxWidth().background(c.card, CoveShapes.Card).padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Illustration(Scene.Training, Modifier.align(Alignment.CenterHorizontally).height(112.dp))
                             CoveText("Nothing here yet.", style = CoveType.Heading)
                             CoveText("Add an exercise, or start from Push, Pull or Legs.", style = CoveType.Meta, color = c.muted)
                         }
