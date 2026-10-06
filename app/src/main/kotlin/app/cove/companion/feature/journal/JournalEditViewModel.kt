@@ -118,9 +118,17 @@ class JournalEditViewModel(private val c: AppContainer, private val routeId: Str
         if (deleted) return false
         val keptRecording = stopRecordingNow()
         save()
-        if (!persisted) saveMoodOnly()
+        if (!persisted) saveMoodOnly() else nameMediaOnlyEntry()
         if (persisted) c.appScope.launch { c.searchIndexer.enrich(entry) }
         return keptRecording
+    }
+
+    /** An entry that holds only a voice note or photos gets that as its title, never "Untitled". */
+    private suspend fun nameMediaOnlyEntry() {
+        if (title.text.isNotBlank() || body.text.isNotBlank()) return
+        val first = _state.value.media.firstOrNull() ?: return
+        entry = entry.copy(title = if (first.kind == "voice") "Voice note" else "Photo")
+        c.journal.save(entry)
     }
 
     private suspend fun saveMoodOnly() {
