@@ -171,7 +171,7 @@ object DebugSeed {
             c.journal.save(
                 save(
                     sunday, "A slow Sunday", "calm",
-                    "Slept in without the alarm. Made coffee and sat by the window for a while before doing anything at all.\nWalked to the market later. Bought too many tomatoes",
+                    "Slept in without the alarm. Made coffee and sat by the window for a while before doing anything at all.\n\nWalked to the market later. Bought too many tomatoes",
                 ),
             )
         }
