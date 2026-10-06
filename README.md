@@ -67,8 +67,8 @@ Release builds ignore all of these. Debug builds also log StrictMode violations 
 ## Docs
 - `PLAN.md`: product and architecture plan, decisions, phases.
 - `docs/CONTRIBUTING.md`: how features are built and verified.
-- `docs/CATEGORIZATION.md`: how expenses are filed (rules, learning, Review, optional AI cross-check).
-- `docs/SMS_IMPORT.md`: Money > Import from messages: parsing, dedupe, privacy, how to add a bank format.
+- `docs/CATEGORIZATION.md`: how expenses are filed (rules, learning, payee memory for repeat payments, Review, optional AI cross-check).
+- `docs/SMS_IMPORT.md`: Money > Import from messages: parsing, payee identity, dedupe, privacy, how to add a bank format.
 - `docs/TRAINING.md`: the simple weekday workout plan, weight suggestion rules, voice phrases.
 - `docs/audit/LAYOUT.md`: journal photos and viewer, voice-note row, brief controls, profile photo (device-local, 512 px WebP).
 - `docs/SECURITY.md`: database encryption and app lock.
