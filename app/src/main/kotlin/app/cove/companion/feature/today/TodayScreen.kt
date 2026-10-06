@@ -11,7 +11,21 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import app.cove.companion.container
+import app.cove.companion.data.local.entity.EventEntity
+import app.cove.companion.feature.plan.EventEditSheet
+import app.cove.companion.feature.plan.PlanUndoBar
+import app.cove.companion.feature.voice.TtsSpeaker
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -64,6 +78,19 @@ fun TodayScreen(nav: Nav) {
         return
     }
 
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val container = context.container
+    val speaker = remember { TtsSpeaker(context) { container.settings.settings.first().spokenReplies } }
+    DisposableEffect(Unit) { onDispose { speaker.shutdown() } }
+    var editing by remember { mutableStateOf<EventEntity?>(null) }
+    var undo by remember { mutableStateOf<EventEntity?>(null) }
+    val actions = NextActions(
+        move = { editing = it },
+        startWindDown = { scope.launch { vm.startWindDown().let { speaker.speak(windDownLine(it)) } } },
+        later = vm::snoozeCard,
+    )
+    Box(Modifier.fillMaxSize()) {
     Column(
         Modifier
             .fillMaxSize()
@@ -78,7 +105,7 @@ fun TodayScreen(nav: Nav) {
             BalancedText(greeting(state), suggestion?.let { " ${it.title}" } ?: headline(state).let { h -> if (offline) h.replace(Regex(", nothing before .*\\.$"), ".") else h }, CoveType.Title)
         }
         if (suggestion != null) SuggestionCard(suggestion, sug.detail, suggest)
-        else if (!offline) state.next?.let { NextCard(it, evening) }
+        else if (!offline) state.next?.let { NextCard(it, actions) }
         if (offline) OfflineTodos(state.todos, sug.pendingTodoIds, vm::toggle)
         else Column {
             state.todos.forEach { row ->
@@ -121,6 +148,22 @@ fun TodayScreen(nav: Nav) {
             }
         }
     }
+    undo?.let { gone ->
+        LaunchedEffect(gone.id) {
+            delay(6000)
+            undo = null
+        }
+        PlanUndoBar("Deleted “${gone.title}”", { vm.restoreEvent(gone); undo = null }, Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = 112.dp))
+    }
+    }
+    editing?.let { event ->
+        EventEditSheet(
+            event, container.clock.now(),
+            onSave = vm::saveEvent,
+            onDelete = { vm.deleteEvent(it); undo = it },
+            onDismiss = { editing = null },
+        )
+    }
     if (suggestion != null && sug.whyOpen) WhySheet(sug.detail, suggest)
 }
 
@@ -132,8 +175,11 @@ private fun Stat(label: String, value: @Composable () -> Unit) {
     }
 }
 
+/** What the Next card's buttons do: open the event editor, start the wind-down, or hide the card for a while. */
+private class NextActions(val move: (EventEntity) -> Unit, val startWindDown: () -> Unit, val later: () -> Unit)
+
 @Composable
-private fun NextCard(next: NextItem, evening: Boolean) {
+private fun NextCard(next: NextItem, actions: NextActions) {
     val c = Cove.colors
     val context = LocalContext.current
     val time = clockText(next.minutes)
@@ -150,15 +196,15 @@ private fun NextCard(next: NextItem, evening: Boolean) {
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (next.windDown) {
-                    PillButton("Start now", {})
-                    PillButton("Later", {}, kind = ButtonKind.Secondary, horizontalPadding = 16.dp)
+                    PillButton("Start now", actions.startWindDown)
+                    PillButton("Later", actions.later, kind = ButtonKind.Secondary, horizontalPadding = 16.dp)
                 } else {
                     PillButton("Directions", {
                         next.event?.place?.let {
                             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0?q=" + Uri.encode(it))).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                         }
                     })
-                    PillButton("Move", {}, kind = ButtonKind.Secondary, container = c.canvas)
+                    PillButton("Move", { next.event?.let(actions.move) }, kind = ButtonKind.Secondary, container = c.canvas)
                 }
             }
         }

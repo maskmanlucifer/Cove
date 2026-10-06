@@ -33,7 +33,7 @@ import java.time.temporal.TemporalAdjusters
 object DebugSeed {
     suspend fun load(c: AppContainer, dark: Boolean, evening: Boolean, plan: String? = null, moneyLogged: Boolean = false) {
         c.settings.update {
-            it.copy(displayName = "Maya", onboarded = true, theme = if (dark) "dark" else "light", wakeMinutes = 6 * 60 + 30)
+            it.copy(displayName = "Maya", onboarded = true, theme = if (dark) "dark" else "light", wakeMinutes = 6 * 60 + 30, spokenReplies = false)
         }
         seedBrief(c)
         if (c.database.todos().categoryCount() > 0) return
@@ -50,8 +50,10 @@ object DebugSeed {
             c.todos.add("Water the plants", home.id),
             c.todos.add("Call mum", personal.id, at(18)),
         )
-        c.todos.add("Dish soap", shopping.id)
-        c.todos.add("Birthday card for Ana", shopping.id)
+        if (!evening) { // evening Today (frame 10) lists only the three done items
+            c.todos.add("Dish soap", shopping.id)
+            c.todos.add("Birthday card for Ana", shopping.id)
+        }
         if (evening) open.forEach { c.todos.setDone(it.id, true) }
 
         c.plan.saveEvent(EventEntity(newId(), "Coffee with Jo", at(11), at(11, 45), "Café Ivy", "bring her book back"))
@@ -169,7 +171,7 @@ object DebugSeed {
             c.journal.save(
                 save(
                     sunday, "A slow Sunday", "calm",
-                    "Slept in without the alarm. Made coffee and sat by the window for a while before doing anything at all.\nWalked to the market later. Bought too many tomatoes",
+                    "Slept in without the alarm. Made coffee and sat by the window for a while before doing anything at all.\n\nWalked to the market later. Bought too many tomatoes",
                 ),
             )
         }

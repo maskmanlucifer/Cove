@@ -91,7 +91,7 @@ fun DrumPicker(minutes: Int, onChange: (Int) -> Unit, modifier: Modifier = Modif
             Modifier.fillMaxWidth().height(72.dp).background(c.canvas, RoundedCornerShape(20.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            TimeLabel(shown, MainStyle, suffixSize = 22.sp, gap = 32.sp)
+            TimeLabel(shown, MainStyle, suffixSize = 22.sp, gap = 32.sp, suffixShift = 0.218f)
         }
         Side((shown + STEP) % 1440, faded) { step(STEP) }
     }

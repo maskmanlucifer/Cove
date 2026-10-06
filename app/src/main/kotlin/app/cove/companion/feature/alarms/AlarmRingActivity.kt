@@ -3,6 +3,7 @@ package app.cove.companion.feature.alarms
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -14,6 +15,7 @@ import app.cove.companion.core.toLocalDate
 import app.cove.companion.core.toLocalDateTime
 import app.cove.companion.design.CoveTheme
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 /**
  * Full-screen ring UI shown over the lock screen, always in the dark theme so a 6 am alarm is
@@ -23,7 +25,7 @@ import kotlinx.coroutines.flow.first
 class AlarmRingActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableEdgeToEdge(statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT), navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT))
         setShowWhenLocked(true)
         setTurnScreenOn(true)
         val preview = BuildConfig.DEBUG && intent.getBooleanExtra("preview", false)
@@ -42,12 +44,17 @@ class AlarmRingActivity : ComponentActivity() {
                     .minOrNull()
                 value = ringMessage(ring.minutes / 60, first)
             }
+            val briefOn by produceState(false) { value = container.settings.settings.first().briefOn }
             CoveTheme(dark = true) {
                 RingScreen(
                     ring = ring,
                     message = message,
                     onStop = { if (preview) finish() else AlarmRingService.stop(this) },
                     onSnooze = { if (preview) finish() else AlarmRingService.snooze(this) },
+                    onPlayBrief = if (briefOn && !preview) ({
+                        AlarmRingService.stop(this)
+                        container.appScope.launch { container.briefPlayer.playToday() }
+                    }) else null,
                 )
             }
         }

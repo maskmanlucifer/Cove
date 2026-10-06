@@ -47,7 +47,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.text.input.OutputTransformation
+import androidx.compose.ui.text.ParagraphStyle
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -110,7 +114,7 @@ fun JournalEditScreen(id: String, nav: Nav) {
             ) {
                 CoveText(s.day.longLabel() + (s.mood?.let { " · $it" } ?: ""), style = CoveType.Meta, color = c.muted)
                 EntryField(vm.title, "Title", CoveType.Title, titleFocus, Modifier.offset(y = (-2).dp), singleLine = true, onNext = { bodyFocus.requestFocus() })
-                EntryField(vm.body, "Write whatever is on your mind.", BodyStyle, bodyFocus, Modifier.offset(y = (-3).dp).heightIn(min = 160.dp), bodyColor())
+                EntryField(vm.body, "Write whatever is on your mind.", BodyStyle, bodyFocus, Modifier.offset(y = (-3).dp).heightIn(min = 160.dp), bodyColor(), shortBlankLines = true)
                 val photos = s.media.filter { it.kind == "photo" }
                 if (photos.isNotEmpty()) PhotoStrip(photos) { vm.removeMedia(it) }
                 s.media.filter { it.kind == "voice" }.forEach { note ->
@@ -158,6 +162,25 @@ fun JournalEditScreen(id: String, nav: Nav) {
     }
 }
 
+/**
+ * Makes a single blank line (a paragraph break, exactly two newlines) 16 dp tall instead of a full text line, as in frame 08.
+ * The "\n\n" run becomes its own paragraph of three empty lines, so each is a third of 16 dp. Longer runs stay plain.
+ */
+private val BlankLineGap = OutputTransformation {
+    val text = asCharSequence()
+    var i = 0
+    while (i < text.length) {
+        if (text[i] != '\n') { i++; continue }
+        var end = i
+        while (end < text.length && text[end] == '\n') end++
+        if (end - i == 2 && i > 0 && end < text.length) {
+            addStyle(SpanStyle(fontSize = 4.sp), i, end)
+            addStyle(ParagraphStyle(lineHeight = (16f / 3f).sp, lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None)), i, end)
+        }
+        i = end
+    }
+}
+
 /** Entry background: a touch lighter than the canvas, as in the design (#FBFBFA). */
 @Composable
 private fun paper(): Color = lerp(Cove.colors.canvas, Cove.colors.card, 0.6f)
@@ -198,6 +221,7 @@ private fun EntryField(
     modifier: Modifier = Modifier,
     color: Color = Cove.colors.ink,
     singleLine: Boolean = false,
+    shortBlankLines: Boolean = false,
     onNext: () -> Unit = {},
 ) {
     BasicTextField(
@@ -210,6 +234,7 @@ private fun EntryField(
             imeAction = if (singleLine) ImeAction.Next else ImeAction.Default,
         ),
         onKeyboardAction = { onNext() },
+        outputTransformation = if (shortBlankLines) BlankLineGap else null,
         inputTransformation = if (singleLine) InputTransformation { if (asCharSequence().contains('\n')) revertAllChanges() } else null,
         decorator = { inner ->
             Box {

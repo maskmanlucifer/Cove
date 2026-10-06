@@ -32,15 +32,31 @@ import app.cove.companion.feature.security.LockUnavailableSheet
 import app.cove.companion.feature.plan.TitleField
 
 /** Which Me sheet is open. */
-enum class MeSheet { Name, Wake, Nudges, Motion, Look, Privacy, Sync, PhotoQuality, Backup, Restore, LockAfter, LockUnavailable }
+enum class MeSheet { Name, Wake, Brief, OneThing, Spoken, Nudges, Motion, Look, Privacy, Sync, PhotoQuality, Backup, Restore, LockAfter, LockUnavailable }
 
 /** Hosts whichever sheet [sheet] names, reading and writing through [vm]. */
 @Composable
-fun MeSheets(sheet: MeSheet?, s: SettingsEntity, vm: MeViewModel, onDismiss: () -> Unit) {
+fun MeSheets(sheet: MeSheet?, s: SettingsEntity, vm: MeViewModel, briefPlay: () -> Unit = {}, onDismiss: () -> Unit) {
     when (sheet) {
         null -> Unit
         MeSheet.Name -> NameSheet(s.displayName, { n -> vm.update { it.copy(displayName = n.trim()) } }, onDismiss)
         MeSheet.Wake -> WakeSheet(s.wakeMinutes, vm::setWake, onDismiss)
+        MeSheet.Brief -> PlanSheet(onDismiss, gap = 16) { close ->
+            SheetHeading("Morning brief")
+            OnOffSegment(s.briefOn) { on -> vm.update { it.copy(briefOn = on) } }
+            SheetCaption("A short spoken summary of your day, ready when you wake.")
+            PillButton("Play today’s brief", { close(); briefPlay() }, Modifier.fillMaxWidth(), height = 52.dp)
+        }
+        MeSheet.OneThing -> PlanSheet(onDismiss, gap = 16) {
+            SheetHeading("One-thing mode")
+            OnOffSegment(s.oneThingMode) { on -> vm.update { it.copy(oneThingMode = on, oneThingUntil = 0) } }
+            SheetCaption("Today shows only the next thing to do, nothing else.")
+        }
+        MeSheet.Spoken -> PlanSheet(onDismiss, gap = 16) {
+            SheetHeading("Spoken replies")
+            OnOffSegment(s.spokenReplies) { on -> vm.update { it.copy(spokenReplies = on) } }
+            SheetCaption("Cove answers out loud after you speak to it.")
+        }
         MeSheet.Nudges -> PlanSheet(onDismiss, gap = 16) {
             SheetHeading("Nudges")
             Segmented(
@@ -100,6 +116,10 @@ fun MeSheets(sheet: MeSheet?, s: SettingsEntity, vm: MeViewModel, onDismiss: () 
         }
     }
 }
+
+@Composable
+private fun OnOffSegment(on: Boolean, onChange: (Boolean) -> Unit) =
+    Segmented(listOf("On", "Off"), if (on) 0 else 1, { onChange(it == 0) }, Modifier.fillMaxWidth(), fillWidth = true)
 
 @Composable
 private fun NameSheet(name: String, onSave: (String) -> Unit, onDismiss: () -> Unit) {

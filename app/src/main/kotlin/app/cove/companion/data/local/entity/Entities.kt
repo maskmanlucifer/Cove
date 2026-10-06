@@ -21,6 +21,8 @@ data class SettingsEntity(
     val reduceMotion: String = "system",
     val nudgeMode: String = "bundled",
     val oneThingMode: Boolean = false,
+    /** Epoch millis when One-thing mode switches itself off again (wind-down runs until the wake alarm); 0 = until switched off. */
+    val oneThingUntil: Long = 0,
     val briefOn: Boolean = true,
     val suggestionsOn: Boolean = true,
     val biometricLock: Boolean = false,

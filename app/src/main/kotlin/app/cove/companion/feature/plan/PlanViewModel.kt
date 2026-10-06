@@ -28,6 +28,8 @@ data class PlanState(
     val groups: List<CategoryGroup> = emptyList(),
     /** Every live to-do, including uncategorised ones that only show on the schedule. */
     val todos: List<TodoEntity> = emptyList(),
+    /** Today's events, so a tapped schedule line can open its editor. */
+    val events: List<EventEntity> = emptyList(),
     /** Epoch millis of "now", used for relative labels. */
     val now: Long = 0,
 )
@@ -54,7 +56,7 @@ class PlanViewModel(private val c: AppContainer) : ViewModel() {
     ) { now, events, alarms, todos, categories ->
         val at = now.toLocalDateTime()
         val items = scheduleItems(at.toLocalDate(), events, alarms, todos)
-        PlanState(buildTimeline(items, at.hour * 60 + at.minute), groupTodos(categories, todos, now), todos.filter { it.deletedAt == null }, now)
+        PlanState(buildTimeline(items, at.hour * 60 + at.minute), groupTodos(categories, todos, now), todos.filter { it.deletedAt == null }, events, now)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), PlanState())
 
     private val _undo = MutableStateFlow<UndoNotice?>(null)
@@ -108,6 +110,12 @@ class PlanViewModel(private val c: AppContainer) : ViewModel() {
     }
 
     fun addEvent(event: EventEntity) = viewModelScope.launch { c.plan.saveEvent(event) }
+
+    /** Soft-deletes [event] with Undo. */
+    fun deleteEvent(event: EventEntity) = viewModelScope.launch {
+        c.plan.saveEvent(event.copy(deletedAt = c.clock.now()))
+        offerUndo("Deleted “${event.title}”") { c.plan.saveEvent(event.copy(deletedAt = null)) }
+    }
 
     /** Creates a category at the end and returns its id. */
     fun addCategory(name: String) = viewModelScope.launch {

@@ -45,6 +45,7 @@ private const val ADD_EVENT = "add:event"
 private const val ADD_TODO = "add:todo"
 private const val CATEGORIES = "categories"
 private const val TASK = "task:"
+private const val EVENT = "event:"
 
 /** Plan tab: the day's schedule and the to-do categories, with sheets to add, edit and organise. */
 @Composable
@@ -89,7 +90,7 @@ fun PlanScreen(nav: Nav) {
                     ),
                 )
             } else {
-                Box(Modifier.padding(horizontal = 4.dp)) { ScheduleTab(state.timeline) { sheet = TASK + it } }
+                Box(Modifier.padding(horizontal = 4.dp)) { ScheduleTab(state.timeline, { sheet = TASK + it }, { sheet = EVENT + it }) }
             }
         }
         if (drag.id == null) AddButton({ sheet = if (todos) ADD_TODO else ADD_EVENT }, Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = 112.dp))
@@ -108,15 +109,15 @@ fun PlanScreen(nav: Nav) {
 @Composable
 private fun AddButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     val c = Cove.colors
-    val shadow = if (c.isDark) Color(0x66000000) else Color(0x33141420)
+    val shadow = if (c.isDark) Color(0x66000000) else Color(0x1A141420)
     Box(
         modifier
-            .size(48.dp)
-            .shadow(16.dp, CoveShapes.Circle, ambientColor = shadow, spotColor = shadow)
-            .background(c.ink, CoveShapes.Circle)
+            .size(44.dp)
+            .shadow(8.dp, CoveShapes.Circle, ambientColor = shadow, spotColor = shadow)
+            .background(c.card, CoveShapes.Circle)
             .pressable(onClick),
         contentAlignment = Alignment.Center,
-    ) { CoveIcon(PlanIcons.AddSmall, c.onInk, size = 22.dp) }
+    ) { CoveIcon(PlanIcons.AddSmall, c.muted, size = 20.dp) }
 }
 
 @Composable
@@ -136,6 +137,11 @@ private fun PlanSheets(sheet: String?, state: PlanState, vm: PlanViewModel, dism
             CategoryActions(vm::addCategory, vm::renameCategory, vm::reorderCategories, vm::deleteCategory),
             dismiss,
         )
+        sheet.startsWith(EVENT) -> {
+            val id = sheet.removePrefix(EVENT)
+            val event = remember(id, state.events.isEmpty()) { state.events.firstOrNull { it.id == id } }
+            if (event != null) EventEditSheet(event, state.now, onSave = vm::addEvent, onDelete = vm::deleteEvent, onDismiss = dismiss)
+        }
         sheet.startsWith(TASK) -> {
             val key = sheet.removePrefix(TASK)
             val todo = remember(key, state.todos.isEmpty()) { state.todos.firstOrNull { it.id == key || it.title == key } }

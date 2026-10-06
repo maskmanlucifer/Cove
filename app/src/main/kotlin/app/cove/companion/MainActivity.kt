@@ -12,7 +12,10 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.DisposableEffect
+import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -52,8 +55,12 @@ class MainActivity : FragmentActivity() {
     /** Bumped whenever something asks to open straight into listening (tile, shortcut, debug). */
     private val voiceRequest = mutableIntStateOf(0)
 
+    /** Bumped when the brief-ready notification asks to open the brief player. */
+    private val briefRequest = mutableIntStateOf(0)
+
     /** Last [voiceRequest] already acted on, so a request made while locked runs once after unlocking and never again. */
     private var handledVoice = 0
+    private var handledBrief = 0
 
     /** Shows Google's Drive consent screen when the uploader needs it and hands the result back. */
     private val driveConsent = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
@@ -75,6 +82,7 @@ class MainActivity : FragmentActivity() {
         }
         if (BuildConfig.DEBUG) handleDebugIntent()
         if (intent.action == ACTION_LISTEN) voiceRequest.intValue++
+        if (intent.action == ACTION_BRIEF) briefRequest.intValue++
         setContent {
             val ready by container.dbReady.collectAsState()
             if (!ready) {
@@ -88,6 +96,12 @@ class MainActivity : FragmentActivity() {
                 "dark" -> true
                 "light" -> false
                 else -> isSystemInDarkTheme()
+            }
+            DisposableEffect(dark) {
+                // System bar icons follow the app theme (not the OS one): light icons on the dark canvas.
+                val bars = SystemBarStyle.auto(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT) { dark }
+                enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
+                onDispose {}
             }
             val animationsOff = remember { Settings.Global.getFloat(contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f }
             val locked by container.appLock.locked.collectAsState()
@@ -103,9 +117,13 @@ class MainActivity : FragmentActivity() {
                     val pending = voiceRequest.intValue
                     val request = if (pending > handledVoice) pending else 0
                     LaunchedEffect(request) { if (request > 0) handledVoice = request }
+                    val pendingBrief = briefRequest.intValue
+                    val brief = if (pendingBrief > handledBrief) pendingBrief else 0
+                    LaunchedEffect(brief) { if (brief > 0) handledBrief = brief }
                     CoveNavHost(
                         start = debugRoute ?: DebugLaunch.route ?: if (s.onboarded) Routes.Main else Routes.Welcome,
                         voiceRequest = request,
+                        briefRequest = brief,
                     )
                 }
             }
@@ -132,6 +150,7 @@ class MainActivity : FragmentActivity() {
         setIntent(intent)
         if (BuildConfig.DEBUG) handleDebugIntent()
         if (intent.action == ACTION_LISTEN) voiceRequest.intValue++
+        if (intent.action == ACTION_BRIEF) briefRequest.intValue++
     }
 
     /**
@@ -198,5 +217,8 @@ class MainActivity : FragmentActivity() {
     companion object {
         /** Opens the app straight into listening; sent by the Quick Settings tile and the shortcut. */
         const val ACTION_LISTEN = "app.cove.companion.action.LISTEN"
+
+        /** Opens the morning brief player; sent by the brief-ready notification. */
+        const val ACTION_BRIEF = "app.cove.companion.action.BRIEF"
     }
 }

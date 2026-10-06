@@ -72,9 +72,9 @@ fun ringMessage(hour: Int, firstEventMinutes: Int?): String {
     }
 }
 
-/** The ring screen: date, time, a calm line, hold-to-stop and snooze. */
+/** The ring screen: date, time, a calm line, hold-to-stop and snooze; [onPlayBrief] adds a quiet "Play my brief" link when the brief is on. */
 @Composable
-fun RingScreen(ring: RingState, message: String, onStop: () -> Unit, onSnooze: () -> Unit) {
+fun RingScreen(ring: RingState, message: String, onStop: () -> Unit, onSnooze: () -> Unit, onPlayBrief: (() -> Unit)? = null) {
     val c = Cove.colors
     val context = LocalContext.current
     val day = remember { context.container.clock.now().toLocalDate() }
@@ -99,6 +99,11 @@ fun RingScreen(ring: RingState, message: String, onStop: () -> Unit, onSnooze: (
                 textAlign = TextAlign.Center,
             )
             Box(Modifier.weight(1f))
+            onPlayBrief?.let {
+                Box(Modifier.padding(bottom = 8.dp).height(44.dp).pressable(it).padding(horizontal = 20.dp), contentAlignment = Alignment.Center) {
+                    CoveText("Play my brief", style = CoveType.Body.copy(fontSize = 16.sp), color = lerp(c.muted, c.ink, 0.57f))
+                }
+            }
             HoldToStop(onStop)
             Box(
                 Modifier.padding(top = 8.dp).height(56.dp).pressable(onSnooze).padding(horizontal = 20.dp),

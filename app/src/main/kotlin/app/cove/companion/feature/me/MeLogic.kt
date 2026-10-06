@@ -93,3 +93,6 @@ fun photoQualityHelp(value: String) = when (value) {
     PhotoQuality.HIGH -> "Keeps more detail. Photos take about twice the space in your Drive."
     else -> "Small files that still look sharp on your phone. Applies to photos you add from now on."
 }
+
+/** "On" or "Off", the value shown on toggle rows. */
+fun onOff(on: Boolean) = if (on) "On" else "Off"
