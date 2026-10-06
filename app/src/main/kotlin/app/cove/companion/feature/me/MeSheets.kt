@@ -19,7 +19,6 @@ import androidx.compose.ui.unit.dp
 import app.cove.companion.design.Cove
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.TextScales
-import app.cove.companion.design.components.ButtonKind
 import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.PillButton
 import app.cove.companion.data.local.entity.SettingsEntity
@@ -32,7 +31,7 @@ import app.cove.companion.feature.security.LockUnavailableSheet
 import app.cove.companion.feature.plan.TitleField
 
 /** Which Me sheet is open. */
-enum class MeSheet { Name, Wake, Brief, OneThing, Spoken, Nudges, Motion, Look, Privacy, Sync, PhotoQuality, Backup, Restore, LockAfter, LockUnavailable }
+enum class MeSheet { Name, Wake, Brief, OneThing, Spoken, Nudges, Motion, Look, Privacy, PhotoQuality, Backup, Restore, LockAfter, LockUnavailable }
 
 /** Hosts whichever sheet [sheet] names, reading and writing through [vm]. */
 @Composable
@@ -108,12 +107,6 @@ fun MeSheets(sheet: MeSheet?, s: SettingsEntity, vm: MeViewModel, briefPlay: () 
             SheetCaption(photoQualityHelp(s.photoQuality))
         }
         MeSheet.Backup, MeSheet.Restore -> BackupSheet(sheet == MeSheet.Restore, vm, onDismiss)
-        MeSheet.Sync -> PlanSheet(onDismiss, gap = 16) { close ->
-            SheetHeading("Sync")
-            SheetCaption("Your changes are copied to your own space whenever you are online.")
-            PillButton("Sync now", { vm.syncNow(); close() }, Modifier.fillMaxWidth(), height = 52.dp)
-            PillButton("Sign out", { vm.signOut(); close() }, Modifier.fillMaxWidth(), kind = ButtonKind.Destructive, height = 52.dp)
-        }
     }
 }
 

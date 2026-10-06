@@ -20,7 +20,8 @@ import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.put
 
 /**
- * Client of the Supabase Edge Function `ai-gateway` (PLAN 6b). Never send journal content through it.
+ * Where voice commands and brief lines go when the on-device layers cannot answer: [GeminiDirectClient] by default,
+ * or the legacy Edge Function client. Never send journal content through it.
  */
 interface AiGateway {
     /** False when no backend is configured; callers skip the cloud layer entirely. */
@@ -41,7 +42,10 @@ interface AiGateway {
     suspend fun briefLine(kind: String, facts: Map<String, String>): String? = null
 }
 
-/** Ktor implementation; URL and key come from `BuildConfig`, a blank URL disables it, and [tokenProvider] supplies the signed-in user token the gateway verifies. */
+/**
+ * Legacy mode: client of the optional Supabase Edge Function (see "Advanced: server-side key" in `docs/SETUP.md`).
+ * A blank URL disables it and [tokenProvider] supplies the signed-in user token the function verifies.
+ */
 class KtorAiGateway(
     private val baseUrl: String,
     private val anonKey: String,
@@ -114,4 +118,20 @@ class KtorAiGateway(
         val confidence = (obj["confidence"] as? JsonPrimitive)?.doubleOrNull
         return if (confidence != null && confidence < 0.5) null else text
     }
+}
+
+/** [AiGateway] that forwards every call to whatever [current] returns, so a credential change takes effect without a restart. */
+class SwitchingAiGateway(private val current: () -> AiGateway) : AiGateway {
+    override val enabled: Boolean get() = current().enabled
+
+    override suspend fun parseIntent(transcript: String, now: String, zone: String, todoCategories: List<String>): String? =
+        current().parseIntent(transcript, now, zone, todoCategories)
+
+    override suspend fun briefLine(kind: String, facts: Map<String, String>): String? = current().briefLine(kind, facts)
+}
+
+/** Gateway used when no AI service is set up: always disabled. */
+object NoAiGateway : AiGateway {
+    override val enabled: Boolean get() = false
+    override suspend fun parseIntent(transcript: String, now: String, zone: String, todoCategories: List<String>): String? = null
 }

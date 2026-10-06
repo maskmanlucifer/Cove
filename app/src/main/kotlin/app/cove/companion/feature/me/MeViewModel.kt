@@ -8,7 +8,9 @@ import app.cove.companion.data.local.entity.AlarmEntity
 import app.cove.companion.data.local.entity.SettingsEntity
 import app.cove.companion.feature.onboarding.saveWakeTime
 import app.cove.companion.data.sync.ConflictDescriber
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -28,10 +30,13 @@ class MeViewModel(private val c: AppContainer) : ViewModel() {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** Sync row text, refreshed every 30 s so "2 min ago" keeps moving. */
-    val sync: StateFlow<SyncUi> = combine(
-        c.sync.authState, c.sync.status, c.sync.conflicts,
-        flow { while (true) { emit(Unit); delay(30_000) } },
-    ) { auth, status, conflicts, _ -> syncUi(auth, status, conflicts.size, c.clock.now()) }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val sync: StateFlow<SyncUi> = c.cloudChanges().flatMapLatest { cloud ->
+        combine(
+            cloud.sync.authState, cloud.sync.status, cloud.sync.conflicts,
+            flow { while (true) { emit(Unit); delay(30_000) } },
+        ) { auth, status, conflicts, _ -> syncUi(auth, status, conflicts.size, c.clock.now()) }
+    }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SyncUi("", false, false, 0))
 
     /** Title of the oldest unresolved conflict, for the banner. */
@@ -46,9 +51,12 @@ class MeViewModel(private val c: AppContainer) : ViewModel() {
     val backup: StateFlow<BackupUi> = _backup
 
     /** "Never", "2 d ago" or "Not set up" for the Back up now row. */
-    val backupLabel: StateFlow<String> = combine(
-        c.driveKit.lastBackupAt, flow { while (true) { emit(Unit); delay(30_000) } },
-    ) { last, _ -> backupLabel(c.driveKit.enabled, last, c.clock.now()) }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val backupLabel: StateFlow<String> = c.cloudChanges().flatMapLatest { cloud ->
+        combine(
+            cloud.drive.lastBackupAt, flow { while (true) { emit(Unit); delay(30_000) } },
+        ) { last, _ -> backupLabel(cloud.drive.enabled, last, c.clock.now()) }
+    }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
 
     /** Clears the sheet message when a sheet opens or closes. */
@@ -70,12 +78,6 @@ class MeViewModel(private val c: AppContainer) : ViewModel() {
         }
         _backup.value = BackupUi(busy = true)
         viewModelScope.launch { _backup.value = BackupUi(message = backupMessage(work(), restoring)) }
-    }
-
-    fun syncNow() = c.sync.requestSync()
-
-    fun signOut() {
-        viewModelScope.launch { c.auth.signOut() }
     }
 
     fun update(change: (SettingsEntity) -> SettingsEntity) {

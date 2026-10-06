@@ -4,7 +4,7 @@ import android.app.Application
 import android.content.Context
 import app.cove.companion.core.Notifications
 import app.cove.companion.feature.alarms.AlarmRescheduler
-import app.cove.companion.data.auth.GoogleSignIn
+import app.cove.companion.feature.onboarding.SignInLauncher
 import app.cove.companion.feature.onboarding.SignIn
 import app.cove.companion.feature.brief.BriefScheduler
 import kotlinx.coroutines.flow.first
@@ -39,9 +39,8 @@ class CoveApp : Application() {
         c.settings.settings.first()
         Notifications.createChannels(this)
         AlarmRescheduler(this, c).start()
-        SignIn.launcher = GoogleSignIn(c.auth, BuildConfig.GOOGLE_WEB_CLIENT_ID, c.appScope)
-        c.sync.start()
-        c.driveKit.start()
+        SignIn.launcher = SignInLauncher { context, onResult -> c.cloud.signIn.signIn(context, onResult) }
+        c.startCloud()
         c.appScope.launch {
             c.settings.settings.map { it.briefOn to it.wakeMinutes }.distinctUntilChanged()
                 .collect { (on, wake) -> BriefScheduler.apply(this@CoveApp, on, wake) }

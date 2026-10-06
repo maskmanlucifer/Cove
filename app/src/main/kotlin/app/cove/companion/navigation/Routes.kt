@@ -33,6 +33,7 @@ object Routes {
     fun journalEdit(id: String = "new") = "journal/$id"
 
     const val SyncConflict = "sync/conflict"
+    const val Connect = "connect"
 }
 
 /** Navigation actions exposed to screens, so they never touch `NavController` directly. */

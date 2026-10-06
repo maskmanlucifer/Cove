@@ -33,7 +33,24 @@ import app.cove.companion.data.repo.TodoRepository
 import app.cove.companion.data.sync.ConflictResolver
 import app.cove.companion.data.sync.SyncManager
 import app.cove.companion.core.net.ConnectivityMonitor
+import app.cove.companion.data.ai.AiGateway
+import app.cove.companion.data.ai.GeminiDirectClient
 import app.cove.companion.data.ai.KtorAiGateway
+import app.cove.companion.data.ai.NoAiGateway
+import app.cove.companion.data.ai.SwitchingAiGateway
+import app.cove.companion.data.auth.GoogleSignIn
+import app.cove.companion.data.config.CloudServices
+import app.cove.companion.data.config.CredentialStore
+import app.cove.companion.data.config.Credentials
+import app.cove.companion.data.config.ServiceProvider
+import app.cove.companion.security.SecretBox
+import android.app.PendingIntent
+import java.io.File
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import app.cove.companion.feature.brief.AndroidSpeechOut
 import app.cove.companion.feature.today.NextCardMemory
 import app.cove.companion.feature.brief.BriefGenerator
@@ -87,16 +104,91 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
 
     private val httpClient by lazy { HttpClient(OkHttp) }
 
-    /** Supabase session; [AuthState.Disabled] when the build has no backend configured. */
-    val auth by lazy {
-        AuthRepository(BuildConfig.SUPABASE_URL, BuildConfig.SUPABASE_ANON_KEY, EncryptedSessionStore(context), httpClient)
+    /** The user's own credentials, stored encrypted on this phone; Gradle properties only fill blanks in debug builds. */
+    val credentialStore by lazy {
+        CredentialStore(
+            File(context.noBackupFilesDir, "cove-credentials.bin"), SecretBox("cove_credentials"),
+            Credentials(BuildConfig.SUPABASE_URL.trim(), BuildConfig.SUPABASE_ANON_KEY.trim(), BuildConfig.GOOGLE_WEB_CLIENT_ID.trim()),
+        )
     }
 
-    /** Cloud sync; inert until configured and signed in. */
-    val sync by lazy {
-        SyncManager(context.applicationContext, database, auth, BuildConfig.SUPABASE_URL, BuildConfig.SUPABASE_ANON_KEY, httpClient, clock, appScope)
+    /** Effective credentials; services rebuild when the part they use changes. */
+    val credentials: StateFlow<Credentials> get() = credentialStore.credentials
+
+    private val cloudProvider by lazy {
+        ServiceProvider(
+            credentials,
+            key = { Triple(it.supabaseUrl, it.supabaseAnonKey, it.googleWebClientId) },
+            build = ::buildCloud,
+            retire = CloudServices::close,
+        )
     }
-    val conflictResolver by lazy { ConflictResolver(database, plan, todos, sync::requestSync) }
+
+    /** Supabase, sync, Google sign-in and Drive for the current credentials; replaced when those change. */
+    val cloud: CloudServices get() = cloudProvider.get()
+
+    /** Emits the current [cloud] and each replacement, for observers that must follow it. */
+    fun cloudChanges(): Flow<CloudServices> = cloudProvider.changes()
+
+    /** Drive consent screens to show, following the current [cloud]. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun driveConsents(): Flow<PendingIntent?> = cloudChanges().flatMapLatest { it.drive.consentRequests }.flowOn(Dispatchers.Default)
+
+    /** Starts sync and Drive for the current and every later [cloud]. Call once the database is ready. */
+    fun startCloud() {
+        appScope.launch { cloudChanges().collect { it.start() } }
+    }
+
+    private fun buildCloud(c: Credentials): CloudServices {
+        val scope = CoroutineScope(SupervisorJob(appScope.coroutineContext[Job]) + Dispatchers.Default)
+        val sessions = EncryptedSessionStore(context)
+        forgetSessionOfOtherProject(c.supabaseUrl, sessions)
+        val auth = AuthRepository(c.supabaseUrl, c.supabaseAnonKey, sessions, httpClient)
+        val thumbs = if (auth.enabled) SupabaseThumbStore(c.supabaseUrl, c.supabaseAnonKey, auth, httpClient) else null
+        return CloudServices(
+            auth,
+            SyncManager(context.applicationContext, database, auth, c.supabaseUrl, c.supabaseAnonKey, httpClient, clock, scope),
+            DriveKit(
+                context.applicationContext, database, journal, settings, changeLog, auth, c.googleWebClientId, httpClient,
+                thumbs, journalFiles, clock, scope,
+            ),
+            GoogleSignIn(auth, c.googleWebClientId, scope),
+            scope,
+        )
+    }
+
+    /** A saved session belongs to one Supabase project; pointing the app at another signs out. */
+    private fun forgetSessionOfOtherProject(url: String, sessions: EncryptedSessionStore) {
+        if (url.isBlank()) return
+        val prefs = context.getSharedPreferences("cove_cloud", Context.MODE_PRIVATE)
+        val previous = prefs.getString("project", null)
+        if (previous != null && previous != url) sessions.save(null)
+        prefs.edit().putString("project", url).apply()
+    }
+
+    /** Supabase session; [AuthState.Disabled] when no backend is set up. */
+    val auth: AuthRepository get() = cloud.auth
+
+    /** Cloud sync; inert until configured and signed in. */
+    val sync: SyncManager get() = cloud.sync
+    val conflictResolver by lazy { ConflictResolver(database, plan, todos) { sync.requestSync() } }
+
+    private val aiProvider by lazy {
+        ServiceProvider(
+            credentials,
+            key = { listOf(it.geminiApiKey, it.model, it.fallbackModel, it.supabaseUrl, it.supabaseAnonKey) },
+            build = { c ->
+                when {
+                    c.hasGemini -> GeminiDirectClient(c.geminiApiKey, c.model, c.fallbackModel, httpClient)
+                    c.hasSupabase -> KtorAiGateway(c.supabaseUrl, c.supabaseAnonKey, httpClient, tokenProvider = { auth.accessToken() })
+                    else -> NoAiGateway
+                }
+            },
+        )
+    }
+
+    /** Cloud language layer: Gemini with the user's key, else the legacy Edge Function, else off. Follows credential changes. */
+    val aiGateway: AiGateway by lazy { SwitchingAiGateway { aiProvider.get() } }
 
     /** Voice assistant services (parser, executor, TTS, undo chip). */
     val voice by lazy { VoiceKit(context.applicationContext, this) }
@@ -119,13 +211,7 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
     )
 
     /** Google Drive storage for media and backups; inert until configured, signed in and consented. */
-    val driveKit by lazy {
-        DriveKit(
-            context.applicationContext, database, journal, settings, changeLog, auth, BuildConfig.GOOGLE_WEB_CLIENT_ID, httpClient,
-            if (auth.enabled) SupabaseThumbStore(BuildConfig.SUPABASE_URL, BuildConfig.SUPABASE_ANON_KEY, auth, httpClient) else null,
-            journalFiles, clock, appScope,
-        )
-    }
+    val driveKit: DriveKit get() = cloud.drive
     val journalSearch = JournalSearch(database, NoOpEmbedder)
     val searchIndexer = SearchIndexer(database, journalSearch, NanoInsights(), NoOpEmbedder, clock, foreground)
 
@@ -143,7 +229,7 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
         val prefs = BriefPrefs(context)
         BriefGenerator(
             this, context.applicationContext, WeatherClient(prefs, clock::now), prefs, calendar,
-            KtorAiGateway(BuildConfig.SUPABASE_URL, BuildConfig.SUPABASE_ANON_KEY), clock,
+            aiGateway, clock,
         )
     }
 

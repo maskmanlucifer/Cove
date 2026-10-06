@@ -9,7 +9,11 @@ import app.cove.companion.data.local.CoveDatabase
 import app.cove.companion.data.local.entity.SyncConflictEntity
 import io.ktor.client.HttpClient
 import java.util.UUID
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
@@ -48,9 +52,15 @@ class SyncManager(
     val authState: StateFlow<AuthState> = auth.state
     val conflicts: Flow<List<SyncConflictEntity>> = db.sync().observeConflicts()
 
-    /** Begins reacting to sign-in, local writes and (via [onForeground]) app opens. Call once. */
+    /**
+     * Begins reacting to sign-in, local writes and (via [onForeground]) app opens. Call once. When no backend is
+     * configured it instead cancels any work an earlier configuration scheduled.
+     */
     fun start() {
-        if (!enabled) return
+        if (!enabled) {
+            SyncScheduler.cancelAll(context)
+            return
+        }
         engine.restore(prefs.getLong("lastSyncAt", 0))
         scope.launch {
             auth.state.collectLatest { state ->
@@ -76,13 +86,22 @@ class SyncManager(
         if (enabled && auth.state.value is AuthState.SignedIn) SyncScheduler.requestNow(context)
     }
 
-    /** Runs a sync now; true when nothing needs retrying. */
+    /**
+     * Runs a sync now; true when nothing needs retrying. The run belongs to [scope], so replacing the credentials
+     * (which cancels the scope) stops it mid-way; a stopped run reports true because the new setup starts afresh.
+     */
     suspend fun syncNow(): Boolean {
-        if (auth.state.value !is AuthState.SignedIn) return true
+        if (auth.state.value !is AuthState.SignedIn || !scope.isActive) return true
+        val run = scope.async { engine.sync() }
         return try {
-            engine.sync()
+            run.await()
         } catch (e: SyncAuthException) {
             false
+        } catch (e: CancellationException) {
+            if (currentCoroutineContext().isActive) true else {
+                run.cancel()
+                throw e
+            }
         }
     }
 

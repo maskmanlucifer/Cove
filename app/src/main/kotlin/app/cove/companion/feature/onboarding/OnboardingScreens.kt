@@ -51,12 +51,12 @@ import app.cove.companion.design.components.Hairline
 import app.cove.companion.design.components.PillButton
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.navigation.Nav
+import app.cove.companion.navigation.Routes
 import kotlin.math.hypot
 
 /** Step 0: promise, "Get started" and a way in for people who already use Cove. */
 @Composable
 fun WelcomeScreen(nav: Nav) {
-    val context = LocalContext.current
     val next = { nav.go(OnboardingStep.Welcome.next!!.route) }
     CoveScreen {
         WelcomeBlob()
@@ -75,7 +75,7 @@ fun WelcomeScreen(nav: Nav) {
             }
             BigButton("Get started", next)
             Box(Modifier.padding(top = 4.dp)) {
-                TextAction("I already use Cove") { SignIn.launcher.signIn(context) { next() } }
+                TextAction("I already use Cove") { nav.go(Routes.Connect) }
             }
         }
     }

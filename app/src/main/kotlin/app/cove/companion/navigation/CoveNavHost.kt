@@ -35,6 +35,7 @@ import app.cove.companion.feature.onboarding.MicPermissionScreen
 import app.cove.companion.feature.onboarding.WakeTimeScreen
 import app.cove.companion.feature.onboarding.WelcomeScreen
 import app.cove.companion.feature.sync.SyncConflictScreen
+import app.cove.companion.feature.connect.ConnectScreen
 import app.cove.companion.feature.today.OneThingScreen
 import app.cove.companion.feature.voice.VoiceScreen
 
@@ -94,6 +95,7 @@ fun CoveNavHost(start: String, voiceRequest: Int = 0, briefRequest: Int = 0) {
 
         composable(Routes.JournalEdit, idArg) { JournalEditScreen(id(it), nav) }
         composable(Routes.SyncConflict) { SyncConflictScreen(nav) }
+        composable(Routes.Connect) { ConnectScreen(nav) }
         if (BuildConfig.DEBUG) composable("debug/money-logged") { MoneyLoggedDebugScreen() }
     }
     LaunchedEffect(voiceRequest) { if (voiceRequest > 0 && start == Routes.Main) nav.go(Routes.Voice) }
