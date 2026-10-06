@@ -55,7 +55,7 @@ fun EmptyState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = if (fill) Arrangement.Center else Arrangement.Top,
     ) {
-        val artHeight = if (compact) 128.dp else 176.dp
+        val artHeight = if (compact) 144.dp else 200.dp
         if (scene.isTimeOfDay) SceneBanner(scene, if (compact) 120.dp else 190.dp, Modifier.fillMaxWidth())
         else Illustration(scene, Modifier.height(artHeight))
         Column(
