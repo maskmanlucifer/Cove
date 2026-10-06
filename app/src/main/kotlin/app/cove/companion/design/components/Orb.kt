@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import app.cove.companion.design.CoveIcon
 import app.cove.companion.design.CoveIcons
 import app.cove.companion.design.CoveShapes
+import app.cove.companion.design.LightColors
 import app.cove.companion.design.OrbColors
 import kotlin.math.hypot
 
@@ -41,9 +42,10 @@ fun DrawScope.drawOrbGradient() {
             ),
         )
     }
-    blob(OrbColors.Sky, 0.50f, 0.75f, 0.60f)
+    blob(OrbColors.Leaf, 0.50f, 0.75f, 0.60f)
     blob(OrbColors.Lilac, 0.70f, 0.45f, 0.60f)
     blob(OrbColors.Peach, 0.35f, 0.35f, 0.55f)
+    blob(OrbColors.Sun, 0.58f, 0.30f, 0.42f)
 }
 
 /** Voice orb button. [breathing] animates a slow 4 s pulse while idle-listening. */
@@ -69,6 +71,6 @@ fun VoiceOrb(
         contentAlignment = Alignment.Center,
     ) {
         Canvas(Modifier.size(size)) { drawOrbGradient() }
-        CoveIcon(CoveIcons.Mic, androidx.compose.ui.graphics.Color(0xFF16171A), size = if (size < 48.dp) 18.dp else 24.dp)
+        CoveIcon(CoveIcons.Mic, LightColors.ink, size = if (size < 48.dp) 18.dp else 24.dp)
     }
 }

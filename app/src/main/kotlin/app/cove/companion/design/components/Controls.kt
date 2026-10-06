@@ -47,17 +47,18 @@ import app.cove.companion.design.LocalReduceMotion
 import app.cove.companion.design.CoveShapes
 import app.cove.companion.design.CoveType
 
-/** Round tick box used by to-dos and habits; filled ink when [checked]. [label] names the item for screen readers. */
+/** Round tick box used by to-dos and habits; filled leaf green when [checked], with a soft bloom as it completes. [label] names the item for screen readers. */
 @Composable
 fun CheckCircle(checked: Boolean, onToggle: (() -> Unit)?, modifier: Modifier = Modifier, size: Int = 22, label: String? = null) {
     val c = Cove.colors
-    val bg by animateColorAsState(if (checked) c.ink else Color.Transparent, tween(if (LocalReduceMotion.current) 0 else 200), label = "check")
+    val bg by animateColorAsState(if (checked) c.accent else Color.Transparent, tween(if (LocalReduceMotion.current) 0 else 200), label = "check")
     Box(
         modifier
             .size(size.dp)
+            .bloom(checked, c.accent)
             .clip(CoveShapes.Circle)
             .background(bg)
-            .let { if (checked) it else it.border(1.5.dp, if (c.isDark) c.tail else Color(0xFFCFD1D5), CoveShapes.Circle) }
+            .let { if (checked) it else it.border(1.5.dp, c.ring, CoveShapes.Circle) }
             .let {
                 if (onToggle != null) {
                     it.pressable(onToggle, onClickLabel = if (checked) "Mark not done" else "Mark done", role = Role.Checkbox)
@@ -69,18 +70,18 @@ fun CheckCircle(checked: Boolean, onToggle: (() -> Unit)?, modifier: Modifier = 
             },
         contentAlignment = Alignment.Center,
     ) {
-        if (checked) CoveIcon(CoveIcons.Check, c.onInk, size = (size * 0.7f).dp)
+        if (checked) CoveIcon(CoveIcons.Check, c.onAccent, size = (size * 0.7f).dp)
     }
 }
 
-/** 46x28 on/off switch from the design (ink track, white thumb); [label] names what it controls for screen readers. */
+/** 46x28 on/off switch from the design (leaf-green track, white thumb); [label] names what it controls for screen readers. */
 @Composable
 fun CoveSwitch(checked: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier = Modifier, label: String? = null, enabled: Boolean = true) {
     val c = Cove.colors
     val ms = if (LocalReduceMotion.current) 0 else 200
     val haptic = LocalHapticFeedback.current
     val x by animateDpAsState(if (checked) 21.dp else 3.dp, tween(ms), label = "thumb")
-    val track by animateColorAsState(if (checked) c.ink else c.switchOff, tween(ms), label = "track")
+    val track by animateColorAsState(if (checked) c.accent else c.switchOff, tween(ms), label = "track")
     Box(
         modifier
             .size(46.dp, 28.dp)
@@ -98,7 +99,7 @@ fun CoveSwitch(checked: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier
                 .offset(x, 3.dp)
                 .size(22.dp)
                 .clip(CoveShapes.Circle)
-                .background(if (checked) c.onInk else Color.White),
+                .background(if (checked) c.onAccent else Color.White),
         )
     }
 }
@@ -170,22 +171,22 @@ fun Chip(text: String, onClick: (() -> Unit)? = null, modifier: Modifier = Modif
     Box(
         modifier
             .height(height.dp)
-            .background(if (selected) c.ink else c.card, CoveShapes.Pill)
+            .background(if (selected) c.accent else c.card, CoveShapes.Pill)
             .let { if (onClick != null) it.pressable(onClick, role = Role.Button).semantics { this.selected = selected } else it }
             .padding(horizontal = 14.dp),
         contentAlignment = Alignment.Center,
     ) {
-        CoveText(text, style = CoveType.Meta, color = if (selected) c.onInk else c.ink, maxLines = 1)
+        CoveText(text, style = CoveType.Meta, color = if (selected) c.onAccent else c.ink, maxLines = 1)
     }
 }
 
-/** White rounded surface used for grouped content. */
+/** Warm rounded surface used for grouped content; pass a hue's tint as [color] for a gently coloured card. */
 @Composable
-fun CoveCard(modifier: Modifier = Modifier, padding: Int = 24, content: @Composable () -> Unit) {
+fun CoveCard(modifier: Modifier = Modifier, padding: Int = 24, color: Color = Cove.colors.card, content: @Composable () -> Unit) {
     Column(
         modifier
             .fillMaxWidth()
-            .background(Cove.colors.card, CoveShapes.Card)
+            .background(color, CoveShapes.Card)
             .padding(padding.dp),
     ) { content() }
 }

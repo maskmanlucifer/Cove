@@ -98,7 +98,7 @@ fun HabitNewScreen(nav: Nav, id: String = "new") {
                 Modifier
                     .padding(8.dp)
                     .fillMaxWidth()
-                    .shadow(24.dp, CoveShapes.SheetFloating, ambientColor = Color(0x1A141420), spotColor = Color(0x1A141420))
+                    .shadow(24.dp, CoveShapes.SheetFloating, ambientColor = c.shadow, spotColor = c.shadow)
                     .background(c.card, CoveShapes.SheetFloating)
                     .clickable(remember { MutableInteractionSource() }, indication = null) {}
                     .verticalScroll(rememberScrollState())

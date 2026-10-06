@@ -94,7 +94,7 @@ private fun VoiceProgress(progress: Float, hint: String?) {
         CoveText(hint, style = CoveType.Meta, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         return
     }
-    Box(Modifier.fillMaxWidth().height(4.dp).background(if (c.isDark) c.wellStrong else Color(0xFFE0E0DD), CoveShapes.Pill)) {
+    Box(Modifier.fillMaxWidth().height(4.dp).background(c.wellStrong, CoveShapes.Pill)) {
         Box(Modifier.fillMaxWidth(progress).fillMaxHeight().background(c.ink, CoveShapes.Pill))
     }
 }

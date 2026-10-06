@@ -103,7 +103,7 @@ private fun summaryLine(s: MoneyState): String {
 @Composable
 private fun DailyBars(bars: List<DayBar>) {
     val c = Cove.colors
-    val quiet = if (c.isDark) c.tail else androidx.compose.ui.graphics.Color(0xFFC8CACE)
+    val quiet = c.quiet
     Row(Modifier.fillMaxWidth().height(40.dp), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.Bottom) {
         bars.forEach { bar ->
             val (color, h) = when (bar.kind) {

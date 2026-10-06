@@ -23,13 +23,33 @@ val Geist = FontFamily(
     },
 )
 
+/**
+ * Fraunces variable serif for big titles only: soft, not wonky, display optical size.
+ * Numbers, labels and UI text stay in [Geist].
+ */
+@OptIn(ExperimentalTextApi::class)
+val Fraunces = FontFamily(
+    listOf(400, 500, 600).map { w ->
+        Font(
+            R.font.fraunces,
+            weight = FontWeight(w),
+            variationSettings = FontVariation.Settings(
+                FontVariation.weight(w),
+                FontVariation.Setting("SOFT", 100f),
+                FontVariation.Setting("WONK", 0f),
+                FontVariation.Setting("opsz", 48f),
+            ),
+        )
+    },
+)
+
 private val Trim = LineHeightStyle(
     alignment = LineHeightStyle.Alignment.Center,
     trim = LineHeightStyle.Trim.None,
 )
 
-private fun style(size: Int, line: Number, weight: Int = 400, spacing: Double = 0.0) = TextStyle(
-    fontFamily = Geist,
+private fun style(size: Int, line: Number, weight: Int = 400, spacing: Double = 0.0, family: FontFamily = Geist) = TextStyle(
+    fontFamily = family,
     fontSize = size.sp,
     lineHeight = line.toFloat().sp,
     fontWeight = FontWeight(weight),
@@ -42,7 +62,7 @@ private fun style(size: Int, line: Number, weight: Int = 400, spacing: Double = 
 object CoveType {
     val Figure = style(60, 62, 400, -2.4)
     val Hero = style(44, 46, 400, -1.6)
-    val Title = style(32, 38, 500, -0.8)
+    val Title = style(32, 38, 500, -0.5, Fraunces)
     val Section = style(26, 30, 500, -0.5)
     val Heading = style(19, 25.65, 500, -0.2)
     val Value = style(22, 29.7, 500)

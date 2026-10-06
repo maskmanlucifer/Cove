@@ -83,7 +83,7 @@ fun WelcomeScreen(nav: Nav) {
     }
 }
 
-/** The soft peach, lilac and sky glow behind the welcome headline. */
+/** The soft peach, sun, leaf and lilac glow behind the welcome headline. */
 @Composable
 private fun WelcomeBlob() {
     val dark = Cove.colors.isDark
@@ -103,9 +103,10 @@ private fun WelcomeBlob() {
                 drawRect(Brush.radialGradient(0f to tint, stop to tint.copy(alpha = 0f), center = center, radius = reach))
             }
             clipPath(circle) {
-                blob(OrbColors.Sky, 0.50f, 0.65f, 0.50f)
+                blob(OrbColors.Leaf, 0.50f, 0.65f, 0.50f)
                 blob(OrbColors.Lilac, 0.65f, 0.45f, 0.48f)
                 blob(OrbColors.Peach, 0.40f, 0.40f, 0.45f)
+                blob(OrbColors.Sun, 0.58f, 0.30f, 0.42f)
             }
         }
     }

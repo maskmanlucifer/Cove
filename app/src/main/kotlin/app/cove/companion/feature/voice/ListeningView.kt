@@ -117,7 +117,8 @@ private fun DrawScope.drawWash() {
         val farthest = hypot(maxOf(center.x, size.width - center.x), maxOf(center.y, size.height - center.y))
         drawRect(Brush.radialGradient(0f to color, 1f to color.copy(alpha = 0f), center = center, radius = farthest * stop))
     }
-    blob(OrbColors.Sky, 0.50f, 0.65f, 0.50f)
+    blob(OrbColors.Leaf, 0.50f, 0.65f, 0.50f)
     blob(OrbColors.Lilac, 0.65f, 0.45f, 0.48f)
     blob(OrbColors.Peach, 0.40f, 0.40f, 0.45f)
+    blob(OrbColors.Sun, 0.58f, 0.30f, 0.42f)
 }

@@ -175,7 +175,7 @@ internal fun KindToggle(options: List<String>, selected: Int, onSelect: (Int) ->
                 Modifier
                     .then(if (fill) Modifier.weight(1f) else Modifier)
                     .fillMaxHeight()
-                    .then(if (on) Modifier.shadow(1.dp, CoveShapes.Pill, ambientColor = Color(0x0F141420), spotColor = Color(0x0F141420)) else Modifier)
+                    .then(if (on) Modifier.shadow(1.dp, CoveShapes.Pill, ambientColor = c.shadow, spotColor = c.shadow) else Modifier)
                     .background(if (on) c.card else Color.Transparent, CoveShapes.Pill)
                     .pressable({ onSelect(i) })
                     .padding(horizontal = 16.dp),

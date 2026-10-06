@@ -151,7 +151,7 @@ private fun Avatar(name: String, photo: ImageBitmap?, onClick: () -> Unit) {
     val c = Cove.colors
     val initial = avatarInitial(name)
     Box(
-        Modifier.size(56.dp).clip(CoveShapes.Circle).background(if (c.isDark) c.wellStrong else Color(0xFFE4E1DB))
+        Modifier.size(56.dp).clip(CoveShapes.Circle).background(c.wellStrong)
             .pressable(onClick, role = Role.Button).semantics { contentDescription = "Profile photo, double tap to change" },
         contentAlignment = Alignment.Center,
     ) {

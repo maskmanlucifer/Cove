@@ -24,7 +24,7 @@ fun Modifier.coveTopInset(min: Dp = 48.dp): Modifier {
 /** Full-screen canvas background; content area starts below the status bar. */
 @Composable
 fun CoveScreen(modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
-    Box(modifier.fillMaxSize().background(Cove.colors.canvas), content = content)
+    Box(modifier.fillMaxSize().background(Cove.colors.canvas).paperGrain(if (Cove.colors.isDark) 0.09f else 0.07f), content = content)
 }
 
 /** Height of the bottom bar's hit area and fade: pill and orb (44 dp) sit 22 dp above the screen edge. */

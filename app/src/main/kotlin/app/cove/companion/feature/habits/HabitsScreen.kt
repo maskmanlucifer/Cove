@@ -144,7 +144,7 @@ private fun HabitCard(row: HabitRow, onOpen: () -> Unit, onToggleToday: () -> Un
 @Composable
 private fun Dot(on: Boolean, today: Boolean) {
     val c = Cove.colors
-    val ring = if (c.isDark) c.tail else Color(0xFFCFD1D5)
+    val ring = c.ring
     Box(
         Modifier
             .size(12.dp)

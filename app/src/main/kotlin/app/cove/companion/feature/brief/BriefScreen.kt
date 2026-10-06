@@ -205,7 +205,7 @@ private fun Scrubber(s: PlayerState) {
         },
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        val track = if (c.isDark) c.wellStrong else Color(0xFFE4E4E1)
+        val track = c.wellStrong
         Box(Modifier.fillMaxWidth().height(4.dp).background(track, RoundedCornerShape(2.dp))) {
             Box(Modifier.fillMaxWidth(s.progress.coerceIn(0f, 1f)).fillMaxHeight().background(c.ink, RoundedCornerShape(2.dp)))
         }

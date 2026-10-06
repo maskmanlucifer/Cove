@@ -140,7 +140,7 @@ fun PlanScreen(nav: Nav) {
 @Composable
 private fun AddButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val c = Cove.colors
-    val shadow = if (c.isDark) Color(0x66000000) else Color(0x1A141420)
+    val shadow = c.shadow
     Box(
         modifier
             .size(44.dp)

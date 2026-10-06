@@ -65,7 +65,7 @@ fun SuggestionCard(decision: DecisionEntity, detail: DecisionDetail, vm: Suggest
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 PillButton("Do it", vm::accept, height = 48.dp, horizontalPadding = 20.dp)
                 PillButton("Keep as is", vm::keep, kind = ButtonKind.Secondary, height = 48.dp, container = c.canvas)
-                val line = if (c.isDark) c.tail else Color(0xFFC2C4C8)
+                val line = c.quiet
                 Box(Modifier.height(48.dp).pressable({ vm.showWhy(true) }).padding(horizontal = 12.dp), contentAlignment = Alignment.Center) {
                     CoveText(
                         "Why?",
@@ -85,9 +85,10 @@ private fun DrawScope.drawBlobs() {
         val far = hypot(maxOf(center.x, size.width - center.x), maxOf(center.y, size.height - center.y))
         drawCircle(Brush.radialGradient(0f to color, 1f to color.copy(alpha = 0f), center = center, radius = far * stop), radius = size.width / 2)
     }
-    blob(OrbColors.Sky, 0.50f, 0.70f, 0.55f)
+    blob(OrbColors.Leaf, 0.50f, 0.70f, 0.55f)
     blob(OrbColors.Lilac, 0.65f, 0.50f, 0.55f)
     blob(OrbColors.Peach, 0.40f, 0.40f, 0.50f)
+    blob(OrbColors.Sun, 0.58f, 0.30f, 0.42f)
 }
 
 /** Frame 18: each reason with its source, and the two ways out. Shown in a transparent dialog so it covers the dock too. */
