@@ -36,6 +36,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cove.companion.ai.model.Summary
 import app.cove.companion.container
+import app.cove.companion.core.shortTime
+import app.cove.companion.core.toLocalDateTime
 import app.cove.companion.data.local.entity.JournalMediaEntity
 import app.cove.companion.data.media.PlaybackState
 import app.cove.companion.design.Cove
@@ -111,7 +113,8 @@ fun VoiceRow(note: JournalMediaEntity, playback: PlaybackState, onToggle: () -> 
         ) {
             CoveIcon(if (playing) CoveIcons.Pause else CoveIcons.Play, c.onInk, size = 16.dp)
         }
-        CoveText(hint ?: "Voice note", Modifier.weight(1f), style = CoveType.Body.copy(fontSize = 16.sp), color = if (hint != null) c.muted else c.ink)
+        val label = if (note.updatedAt > 0) "Voice note · " + shortTime(note.updatedAt.toLocalDateTime()) else "Voice note"
+        CoveText(hint ?: label, Modifier.weight(1f), style = CoveType.Body.copy(fontSize = 16.sp), color = if (hint != null) c.muted else c.ink)
         CoveText(formatDuration(if (playing) playback.positionMs else note.durationMs ?: 0), style = CoveType.Meta, color = c.muted)
         Box(
             Modifier.size(48.dp).pressable(onRemove).semantics { contentDescription = "Remove voice note"; role = Role.Button },

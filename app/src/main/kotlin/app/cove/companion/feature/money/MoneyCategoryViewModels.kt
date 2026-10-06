@@ -107,6 +107,8 @@ data class CategoryFormState(
     val nameError: String? = null,
     /** How many expenses are filed here, so Delete can say what moves to Other. */
     val expenseCount: Int = 0,
+    /** True after typing more digits than a budget can hold, so the screen can say so. */
+    val budgetCapped: Boolean = false,
 )
 
 /** Create or edit a category; [id] is `new` or an existing category id. */
@@ -145,7 +147,10 @@ class CategoryEditViewModel(private val c: AppContainer, private val id: String)
 
     fun setName(name: String) = form.update { it.copy(name = name) }
     fun setIncome(income: Boolean) = form.update { it.copy(income = income) }
-    fun setBudget(text: String) = form.update { it.copy(budget = text.filter(Char::isDigit).take(8)) }
+    fun setBudget(text: String) = form.update {
+        val digits = text.filter(Char::isDigit)
+        it.copy(budget = digits.take(8), budgetCapped = digits.length > 8)
+    }
     fun setCarryOver(on: Boolean) = form.update { it.copy(carryOver = on) }
     fun setAlert(on: Boolean) = form.update { it.copy(alertAt80 = on) }
     fun setKeywords(text: String) = form.update { it.copy(keywords = text.take(200)) }

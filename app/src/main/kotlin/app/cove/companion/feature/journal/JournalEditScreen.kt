@@ -2,6 +2,7 @@ package app.cove.companion.feature.journal
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
@@ -194,7 +195,11 @@ fun JournalEditScreen(id: String, nav: Nav) {
             },
             onCamera = {
                 sheet = null
-                camera.launch(vm.newCameraUri())
+                try {
+                    camera.launch(vm.newCameraUri())
+                } catch (e: ActivityNotFoundException) {
+                    vm.cameraUnavailable()
+                }
             },
         )
         MoodSheet(sheet == "mood", s.mood, onDismiss = { sheet = null }, onPick = { vm.setMood(it); sheet = null })

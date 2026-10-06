@@ -176,6 +176,13 @@ class JournalEditViewModel(private val c: AppContainer, private val routeId: Str
         }
     }
 
+    /** Called when this phone has no camera app to take the picture. */
+    fun cameraUnavailable() {
+        cameraTarget?.first?.delete()
+        cameraTarget = null
+        notice("No camera app found. Try choosing a photo from your library.")
+    }
+
     fun newCameraUri(): Uri = c.journalFiles.newCameraTarget().also { cameraTarget = it }.second
 
     fun removeMedia(media: JournalMediaEntity) {

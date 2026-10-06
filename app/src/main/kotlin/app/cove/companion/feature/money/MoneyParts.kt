@@ -82,7 +82,7 @@ internal fun PickRow(label: String, value: String, onClick: () -> Unit, divider:
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        CoveText(label, style = MoneyType.Row, color = Cove.colors.muted)
+        CoveText(label, Modifier.padding(end = 12.dp), style = MoneyType.Row, color = Cove.colors.muted)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             CoveText(value, style = MoneyType.Row)
             CoveIcon(CoveIcons.ChevronRight, Cove.colors.tail, size = 14.dp)

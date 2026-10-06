@@ -90,7 +90,7 @@ private fun EntryList(entries: List<RecentEntry>, nav: Nav) {
         entries.forEachIndexed { i, e ->
             if (i > 0) Hairline()
             Column(
-                Modifier.fillMaxWidth().heightIn(min = 72.dp).pressable({ nav.go(Routes.journalEdit(e.id)) }),
+                Modifier.fillMaxWidth().heightIn(min = 72.dp).pressable({ nav.go(Routes.journalEdit(e.id)) }).padding(vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
             ) {
                 CoveText(e.meta, style = CoveType.Meta, color = Cove.colors.muted)

@@ -122,6 +122,7 @@ fun MoneyCategoryEditScreen(id: String, nav: Nav) {
                     KindToggle(listOf("Spending", "Income"), if (s.income) 1 else 0, { vm.setIncome(it == 1) }, Modifier.fillMaxWidth(), fill = true)
                     Column {
                         BudgetRow(s.budget, vm::setBudget)
+                        if (s.budgetCapped) CoveText("Largest budget is ₹9,99,99,999", Modifier.padding(bottom = 8.dp), style = CoveType.Meta, color = c.muted)
                         ToggleRow("Carry over what’s left", s.carryOver, vm::setCarryOver)
                         ToggleRow("Tell me at 80%", s.alertAt80, vm::setAlert)
                         KeywordsRow(s.keywords, vm::setKeywords)

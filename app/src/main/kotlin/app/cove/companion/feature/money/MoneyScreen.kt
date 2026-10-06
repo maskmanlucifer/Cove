@@ -116,7 +116,7 @@ private fun CategoryCard(rows: List<MoneyRow>, nav: Nav) {
             if (stacked) {
                 Column(rowModifier.padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     CoveText(row.name, style = MoneyType.Row)
-                    CategoryValue(row)
+                    CategoryValue(row, stacked = true)
                 }
             } else {
                 Row(rowModifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
@@ -129,10 +129,18 @@ private fun CategoryCard(rows: List<MoneyRow>, nav: Nav) {
 }
 
 @Composable
-private fun CategoryValue(row: MoneyRow) {
-    Row(verticalAlignment = Alignment.Bottom) {
-        CoveText(MoneyMath.wholeRupees(row.spent), style = MoneyType.Row)
-        MoneyMath.overInline(row.spent, row.budget)?.let { CoveText(it, style = MoneyType.Small, color = Cove.colors.tail) }
+private fun CategoryValue(row: MoneyRow, stacked: Boolean = false) {
+    val over = MoneyMath.overInline(row.spent, row.budget)
+    if (stacked) {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            CoveText(MoneyMath.wholeRupees(row.spent), style = MoneyType.Row)
+            over?.let { CoveText(it.removePrefix(" · "), style = MoneyType.Small, color = Cove.colors.tail) }
+        }
+    } else {
+        Row(verticalAlignment = Alignment.Bottom) {
+            CoveText(MoneyMath.wholeRupees(row.spent), style = MoneyType.Row)
+            over?.let { CoveText(it, style = MoneyType.Small, color = Cove.colors.tail) }
+        }
     }
 }
 

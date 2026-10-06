@@ -71,7 +71,7 @@ fun MoneyCategoriesScreen(nav: Nav) {
 }
 
 private fun subtitle(s: CategoriesState): String {
-    val count = s.items.count { it.category.kind == "spending" }
+    val count = s.items.count { it.category.kind == "spending" && it.budget > 0 }
     val words = listOf("no categories", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten")
     val n = words.getOrElse(count) { count.toString() }
     return if (s.budgetTotal > 0) "${MoneyMath.wholeRupees(s.budgetTotal)} a month across $n. Drag to reorder."
