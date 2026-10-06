@@ -39,6 +39,7 @@ fun CodeSheet(vm: ConnectViewModel, onDismiss: () -> Unit) {
             { readClipboard(context)?.let { text = it; error = null } },
             placeholder = "cove-setup:1:...", error = error, multiline = true,
         )
+        ImportCodeFromFileAction(vm, onResult = { r -> error = (r as? SetupCodeResult.Invalid)?.message ?: if (r == null) "Couldn’t read that file." else null }, onDone = close)
         SheetAction("Fill everything in", {
             when (val r = vm.applySetupCode(text)) {
                 is SetupCodeResult.Invalid -> error = r.message

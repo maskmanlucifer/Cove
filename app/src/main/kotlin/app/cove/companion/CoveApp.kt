@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import app.cove.companion.feature.nudges.NudgeScheduler
 import app.cove.companion.feature.widgets.WidgetUpdater
+import app.cove.companion.data.wipe.DeviceWipe
 import app.cove.companion.feature.recovery.PendingRestore
 import app.cove.companion.resilience.CrashHandler
 import app.cove.companion.resilience.CrashLoop
@@ -27,6 +28,8 @@ class CoveApp : Application() {
     override fun onCreate() {
         super.onCreate()
         CrashHandler.install(this, BuildConfig.VERSION_NAME)
+        // A requested "Clear all data" finishes here, before anything can open the database.
+        if (DeviceWipe.isMainProcess(this)) DeviceWipe.processAtStart(this)
         if (BuildConfig.DEBUG) DebugStrictMode.install()
         val crashLoop = CrashLoop.isLooping(CrashHandler.storeFor(this).all(), System.currentTimeMillis())
         container = AppContainer(this)

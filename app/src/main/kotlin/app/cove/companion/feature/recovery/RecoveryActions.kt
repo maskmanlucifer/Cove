@@ -5,15 +5,12 @@ import android.content.Intent
 import android.os.Process
 import app.cove.companion.data.backup.Backup
 import app.cove.companion.data.backup.ExportBuilder
-import app.cove.companion.core.Clock
-import app.cove.companion.feature.alarms.AlarmMirror
-import app.cove.companion.feature.alarms.AlarmScheduler
+import app.cove.companion.data.wipe.DeviceWipe
 import app.cove.companion.resilience.CrashHandler
 import app.cove.companion.security.EncryptedDatabase
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
-import java.security.KeyStore
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -71,23 +68,11 @@ class RecoveryActions(private val context: Context) {
     }
 
     /**
-     * Deletes everything Cove stored on this phone (database, keys, credentials, photos, settings) and cancels
-     * scheduled alarms. Alarm and reminder registries are kept so the next start can cancel what is still registered.
+     * "Start fresh": the same full reset as Me > Clear all data. Stops alarms and jobs and records the `pending_wipe`
+     * marker; the files, preferences, credentials and Keystore keys are removed at the start of the next process
+     * (see [DeviceWipe]), so the reset is finished even if the app dies before [restart] completes.
      */
-    fun wipe() {
-        runCatching {
-            val scheduler = AlarmScheduler(app, Clock.System)
-            AlarmMirror.forContext(app).ids().forEach { id -> scheduler.cancel(id); scheduler.cancelSnooze(id) }
-        }
-        runCatching { File(app.dataDir, "databases").listFiles()?.filter { it.name.startsWith("cove.db") }?.forEach { it.delete() } }
-        listOf(app.noBackupFilesDir, app.filesDir, app.cacheDir).forEach { dir -> dir.listFiles()?.forEach { it.deleteRecursively() } }
-        File(app.dataDir, "shared_prefs").listFiles()
-            ?.filter { f -> KEEP_PREFS.none { f.name.startsWith(it) } }?.forEach { it.delete() }
-        runCatching {
-            val store = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-            listOf("cove_db_key", "cove_credentials", "cove_session").forEach { if (store.containsAlias(it)) store.deleteEntry(it) }
-        }
-    }
+    fun wipe() = DeviceWipe.request(app, restart = false)
 
     /**
      * Starts Cove again from scratch. A helper activity in its own process launches the main screen and then this
@@ -101,7 +86,6 @@ class RecoveryActions(private val context: Context) {
     }
 
     private companion object {
-        val KEEP_PREFS = listOf("alarm_scheduler", "nudge_scheduler")
         const val README = "This is a copy of Cove's data from your phone.\n\n" +
             "cove.db is encrypted. It can only be opened with the key that lives in your phone's secure hardware, " +
             "so this file is for safekeeping or for repair, not for opening on a computer.\n" +

@@ -80,6 +80,17 @@ class NudgeScheduler(context: Context, private val c: AppContainer) {
         prefs.edit().putStringSet(KEY_REGISTERED, keys).apply()
     }
 
+    /** Cancels the bundled summary and every registered reminder and snooze, and forgets them ("Clear all data"). */
+    @Synchronized
+    fun cancelAll() {
+        manager.cancel(bundlePending())
+        prefs.getStringSet(KEY_REGISTERED, emptySet()).orEmpty().forEach {
+            manager.cancel(reminderPending(it, snooze = false))
+            manager.cancel(reminderPending(it, snooze = true))
+        }
+        prefs.edit().clear().apply()
+    }
+
     /** Fires the reminder [key] again at [at] (Snooze). */
     fun scheduleSnooze(key: String, at: Long) = register(at, reminderPending(key, snooze = true))
 

@@ -74,6 +74,8 @@ fun ConnectScreen(nav: Nav, onboarding: Boolean = false) {
                 }
                 SettingsGroup("Quick start") {
                     SettingsRow("Paste setup code", value = "Fills everything", onClick = { sheet = ConnectSheet.Code })
+                    RowDivider()
+                    SettingsRow("Copy or save my setup code", value = "For a new phone", onClick = { sheet = ConnectSheet.Share })
                 }
                 SettingsGroup("Services") {
                     ServiceRow(ServiceId.Supabase, ui.status(ServiceId.Supabase)) { sheet = ConnectSheet.Supabase }

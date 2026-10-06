@@ -100,6 +100,8 @@ fun MeScreen(nav: Nav) {
             SettingsRow("Look and text size", value = lookSummary(settings.theme, settings.textScale), onClick = { sheet = MeSheet.Look })
             RowDivider()
             SettingsRow("Privacy and data", value = "Yours", onClick = { sheet = MeSheet.Privacy })
+            RowDivider()
+            SettingsRow("Clear all data", onClick = { sheet = MeSheet.ClearData })
         }
         SettingsGroup("Photos and backup") {
             SettingsRow("Photo quality", value = PhotoQuality.label(settings.photoQuality), onClick = { vm.resetBackup(); sheet = MeSheet.PhotoQuality })
@@ -135,7 +137,7 @@ fun MeScreen(nav: Nav) {
             SettingsRow("Version", value = BuildConfig.VERSION_NAME)
         }
     }
-    MeSheets(sheet, settings, vm, briefPlay = { nav.go(Routes.Brief) }, openConnect = { nav.go(Routes.Connect) }) { sheet = null }
+    MeSheets(sheet, settings, vm, briefPlay = { nav.go(Routes.Brief) }, openConnect = { nav.go(Routes.Connect) }, onOpen = { sheet = it }) { sheet = null }
 }
 
 @Composable
