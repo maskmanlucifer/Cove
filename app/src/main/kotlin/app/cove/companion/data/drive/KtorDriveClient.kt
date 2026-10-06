@@ -149,14 +149,14 @@ class KtorDriveClient(
     private suspend fun HttpResponse.json(): JsonObject = Json.parseToJsonElement(bodyAsText()).jsonObject
 
     /** Sends one logical request with auth, a single token refresh on 401 and backoff on transient failures. */
-    private suspend fun send(build: HttpRequestBuilder.() -> Unit): HttpResponse {
+    private suspend fun send(configure: HttpRequestBuilder.() -> Unit): HttpResponse {
         var attempt = 0
         var refreshed = false
         while (true) {
             val token = (auth.token() as? DriveToken.Granted)?.accessToken ?: throw DriveException.NeedsConsent()
             val response = try {
                 http.request {
-                    build()
+                    configure()
                     header(HttpHeaders.Authorization, "Bearer $token")
                 }
             } catch (e: CancellationException) {
