@@ -113,7 +113,7 @@ class TrainingModelTest {
         assertEquals("Three sessions in four weeks. Overhead press went up.", p.headline)
         assertEquals(listOf(0, 0, 1, 2), p.bars.map { it.value })
         assertEquals(2, p.bodyPoints.size)
-        assertEquals(listOf("Bench press", "Squat", "Overhead press"), p.topSets.map { it.name })
+        assertEquals(listOf("Bench press", "Overhead press", "Squat"), p.topSets.map { it.name })
         assertEquals("60", p.topSets.first { it.name == "Bench press" }.now)
         val week = ProgressModel.build(snap(history, historySets), ProgressRange.Week)
         assertEquals(7, week.bars.size)
