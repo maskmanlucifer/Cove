@@ -498,3 +498,7 @@ Status as built (all phases are merged; items marked "partial" are described in 
 6. **Design gaps to add before build:** lock screen, sync status/error state, permission rationale screens, alarm ring screen, empty states for Money/Journal/Habits, widget visuals. None exist in the zip.
 
 Sources checked: Gemini API pricing write-ups (morphllm.com, geotoolbox.ai, agentdeals.dev), Supabase free-plan limits (jetadmin.io, makerkit.dev), Android ML Kit GenAI overview (developers.google.com/ml-kit/genai), Google Drive scopes (developers.google.com/workspace/drive/api/guides/api-specific-auth), Photos Library API changes (developers.googleblog.com).
+
+
+## Training (added)
+Workout tracking with a double-progression engine, rest timer, voice logging and progress screens: see `docs/TRAINING.md`. Room 7, Supabase `0005_training.sql`.

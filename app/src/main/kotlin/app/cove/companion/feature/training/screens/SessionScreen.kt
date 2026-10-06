@@ -15,7 +15,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -75,10 +74,8 @@ fun SessionScreen(nav: Nav) {
     var leaving by remember { mutableStateOf(false) }
     fun summary(id: String) { leaving = true; nav.goReplacing(Routes.trainingSummary(id), Routes.Training) }
 
-    DisposableEffect(u.exercise?.name) {
-        TrainingFocus.exercise = u.exercise?.name
-        onDispose { TrainingFocus.exercise = null }
-    }
+    // Kept while the Voice screen is open on top (this screen leaves composition then); cleared on leaving the workout.
+    LaunchedEffect(u.exercise?.name) { TrainingFocus.exercise = u.exercise?.name }
     LaunchedEffect(u.loaded, u.session, u.allDone, leaving) {
         if (leaving) Unit
         else if (u.loaded && u.session == null) nav.back()
@@ -87,7 +84,7 @@ fun SessionScreen(nav: Nav) {
 
     CoveScreen {
         Column(Modifier.fillMaxSize().coveTopInset()) {
-            TrainingTopBar(u.header, { CloseCircle({ nav.back() }, "Leave workout, it keeps going") }, { TextAction("Finish", { finishSheet = true }) })
+            TrainingTopBar(u.header, { CloseCircle({ TrainingFocus.exercise = null; nav.back() }, "Leave workout, it keeps going") }, { TextAction("Finish", { finishSheet = true }) })
             val e = u.exercise
             if (e != null) {
                 val body: @Composable () -> Unit = {

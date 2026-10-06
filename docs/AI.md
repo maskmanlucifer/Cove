@@ -29,6 +29,7 @@ Every result is `AiResult.Ok(value, source: ProviderRef)` or `AiResult.Failed(er
 | Capability (facade) | Provider order | Privacy class |
 |---|---|---|
 | Intent `parseIntent` | rules, Gemini Nano (foreground), Gemini cloud, legacy Edge Function | Everyday. Cloud only for transcripts up to 160 chars; journal notes from the cloud are dropped |
+| Intent kinds | `set_alarm`, `change_alarm`, `add_todo`, `add_reminder`, `log_expense`, `log_habit`, `journal_note`, `query_next`, `undo_last`, and for Training `log_sets`, `start_workout`, `log_body_weight`, `next_workout` (workout text is ordinary data) | as Intent |
 | Brief `composeBriefLines` | Gemini Nano (foreground), Gemini cloud, legacy Edge Function | Everyday, non-journal facts only (keys containing "journal" are removed) |
 | Speech `openSpeech` / `openTyped` | ML Kit on-device, Android recognizer, typed | Everyday. The Android recognizer counts as Cloud when the phone has no on-device model |
 | Caption `captionImage` | Gemini Nano (foreground) | Journal: on-device only |

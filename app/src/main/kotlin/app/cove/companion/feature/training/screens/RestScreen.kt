@@ -56,12 +56,14 @@ fun RestScreen(nav: Nav) {
 
     LaunchedEffect(Unit) { while (true) { now = clock.now(); delay(250) } }
     val r = rest
-    LaunchedEffect(r == null) { if (r == null) nav.back() }
+    LaunchedEffect(Unit) { if (store.get() == null) { delay(150); nav.back() } }
     LaunchedEffect(r != null && r.isOver(now)) {
         if (r != null && r.isOver(now) && !buzzed) { buzzed = true; haptic.performHapticFeedback(HapticFeedbackType.LongPress) }
     }
     fun ready() {
+        if (rest == null) return
         store.clear(); RestAlarm.cancel(ctx); rest = null
+        nav.back()
     }
 
     CoveScreen {

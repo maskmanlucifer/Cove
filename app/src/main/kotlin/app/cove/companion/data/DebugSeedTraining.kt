@@ -12,13 +12,18 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 
+/** `--ez noTraining true` keeps the seed from creating the programme, to see the first-run setup. */
+object DebugTraining {
+    @Volatile var skip = false
+}
+
 /**
  * Debug-only training data matching frames 41 to 48: Bench 55 to 62.5, Overhead press 32.5 to 37.5, Squat 70 to 80,
  * eleven sessions in four weeks (two, three, three, three per week), body weight 69.0 to 68.4, and today's Push session
  * (done when [todayDone], otherwise still to do as in frame 41).
  */
 internal suspend fun seedTrainingData(c: AppContainer, day: LocalDate, todayDone: Boolean) {
-    if (c.training.hasPlan()) return
+    if (DebugTraining.skip || c.training.hasPlan()) return
     val push3 = DefaultProgramme.push.take(3)
     val ids = DefaultProgramme.create(
         c.training, WeightUnit.Kg, setOf(DayOfWeek.TUESDAY, DayOfWeek.THURSDAY, DayOfWeek.SATURDAY),

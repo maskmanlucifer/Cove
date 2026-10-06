@@ -183,7 +183,7 @@ class MainActivity : FragmentActivity() {
      * `--ez appLock true|false` switches the app lock setting without authenticating; `--ez lockNow true` locks immediately; `--ez screenshots true` drops FLAG_SECURE so adb screencap works;
      * `--ez plainDb true` rewrites the database as plaintext and kills the process, so the next launch runs the plaintext migration.
      * `--ez trainingDone true` (with seed) adds today's finished Push session; `--ez trainingStart true` starts today's session;
-     * `--ei restLeft N` shows a rest with N seconds left.
+     * `--ez noTraining true` (with seed) leaves Training unset to show the setup; `--ei restLeft N` shows a rest with N seconds left.
      * `--es voiceState listening|result|partial|saved|micoff --es transcript "..."` opens the Voice screen in that state.
      */
     private fun handleDebugIntent() {
@@ -219,6 +219,7 @@ class MainActivity : FragmentActivity() {
         val voiceState = intent.getStringExtra("voiceState")
         VoiceDebug.set(voiceState, intent.getStringExtra("transcript"), intent.getIntExtra("voiceSeconds", 7))
         if (voiceState != null && voiceState != "saved") voiceRequest.intValue++
+        app.cove.companion.data.DebugTraining.skip = intent.getBooleanExtra("noTraining", false)
         val seed = intent.getBooleanExtra("seed", false)
         if (seed || voiceState == "saved") {
             CoroutineScope(Dispatchers.IO).launch {
