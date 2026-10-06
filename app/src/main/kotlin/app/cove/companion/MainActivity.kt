@@ -208,6 +208,7 @@ class MainActivity : FragmentActivity() {
                         container, intent.getBooleanExtra("dark", false), intent.getBooleanExtra("evening", false),
                         intent.getStringExtra("plan"), intent.getBooleanExtra("moneyLogged", false),
                     )
+                    intent.getIntExtra("bulk", 0).takeIf { it > 0 }?.let { DebugSeed.seedBulk(container, it) }
                     if (intent.getBooleanExtra("conflict", false)) DebugSeed.seedConflict(container)
                     if (intent.getBooleanExtra("reviewSeed", false)) DebugSeed.seedReview(container)
                 }

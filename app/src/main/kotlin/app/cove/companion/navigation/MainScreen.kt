@@ -7,6 +7,15 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import app.cove.companion.design.Cove
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.background
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
@@ -43,6 +52,12 @@ fun MainScreen(nav: Nav) {
                 Tab.Me -> MeScreen(nav)
             }
         }
+        // Keeps scrolled content from running under the clock; invisible at rest because it matches the canvas.
+        val topInset = with(LocalDensity.current) { WindowInsets.statusBars.getTop(this).toDp() }
+        Box(
+            Modifier.align(Alignment.TopCenter).fillMaxWidth().height(maxOf(topInset, 48.dp))
+                .background(Brush.verticalGradient(listOf(Cove.colors.canvas, Cove.colors.canvas, Color.Transparent))),
+        )
         if (!(oneThing && tab == Tab.Today)) Box(
             Modifier
                 .align(Alignment.BottomCenter)

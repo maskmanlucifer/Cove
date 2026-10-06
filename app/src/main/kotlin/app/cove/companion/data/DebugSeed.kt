@@ -73,6 +73,20 @@ object DebugSeed {
      * Categories and this month's spending. Default matches frame 07 (Food ₹7,000, total ₹18,420.50);
      * [logged] matches frames 25/34/36 (Food ₹7,340 of ₹9,000, with today's and yesterday's rows).
      */
+    /** Debug: [n] to-dos, events, expenses, journal entries and alarms to check that long lists scroll smoothly. */
+    suspend fun seedBulk(c: AppContainer, n: Int) {
+        val day = c.clock.now().let { java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneId.systemDefault()).toLocalDate() }
+        val cat = c.todos.categories.first().firstOrNull()?.id
+        repeat(n) { i ->
+            c.todos.add("Bulk to-do ${i + 1}", cat, if (i % 3 == 0) LocalDateTime.of(day, LocalTime.of(7 + i % 15, i % 60)).toEpochMillis() else null)
+            c.plan.saveEvent(EventEntity(newId(), "Bulk event ${i + 1}", LocalDateTime.of(day, LocalTime.of(i % 24, (i * 7) % 60)).toEpochMillis(), null))
+            c.money.save(ExpenseEntity(newId(), (100 + i) * 100L, categoryId = "cat-food", note = "Bulk expense ${i + 1}", spentAt = LocalDateTime.of(day.minusDays((i % 20).toLong()), LocalTime.of(9, i % 60)).toEpochMillis()))
+            val date = day.minusDays(i.toLong() + 40)
+            c.journal.save(JournalEntryEntity("bulk-journal-$i", date.toEpochDay(), "Bulk entry ${i + 1}", "Body of entry ${i + 1}.", "calm", createdAt = LocalDateTime.of(date, LocalTime.of(21, 0)).toEpochMillis()))
+        }
+        repeat(minOf(n, 60)) { i -> c.plan.saveAlarm(AlarmEntity("bulk-alarm-$i", "Bulk alarm ${i + 1}", (i * 17) % 1440, 0b0011111, enabled = false)) }
+    }
+
     private suspend fun seedMoney(c: AppContainer, day: LocalDate, logged: Boolean) {
         fun at(h: Int, m: Int, d: LocalDate) = LocalDateTime.of(d, LocalTime.of(h, m)).toEpochMillis()
         val cats = listOf("Food" to 9000, "Home" to 8000, "Transport" to 5000, "Fun" to 2000, "Other" to 6000)

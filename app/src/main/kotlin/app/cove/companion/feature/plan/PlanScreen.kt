@@ -23,6 +23,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -62,24 +67,27 @@ fun PlanScreen(nav: Nav) {
     val todos = segment == 1
 
     Box(Modifier.fillMaxSize()) {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .imePadding()
-                .coveTopInset()
-                .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = DockClearance + 56.dp),
-            verticalArrangement = Arrangement.spacedBy(if (todos) 14.dp else 24.dp),
-        ) {
+        val header: @Composable () -> Unit = {
             Row(
                 Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, bottom = if (todos) 8.dp else 0.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                CoveText("Plan", style = CoveType.Title)
+                CoveText("Plan", style = CoveType.Title, modifier = Modifier.semantics { heading() })
                 Segmented(listOf("Schedule", "To-dos"), segment, { segment = it }, height = 40.dp)
             }
-            if (todos) {
+        }
+        if (todos) {
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .imePadding()
+                    .coveTopInset()
+                    .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = DockClearance + 56.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                header()
                 TodosTab(
                     state.groups, state.now, drag,
                     TodosActions(
@@ -92,8 +100,14 @@ fun PlanScreen(nav: Nav) {
                         voice = { nav.go(Routes.Voice) },
                     ),
                 )
-            } else {
-                Box(Modifier.padding(horizontal = 4.dp)) { ScheduleTab(state.timeline, { sheet = TASK + it }, { sheet = EVENT + it }, { nav.go(Routes.alarmEdit(it)) }) }
+            }
+        } else {
+            LazyColumn(
+                Modifier.fillMaxSize().imePadding().coveTopInset(),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 20.dp, bottom = DockClearance + 56.dp),
+            ) {
+                item { header(); Spacer(Modifier.height(24.dp)) }
+                scheduleRows(state.timeline, { sheet = TASK + it }, { sheet = EVENT + it }, { nav.go(Routes.alarmEdit(it)) })
             }
         }
         if (!todos && drag.id == null) DayPill(state.day, state.isToday, vm::shiftDay, vm::showToday, Modifier.align(Alignment.BottomStart).padding(start = 20.dp, bottom = 112.dp))

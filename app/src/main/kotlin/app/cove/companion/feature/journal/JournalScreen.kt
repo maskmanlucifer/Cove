@@ -20,6 +20,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
@@ -49,31 +55,30 @@ private val WeekdayStyle = CoveType.Label.copy(fontSize = 12.sp, fontWeight = Fo
 fun JournalScreen(nav: Nav) {
     val vm = appViewModel { JournalViewModel(it) }
     val s by vm.state.collectAsState()
-    Column(
-        Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .coveTopInset()
-            .padding(start = 24.dp, end = 24.dp, top = 20.dp, bottom = DockClearance),
+    LazyColumn(
+        Modifier.fillMaxSize().coveTopInset(),
+        contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 20.dp, bottom = DockClearance),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            CoveText("Journal", style = CoveType.Title)
-            PillButton("Write", { nav.go(Routes.journalEdit()) })
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                CoveText("Journal", style = CoveType.Title)
+                PillButton("Write", { nav.go(Routes.journalEdit()) })
+            }
         }
-        MonthCard(s, onShift = vm::shift) { date -> vm.routeFor(date)?.let(nav.go) }
+        item { MonthCard(s, onShift = vm::shift) { date -> vm.routeFor(date)?.let(nav.go) } }
         if (s.empty) {
-            CoveText("Nothing here yet. Write a few lines whenever you like.", style = CoveType.Meta, color = Cove.colors.muted)
+            item { CoveText("Nothing here yet. Write a few lines whenever you like.", style = CoveType.Meta, color = Cove.colors.muted) }
         } else {
-            Column {
-                s.recent.forEachIndexed { i, e ->
+            itemsIndexed(s.recent, key = { _, e -> e.id }) { i, e ->
+                Column {
                     if (i > 0) Hairline()
                     Column(
-                        Modifier.fillMaxWidth().heightIn(min = 72.dp).pressable({ nav.go(Routes.journalEdit(e.id)) }),
+                        Modifier.fillMaxWidth().heightIn(min = 72.dp).pressable({ nav.go(Routes.journalEdit(e.id)) }, role = Role.Button).semantics(mergeDescendants = true) {},
                         verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
                     ) {
                         CoveText(e.meta, style = CoveType.Meta, color = Cove.colors.muted)
-                        CoveText(e.title, style = CoveType.BodyMedium, maxLines = 1)
+                        CoveText(e.title, style = CoveType.BodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
             }

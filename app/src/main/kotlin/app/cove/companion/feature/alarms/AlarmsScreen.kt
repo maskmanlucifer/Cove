@@ -19,6 +19,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import app.cove.companion.design.components.cardRow
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -80,13 +86,14 @@ fun AlarmsScreen(nav: Nav) {
                     contentAlignment = Alignment.Center,
                 ) { CoveIcon(CoveIcons.Plus, c.ink, size = 18.dp) }
             }
-            Column(
-                Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = DockClearance),
-                verticalArrangement = Arrangement.spacedBy(20.dp),
+            LazyColumn(
+                Modifier.weight(1f),
+                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = DockClearance),
+                verticalArrangement = Arrangement.spacedBy(0.dp),
             ) {
-                CoveText("Alarms", style = CoveType.Title, modifier = Modifier.semantics { heading() })
-                AlarmList(state.alarms, vm::setEnabled) { nav.go(Routes.alarmEdit(it)) }
-                Bedtime(state.bedtime) { nav.go(Routes.alarmEdit(it)) }
+                item { CoveText("Alarms", Modifier.padding(bottom = 20.dp), style = CoveType.Title) }
+                alarmRows(state.alarms, vm::setEnabled) { nav.go(Routes.alarmEdit(it)) }
+                item { Spacer(Modifier.height(20.dp)); Bedtime(state.bedtime) { nav.go(Routes.alarmEdit(it)) } }
             }
         }
         Box(Modifier.align(Alignment.BottomCenter).padding(start = 12.dp, end = 12.dp, bottom = 24.dp)) {
@@ -95,17 +102,18 @@ fun AlarmsScreen(nav: Nav) {
     }
 }
 
-@Composable
-private fun AlarmList(alarms: List<AlarmEntity>, onToggle: (AlarmEntity, Boolean) -> Unit, onOpen: (String) -> Unit) {
-    val c = Cove.colors
+private fun LazyListScope.alarmRows(alarms: List<AlarmEntity>, onToggle: (AlarmEntity, Boolean) -> Unit, onOpen: (String) -> Unit) {
     if (alarms.isEmpty()) {
-        CoveCard(padding = 20) {
-            CoveText("No alarms yet. Tap + to add one.", style = CoveType.Body, color = c.muted)
+        item {
+            CoveCard(padding = 20) {
+                CoveText("No alarms yet. Tap + to add one.", style = CoveType.Body, color = Cove.colors.muted)
+            }
         }
         return
     }
-    Column(Modifier.fillMaxWidth().background(c.card, CoveShapes.Card).padding(horizontal = 20.dp)) {
-        alarms.forEachIndexed { i, alarm ->
+    itemsIndexed(alarms, key = { _, a -> a.id }) { i, alarm ->
+        val c = Cove.colors
+        Column(Modifier.cardRow(c.card, i, alarms.size, 28.dp)) {
             if (i > 0) Hairline()
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 88.dp).pressable({ onOpen(alarm.id) }, onClickLabel = "Edit alarm", role = Role.Button)

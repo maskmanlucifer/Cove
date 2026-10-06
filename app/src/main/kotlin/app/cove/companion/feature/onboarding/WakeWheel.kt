@@ -20,7 +20,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.setProgress
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -50,7 +56,16 @@ fun WakeWheel(minutes: Int, onChange: (Int) -> Unit, modifier: Modifier = Modifi
     val current by rememberUpdatedState(minutes)
     Column(
         modifier
-            .semantics { contentDescription = "Wake-up time, ${clockText(minutes).digits}${clockText(minutes).suffix}. Swipe up or down to change." }
+            .semantics {
+                contentDescription = "Wake-up time"
+                stateDescription = "${clockText(minutes).digits}${clockText(minutes).suffix}"
+                progressBarRangeInfo = ProgressBarRangeInfo(minutes.toFloat(), 0f..1439f)
+                setProgress("Set time") { v -> onChange(snapWake(v.toInt())); true }
+                customActions = listOf(
+                    CustomAccessibilityAction("Later") { onChange(stepWake(current, 1)); true },
+                    CustomAccessibilityAction("Earlier") { onChange(stepWake(current, -1)); true },
+                )
+            }
             .pointerInput(stepPx) {
                 detectVerticalDragGestures(onDragEnd = { carry = 0f }, onDragCancel = { carry = 0f }) { _, drag ->
                     carry -= drag

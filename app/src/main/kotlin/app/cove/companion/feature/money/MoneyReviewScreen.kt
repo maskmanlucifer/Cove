@@ -20,6 +20,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import app.cove.companion.design.components.cardRow
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.LazyColumn
 import app.cove.companion.core.rupeesSpoken
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
@@ -55,28 +59,28 @@ fun MoneyReviewScreen(nav: Nav) {
     CoveScreen {
         Column(Modifier.fillMaxSize().coveTopInset()) {
             MoneyTopBar(if (cross) "Cross-check" else "Review", "Done", nav.back, nav.back, actionStrong = true)
-            Column(
-                Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())
-                    .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 140.dp),
+            LazyColumn(
+                Modifier.weight(1f).fillMaxWidth(),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 140.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (cross) SmallAction("Back to Other", enabled = !s.busy, onClick = vm::showUnfiled)
-                    else SmallAction("Check with AI", enabled = !s.busy, onClick = vm::checkWithAi)
-                    SmallAction("Cross-check this month", enabled = !s.busy, onClick = vm::crossCheck)
+                item {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (cross) SmallAction("Back to Other", enabled = !s.busy, onClick = vm::showUnfiled)
+                        else SmallAction("Check with AI", enabled = !s.busy, onClick = vm::checkWithAi)
+                        SmallAction("Cross-check this month", enabled = !s.busy, onClick = vm::crossCheck)
+                    }
                 }
-                if (s.busy) CoveText("Checking with AI…", Modifier.padding(horizontal = 4.dp), style = MoneyType.Note, color = c.muted)
-                s.message?.let { CoveText(it, Modifier.padding(horizontal = 4.dp), style = MoneyType.Note, color = c.muted) }
-                s.provenance?.let { CoveText("Answered by: $it", Modifier.padding(horizontal = 4.dp), style = MoneyType.Small, color = c.tail) }
+                if (s.busy) item { CoveText("Checking with AI…", Modifier.padding(horizontal = 4.dp), style = MoneyType.Note, color = c.muted) }
+                s.message?.let { m -> item { CoveText(m, Modifier.padding(horizontal = 4.dp), style = MoneyType.Note, color = c.muted) } }
+                s.provenance?.let { p -> item { CoveText("Answered by: $p", Modifier.padding(horizontal = 4.dp), style = MoneyType.Small, color = c.muted) } }
                 if (s.loaded && open.isEmpty() && !s.busy && (cross || s.mode == ReviewMode.Unfiled)) {
-                    CoveText(if (cross) "AI agrees with how you filed everything." else "Everything is filed.", Modifier.padding(horizontal = 4.dp), style = MoneyType.Note, color = c.muted)
+                    item { CoveText(if (cross) "AI agrees with how you filed everything." else "Everything is filed.", Modifier.padding(horizontal = 4.dp), style = MoneyType.Note, color = c.muted) }
                 }
-                if (open.isNotEmpty()) {
-                    RowsCard(radius = 24.dp, vertical = 0.dp) {
-                        open.forEachIndexed { i, row ->
-                            if (i > 0) RowDivider()
-                            ReviewItem(row, s.categories, cross, today, vm)
-                        }
+                itemsIndexed(open, key = { _, row -> row.expense.id }) { i, row ->
+                    Column(Modifier.cardRow(c.card, i, open.size, 24.dp, horizontal = 20.dp)) {
+                        if (i > 0) RowDivider()
+                        ReviewItem(row, s.categories, cross, today, vm)
                     }
                 }
             }

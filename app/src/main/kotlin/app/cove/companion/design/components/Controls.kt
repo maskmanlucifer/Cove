@@ -7,7 +7,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -76,6 +78,7 @@ fun CheckCircle(checked: Boolean, onToggle: (() -> Unit)?, modifier: Modifier = 
 fun CoveSwitch(checked: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier = Modifier, label: String? = null, enabled: Boolean = true) {
     val c = Cove.colors
     val ms = if (LocalReduceMotion.current) 0 else 200
+    val haptic = LocalHapticFeedback.current
     val x by animateDpAsState(if (checked) 21.dp else 3.dp, tween(ms), label = "thumb")
     val track by animateColorAsState(if (checked) c.ink else c.switchOff, tween(ms), label = "track")
     Box(
@@ -84,7 +87,7 @@ fun CoveSwitch(checked: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier
             .graphicsLayerAlpha(if (enabled) 1f else 0.4f)
             .clip(RoundedCornerShape(14.dp))
             .background(track)
-            .pressable({ onChange(!checked) }, enabled = enabled, role = Role.Switch)
+            .pressable({ haptic.performHapticFeedback(if (checked) HapticFeedbackType.ToggleOff else HapticFeedbackType.ToggleOn); onChange(!checked) }, enabled = enabled, role = Role.Switch)
             .semantics {
                 stateDescription = if (checked) "On" else "Off"
                 if (label != null) contentDescription = label
