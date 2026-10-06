@@ -15,7 +15,7 @@ Shortcut: once you have the values, `tools/make-setup-code.py` turns them into o
 Each service sheet in the app has the same steps with "Open dashboard" buttons and a **Test connection** button that tells you in plain words what is wrong.
 
 ## 1. Supabase (sync)
-1. Create a free project at [supabase.com/dashboard](https://supabase.com/dashboard).
+1. Create a free project at [supabase.com/dashboard](https://supabase.com/dashboard). On the new-project form leave **Enable Data API** on (Cove syncs through it). **Automatically expose new tables** can stay on or off: `setup.sql` grants signed-in users access itself, and every table is protected by row-level security so each user only ever sees their own rows.
 2. Open **SQL Editor > New query**, paste the contents of `supabase/setup.sql` (in the app: Supabase sheet > **Copy setup SQL**), and run it. It is safe to run twice.
 3. Open **Project Settings > API**. Copy the **Project URL** (`https://xxxx.supabase.co`) and the **anon public** key (a long text starting `eyJ`). Never use the `service_role` key; the app refuses it.
 4. In the app: Connect services > Supabase, paste both, **Test connection**. A good result says it is reachable, the key works and the tables are there. If it says the tables are missing, step 2 was not run.
