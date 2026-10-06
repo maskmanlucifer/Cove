@@ -35,6 +35,7 @@ import app.cove.companion.feature.brief.BriefGenerator
 import app.cove.companion.feature.brief.BriefPlayer
 import app.cove.companion.feature.brief.BriefPrefs
 import app.cove.companion.feature.brief.CalendarSource
+import app.cove.companion.feature.brief.Geocoder
 import app.cove.companion.feature.brief.WeatherClient
 import app.cove.companion.feature.suggest.DecisionEngine
 import app.cove.companion.feature.suggest.UsageStatsSignals
@@ -103,6 +104,9 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
 
     /** Calendar access for the brief (needs READ_CALENDAR, tolerated when denied). */
     val calendar by lazy { CalendarSource(context.applicationContext) }
+
+    /** Looks up the brief's default city. */
+    val geocoder by lazy { Geocoder(httpClient) }
 
     /** Builds the morning brief from facts and templates. */
     val briefGenerator by lazy {

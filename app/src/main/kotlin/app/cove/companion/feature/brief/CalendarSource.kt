@@ -1,10 +1,8 @@
 package app.cove.companion.feature.brief
 
-import android.Manifest
 import android.content.Context
-import android.content.pm.PackageManager
 import android.provider.CalendarContract
-import androidx.core.content.ContextCompat
+import app.cove.companion.core.Permissions
 import app.cove.companion.core.toLocalDateTime
 import java.time.LocalDate
 import java.time.ZoneId
@@ -12,7 +10,7 @@ import java.time.ZoneId
 /** Reads today's entries of the device calendar; returns nothing when READ_CALENDAR is not granted. */
 class CalendarSource(private val context: Context) {
     val granted: Boolean
-        get() = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED
+        get() = Permissions.calendarGranted(context)
 
     /** Timed events of [day]; all-day entries are skipped. */
     fun eventsOn(day: LocalDate): List<DayItem> {

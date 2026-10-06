@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import app.cove.companion.core.Permissions
 import app.cove.companion.core.appViewModel
 import app.cove.companion.design.Cove
 import app.cove.companion.design.CoveType
