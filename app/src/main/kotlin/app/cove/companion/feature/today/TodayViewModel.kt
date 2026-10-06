@@ -1,5 +1,6 @@
 package app.cove.companion.feature.today
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.cove.companion.AppContainer
@@ -18,6 +19,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -60,9 +62,24 @@ private data class Aux(
     val hiddenUntil: Long,
 )
 
-/** Process-wide memory of when the Next card comes back after "Later" or "Start now" (epoch millis; 0 = visible). */
-object NextCardMemory {
-    val hiddenUntil = MutableStateFlow(0L)
+/**
+ * When the Next card comes back after "Later" or "Start now" (epoch millis; 0 = visible).
+ * Kept in local preferences so it survives restarts; it is per device and never synced.
+ */
+class NextCardMemory(context: Context) {
+    private val prefs = context.getSharedPreferences("today_card", Context.MODE_PRIVATE)
+    private val _hiddenUntil = MutableStateFlow(prefs.getLong(KEY, 0L))
+    val hiddenUntil: StateFlow<Long> = _hiddenUntil
+
+    /** Hides the card until [millis]. */
+    fun hideUntil(millis: Long) {
+        prefs.edit().putLong(KEY, millis).apply()
+        _hiddenUntil.value = millis
+    }
+
+    private companion object {
+        const val KEY = "hidden_until"
+    }
 }
 
 /** Builds [TodayState] from settings, events, alarms, to-dos, spending and habits. */
@@ -124,7 +141,7 @@ class TodayViewModel(private val c: AppContainer) : ViewModel() {
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TodayState())
 
     /** Emits the hide deadline, then 0 once it has passed so the card reappears without a refresh. */
-    private fun hiddenFlow() = NextCardMemory.hiddenUntil.flatMapLatest { until ->
+    private fun hiddenFlow(): Flow<Long> = c.nextCard.hiddenUntil.flatMapLatest { until ->
         flow {
             emit(until)
             val wait = until - c.clock.now()
@@ -148,7 +165,7 @@ class TodayViewModel(private val c: AppContainer) : ViewModel() {
 
     /** "Later": hides the Next card for [CARD_SNOOZE_MINUTES] minutes. */
     fun snoozeCard() {
-        NextCardMemory.hiddenUntil.value = snoozeUntil(c.clock.now())
+        c.nextCard.hideUntil(snoozeUntil(c.clock.now()))
     }
 
     /**
@@ -158,7 +175,7 @@ class TodayViewModel(private val c: AppContainer) : ViewModel() {
     suspend fun startWindDown(): String? {
         val now = c.clock.now()
         val wake = c.plan.alarms.first().firstOrNull { it.kind == "wake" && it.enabled && it.deletedAt == null }
-        NextCardMemory.hiddenUntil.value = tonightEnd(now)
+        c.nextCard.hideUntil(tonightEnd(now))
         val until = wake?.let { nextFireMillis(it.minutes, it.daysMask, now) } ?: 0L
         c.settings.update { it.copy(oneThingMode = true, oneThingUntil = until) }
         return wake?.let { clockText(it.minutes).let { t -> t.digits + t.suffix } }

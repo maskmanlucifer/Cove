@@ -35,6 +35,7 @@ import app.cove.companion.data.sync.SyncManager
 import app.cove.companion.core.net.ConnectivityMonitor
 import app.cove.companion.data.ai.KtorAiGateway
 import app.cove.companion.feature.brief.AndroidSpeechOut
+import app.cove.companion.feature.today.NextCardMemory
 import app.cove.companion.feature.brief.BriefGenerator
 import app.cove.companion.feature.brief.BriefPlayer
 import app.cove.companion.feature.brief.BriefPrefs
@@ -80,6 +81,9 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
     val money = MoneyRepository(database, clock, changeLog)
     val journal = JournalRepository(database, clock, changeLog)
     val assistant = AssistantRepository(database, clock, changeLog)
+
+    /** Hide-until state of Today's Next card (survives restarts). */
+    val nextCard = NextCardMemory(context.applicationContext)
 
     private val httpClient by lazy { HttpClient(OkHttp) }
 
