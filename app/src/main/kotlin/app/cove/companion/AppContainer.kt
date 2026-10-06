@@ -10,9 +10,12 @@ import app.cove.companion.data.insights.NanoInsights
 import app.cove.companion.data.insights.NoOpEmbedder
 import app.cove.companion.data.insights.SearchIndexer
 import app.cove.companion.data.local.CoveDatabase
+import app.cove.companion.data.drive.DriveKit
 import app.cove.companion.data.media.ImageCompressor
 import app.cove.companion.data.media.JournalFiles
 import app.cove.companion.data.media.JournalMedia
+import app.cove.companion.data.media.PhotoQuality
+import app.cove.companion.data.media.SupabaseThumbStore
 import app.cove.companion.data.media.VoiceNotePlayer
 import app.cove.companion.data.media.VoiceNoteRecorder
 import app.cove.companion.data.repo.AssistantRepository
@@ -31,6 +34,7 @@ import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
 
 /** Manual dependency graph, created once by [CoveApp]. */
 class AppContainer(private val context: Context, val clock: Clock = Clock.System) {
@@ -67,7 +71,20 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
     private val appContext = context
     fun voiceRecorder() = VoiceNoteRecorder(appContext)
     fun voicePlayer() = VoiceNotePlayer()
-    val journalMedia = JournalMedia(journalFiles, ImageCompressor(context), journal, clock)
+    val journalMedia = JournalMedia(
+        journalFiles, ImageCompressor(context), journal, clock,
+        quality = { PhotoQuality.webp(settings.settings.first().photoQuality) },
+        onSaved = { driveKit.requestUpload() },
+    )
+
+    /** Google Drive storage for media and backups; inert until configured, signed in and consented. */
+    val driveKit by lazy {
+        DriveKit(
+            context.applicationContext, database, journal, settings, changeLog, auth, BuildConfig.GOOGLE_WEB_CLIENT_ID, httpClient,
+            if (auth.enabled) SupabaseThumbStore(BuildConfig.SUPABASE_URL, BuildConfig.SUPABASE_ANON_KEY, auth, httpClient) else null,
+            journalFiles, clock, appScope,
+        )
+    }
     val journalSearch = JournalSearch(database, NoOpEmbedder)
     val searchIndexer = SearchIndexer(database, journalSearch, NanoInsights(), NoOpEmbedder, clock, foreground)
 }

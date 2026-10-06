@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cove.companion.BuildConfig
 import app.cove.companion.core.appViewModel
+import app.cove.companion.data.media.PhotoQuality
 import app.cove.companion.design.Cove
 import app.cove.companion.design.CoveIcon
 import app.cove.companion.design.CoveIcons
@@ -47,6 +48,7 @@ fun MeScreen(nav: Nav) {
     var sheet by rememberSaveable { mutableStateOf<MeSheet?>(null) }
     val sync by vm.sync.collectAsState()
     val conflictTitle by vm.conflictTitle.collectAsState()
+    val backupLabel by vm.backupLabel.collectAsState()
     val settings = s ?: return
     val context = LocalContext.current
 
@@ -73,6 +75,15 @@ fun MeScreen(nav: Nav) {
             SettingsRow("Spoken replies", checked = settings.spokenReplies, onCheck = { v -> vm.update { it.copy(spokenReplies = v) } })
             RowDivider()
             SettingsRow("Reduce motion", value = settings.reduceMotion.replaceFirstChar { it.uppercase() }, onClick = { sheet = MeSheet.Motion })
+        }
+        SettingsGroup("Photos and backup") {
+            SettingsRow("Photo quality", value = PhotoQuality.label(settings.photoQuality), onClick = { vm.resetBackup(); sheet = MeSheet.PhotoQuality })
+            RowDivider()
+            SettingsRow("Upload on Wi-Fi only", checked = settings.uploadOnWifiOnly, onCheck = { v -> vm.update { it.copy(uploadOnWifiOnly = v) } })
+            RowDivider()
+            SettingsRow("Back up now", value = backupLabel, onClick = { vm.resetBackup(); sheet = MeSheet.Backup })
+            RowDivider()
+            SettingsRow("Restore from backup", onClick = { vm.resetBackup(); sheet = MeSheet.Restore })
         }
         SettingsGroup("More") {
             SettingsRow("Look and text size", value = lookSummary(settings.theme, settings.textScale), onClick = { sheet = MeSheet.Look })

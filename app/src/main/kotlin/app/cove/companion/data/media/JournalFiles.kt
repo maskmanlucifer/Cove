@@ -18,6 +18,9 @@ class JournalFiles(private val context: Context) {
 
     fun voice(id: String) = File(dir("voice"), "$id.ogg")
 
+    /** Where a photo or voice note downloaded from Drive is cached; the same names the recorder and compressor use. */
+    fun fetched(id: String, kind: String): File = if (kind == "voice") voice(id) else File(dir("photos"), "$id.webp")
+
     /** Fresh file the camera app writes into, and the `content://` URI to hand it. */
     fun newCameraTarget(): Pair<File, Uri> {
         val file = File(dir("camera"), "${System.nanoTime()}.jpg")

@@ -18,17 +18,21 @@ class JournalMedia(
     private val compressor: ImageCompressor,
     private val repo: JournalRepository,
     private val clock: Clock,
+    private val quality: suspend () -> Int = { QUALITY_BALANCED },
+    private val onSaved: () -> Unit = {},
 ) {
-    /** Compresses [source] (photo picker or camera URI) and attaches it to [entryId]. [quality] is 80 (Balanced) or 90 (High). */
-    suspend fun addPhoto(entryId: String, source: Uri, quality: Int = QUALITY_BALANCED): JournalMediaEntity {
+    /** Compresses [source] (photo picker or camera URI) at the user's photo quality (80 Balanced, 90 High) and attaches it to [entryId]. */
+    suspend fun addPhoto(entryId: String, source: Uri): JournalMediaEntity {
         val id = newId()
+        val webpQuality = quality()
         val media = withContext(Dispatchers.IO) {
-            val stored = compressor.compress(source, files.photoBase(id), quality)
+            val stored = compressor.compress(source, files.photoBase(id), webpQuality)
             val thumb = files.thumb(id)
             ThumbnailMaker.make(stored.file, thumb)
             JournalMediaEntity(id, entryId, "photo", stored.file.path, thumb.path, bytes = stored.bytes + thumb.length())
         }
         repo.saveMedia(media)
+        onSaved()
         return media
     }
 
@@ -36,6 +40,7 @@ class JournalMedia(
     suspend fun addVoice(entryId: String, id: String, recording: VoiceRecording): JournalMediaEntity {
         val media = JournalMediaEntity(id, entryId, "voice", recording.file.path, durationMs = recording.durationMs, bytes = recording.file.length())
         repo.saveMedia(media)
+        onSaved()
         return media
     }
 

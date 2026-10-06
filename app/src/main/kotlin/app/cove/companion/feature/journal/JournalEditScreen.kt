@@ -114,7 +114,7 @@ fun JournalEditScreen(id: String, nav: Nav) {
                 val photos = s.media.filter { it.kind == "photo" }
                 if (photos.isNotEmpty()) PhotoStrip(photos) { vm.removeMedia(it) }
                 s.media.filter { it.kind == "voice" }.forEach { note ->
-                    VoiceRow(note, s.playback, onToggle = { vm.togglePlayback(note) }, onRemove = { vm.removeMedia(note) })
+                    VoiceRow(note, s.playback, onToggle = { vm.togglePlayback(note) }, onRemove = { vm.removeMedia(note) }, hint = s.voiceHints[note.id])
                 }
             }
             Box(

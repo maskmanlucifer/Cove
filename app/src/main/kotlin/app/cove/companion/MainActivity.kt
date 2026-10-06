@@ -6,6 +6,11 @@ import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.collectAsState
@@ -35,9 +40,24 @@ class MainActivity : ComponentActivity() {
     /** Bumped whenever something asks to open straight into listening (tile, shortcut, debug). */
     private val voiceRequest = mutableIntStateOf(0)
 
+    /** Shows Google's Drive consent screen when the uploader needs it and hands the result back. */
+    private val driveConsent = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
+        container.driveKit.onConsentResult(it.data)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                container.driveKit.consentRequests.collect { pending ->
+                    if (pending != null) {
+                        container.driveKit.consumeConsent()
+                        driveConsent.launch(IntentSenderRequest.Builder(pending).build())
+                    }
+                }
+            }
+        }
         if (BuildConfig.DEBUG) handleDebugIntent()
         if (intent.action == ACTION_LISTEN) voiceRequest.intValue++
         setContent {
@@ -71,6 +91,7 @@ class MainActivity : ComponentActivity() {
      * `--es route alarms` starts on that route; see also `DebugAlarms`.
      * `--ez conflict true` (with seed) adds the sync conflict from frame 31; open it with `--es route sync/conflict`.
      * `--es tab plan --es segment 1 --es sheet categories --es title Dentist` open a Plan tab view directly.
+     * `--ez fakeDrive true [--ez driveRun true]` uses a folder-backed fake Drive with a seeded pending photo; driveRun uploads it and backs up.
      * `--es voiceState listening|result|partial|saved|micoff --es transcript "..."` opens the Voice screen in that state.
      */
     private fun handleDebugIntent() {
@@ -98,6 +119,9 @@ class MainActivity : ComponentActivity() {
                 }
                 VoiceDebug.runSaved(container)
             }
+        }
+        if (intent.getBooleanExtra("fakeDrive", false)) {
+            CoroutineScope(Dispatchers.IO).launch { DebugSeed.seedDrive(container, intent.getBooleanExtra("driveRun", false)) }
         }
         CoroutineScope(Dispatchers.IO).launch { DebugAlarms.handle(this@MainActivity, container, intent) }
     }

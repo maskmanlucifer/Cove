@@ -17,7 +17,7 @@ object SyncTables {
     val all = listOf(
         SyncTable(
             "settings",
-            bools = setOf("spoken_replies", "one_thing_mode", "brief_on", "suggestions_on", "biometric_lock", "onboarded"),
+            bools = setOf("spoken_replies", "one_thing_mode", "brief_on", "suggestions_on", "biometric_lock", "onboarded", "upload_on_wifi_only"),
             localOnly = setOf("biometric_lock", "onboarded"),
         ),
         SyncTable("alarms", bools = setOf("gentle_rise", "enabled"), conflictAware = true),

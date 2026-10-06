@@ -3,6 +3,7 @@ package app.cove.companion.feature.me
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.cove.companion.AppContainer
+import app.cove.companion.data.backup.BackupResult
 import app.cove.companion.data.local.entity.AlarmEntity
 import app.cove.companion.data.local.entity.SettingsEntity
 import app.cove.companion.feature.onboarding.saveWakeTime
@@ -37,6 +38,39 @@ class MeViewModel(private val c: AppContainer) : ViewModel() {
     val conflictTitle: StateFlow<String?> = c.sync.conflicts
         .map { list -> list.firstOrNull()?.let { ConflictDescriber.describe(it).title } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    /** Back-up/restore sheet state: what is running and the message to show. */
+    data class BackupUi(val busy: Boolean = false, val message: String? = null)
+
+    private val _backup = kotlinx.coroutines.flow.MutableStateFlow(BackupUi())
+    val backup: StateFlow<BackupUi> = _backup
+
+    /** "Never", "2 d ago" or "Not set up" for the Back up now row. */
+    val backupLabel: StateFlow<String> = combine(
+        c.driveKit.lastBackupAt, flow { while (true) { emit(Unit); delay(30_000) } },
+    ) { last, _ -> backupLabel(c.driveKit.enabled, last, c.clock.now()) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
+
+    /** Clears the sheet message when a sheet opens or closes. */
+    fun resetBackup() {
+        _backup.value = BackupUi()
+    }
+
+    /** Backs up to Drive now. */
+    fun backUp() = runBackup(restoring = false) { c.driveKit.backUpNow() }
+
+    /** Restores the newest Drive backup into this empty Cove. */
+    fun restore() = runBackup(restoring = true) { c.driveKit.backupService().restoreLatest() }
+
+    private fun runBackup(restoring: Boolean, work: suspend () -> BackupResult) {
+        if (_backup.value.busy) return
+        if (!c.driveKit.enabled) {
+            _backup.value = BackupUi(message = "Sign in with Google (Sync) to use Drive backups.")
+            return
+        }
+        _backup.value = BackupUi(busy = true)
+        viewModelScope.launch { _backup.value = BackupUi(message = backupMessage(work(), restoring)) }
+    }
 
     fun syncNow() = c.sync.requestSync()
 

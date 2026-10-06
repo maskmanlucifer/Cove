@@ -39,6 +39,19 @@ class RoomSyncStore(private val db: CoveDatabase) : SyncStore {
         return out
     }
 
+    /** Every local row of [table] as server-shaped JSON, used by backups. */
+    suspend fun readAll(table: SyncTable): List<JsonObject> {
+        val out = ArrayList<JsonObject>()
+        db.query(SimpleSQLiteQuery("SELECT * FROM ${table.name}")).use { c ->
+            while (c.moveToNext()) out.add(toJson(table, c))
+        }
+        return out
+    }
+
+    /** Number of rows in [table]. */
+    suspend fun count(table: SyncTable): Int =
+        db.query(SimpleSQLiteQuery("SELECT COUNT(*) FROM ${table.name}")).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
+
     override suspend fun apply(table: SyncTable, rows: List<JsonObject>) {
         if (rows.isEmpty()) return
         val columns = localColumns(table)

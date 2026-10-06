@@ -21,6 +21,7 @@ class CoveApp : Application() {
         SignIn.launcher = GoogleSignIn(container.auth, BuildConfig.GOOGLE_WEB_CLIENT_ID, container.appScope)
         container.foreground.onEnter = container.sync::onForeground
         container.sync.start()
+        container.driveKit.start()
     }
 }
 

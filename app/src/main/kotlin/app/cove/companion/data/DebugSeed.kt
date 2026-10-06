@@ -190,4 +190,29 @@ object DebugSeed {
             SyncConflictEntity("todos", todo.id, localJson.toString(), remote.toString(), "Tablet", at(8, 12), at(7, 50), at(8, 12)),
         )
     }
+
+    /**
+     * Switches Drive to the folder-backed fake, adds a journal entry with a generated pending photo and, when [run],
+     * uploads it and writes a backup (look under `files/drive-fake/Cove`).
+     */
+    suspend fun seedDrive(c: AppContainer, run: Boolean) {
+        c.driveKit.useFake()
+        val entry = c.journal.newEntry(c.clock.now().toLocalDate()).copy(title = "Drive test", body = "A seeded photo waiting to upload.")
+        c.journal.save(entry)
+        val id = newId()
+        val file = java.io.File(c.journalFiles.photoBase(id).path + ".webp")
+        val bitmap = android.graphics.Bitmap.createBitmap(600, 400, android.graphics.Bitmap.Config.ARGB_8888).apply {
+            eraseColor(android.graphics.Color.rgb(120, 160, 140))
+        }
+        file.outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.WEBP_LOSSY, 80, it) }
+        val thumb = c.journalFiles.thumb(id)
+        app.cove.companion.data.media.ThumbnailMaker.make(file, thumb)
+        c.journal.saveMedia(
+            app.cove.companion.data.local.entity.JournalMediaEntity(id, entry.id, "photo", file.path, thumb.path, bytes = file.length()),
+        )
+        if (run) {
+            c.driveKit.uploader().run()
+            c.driveKit.backUpNow()
+        }
+    }
 }

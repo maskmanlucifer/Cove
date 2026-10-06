@@ -45,7 +45,7 @@ import app.cove.companion.data.local.entity.VoiceCommandEntity
         SuggestionPrefEntity::class, VoiceCommandEntity::class, BriefEntity::class,
         SearchIndexEntity::class, OutboxEntity::class, SyncStateEntity::class, SyncConflictEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class CoveDatabase : RoomDatabase() {
@@ -72,9 +72,17 @@ abstract class CoveDatabase : RoomDatabase() {
             }
         }
 
+        /** Adds the `photoQuality` and `uploadOnWifiOnly` settings. */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `settings` ADD COLUMN `photoQuality` TEXT NOT NULL DEFAULT 'balanced'")
+                db.execSQL("ALTER TABLE `settings` ADD COLUMN `uploadOnWifiOnly` INTEGER NOT NULL DEFAULT 1")
+            }
+        }
+
         fun create(context: Context, factory: SupportSQLiteOpenHelper.Factory? = null): CoveDatabase =
             Room.databaseBuilder(context, CoveDatabase::class.java, "cove.db")
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .apply { if (factory != null) openHelperFactory(factory) }
                 .build()
     }

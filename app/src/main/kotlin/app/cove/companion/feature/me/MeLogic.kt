@@ -2,6 +2,8 @@ package app.cove.companion.feature.me
 
 import app.cove.companion.core.clockText
 import app.cove.companion.data.auth.AuthState
+import app.cove.companion.data.backup.BackupResult
+import app.cove.companion.data.media.PhotoQuality
 import app.cove.companion.data.sync.SyncStatus
 import app.cove.companion.design.TextScales
 
@@ -67,4 +69,27 @@ fun syncUi(auth: AuthState, status: SyncStatus, conflicts: Int, now: Long): Sync
         else -> "Up to date"
     }
     return SyncUi(label, auth is AuthState.SignedIn, auth is AuthState.SignedOut, conflicts)
+}
+
+/** Row text for "Back up now": "Not set up" without Drive, "Never", or "2 d ago". */
+fun backupLabel(driveEnabled: Boolean, lastAt: Long, now: Long): String = when {
+    !driveEnabled -> "Not set up"
+    lastAt <= 0 -> "Never"
+    else -> agoText(now - lastAt)
+}
+
+/** User-facing line for the outcome of a backup or restore. */
+fun backupMessage(result: BackupResult, restoring: Boolean): String = when (result) {
+    is BackupResult.Done -> if (restoring) "Restored ${result.detail}." else "Backed up."
+    BackupResult.NeedsConsent -> "Allow Cove to use your Google Drive, then try again."
+    BackupResult.Offline -> "Could not reach Google Drive. Try again when you are online."
+    BackupResult.NothingToRestore -> "No backup found in your Drive yet."
+    BackupResult.NotEmpty -> "Restore only works on a fresh Cove with no entries yet."
+    is BackupResult.Failed -> "Something went wrong: ${result.reason}"
+}
+
+/** Helper line under the Photo quality control. */
+fun photoQualityHelp(value: String) = when (value) {
+    PhotoQuality.HIGH -> "Keeps more detail. Photos take about twice the space in your Drive."
+    else -> "Small files that still look sharp on your phone. Applies to photos you add from now on."
 }

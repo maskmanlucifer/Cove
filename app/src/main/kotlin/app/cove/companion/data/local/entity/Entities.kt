@@ -25,6 +25,10 @@ data class SettingsEntity(
     val suggestionsOn: Boolean = true,
     val biometricLock: Boolean = false,
     val onboarded: Boolean = false,
+    /** `balanced` (WebP 80) or `high` (WebP 90) for new journal photos. */
+    val photoQuality: String = "balanced",
+    /** When true, media uploads wait for an unmetered network. */
+    val uploadOnWifiOnly: Boolean = true,
     val updatedAt: Long = 0,
 ) {
     companion object {

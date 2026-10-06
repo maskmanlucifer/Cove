@@ -37,6 +37,8 @@ data class JournalEditState(
     val persisted: Boolean = false,
     val recordingMs: Long? = null,
     val playback: PlaybackState = PlaybackState(),
+    /** Short status per voice note id while it downloads from Drive ("Loading…") or when it cannot be fetched. */
+    val voiceHints: Map<String, String> = emptyMap(),
 )
 
 /** Edits one journal entry: debounced autosave, attachments, voice recording and playback. */
@@ -163,15 +165,33 @@ class JournalEditViewModel(private val c: AppContainer, private val routeId: Str
     /** Plays or pauses the voice note [media]. */
     fun togglePlayback(media: JournalMediaEntity) {
         if (recorder.isRecording) return
-        player.toggle(media.id, media.localPath)
-        playJob?.cancel()
-        playJob = viewModelScope.launch {
-            while (player.state.value.id != null) {
-                player.tick()
-                delay(250)
+        if (player.state.value.id == media.id) {
+            player.stop()
+            return
+        }
+        viewModelScope.launch {
+            hint(media.id, "Loading…")
+            val file = c.driveKit.fetcher.file(media)
+            if (file == null) {
+                hint(media.id, "Not available offline")
+                delay(3000)
+                hint(media.id, null)
+                return@launch
+            }
+            hint(media.id, null)
+            player.toggle(media.id, file.path)
+            playJob?.cancel()
+            playJob = launch {
+                while (player.state.value.id != null) {
+                    player.tick()
+                    delay(250)
+                }
             }
         }
     }
+
+    private fun hint(id: String, text: String?) =
+        _state.update { it.copy(voiceHints = if (text == null) it.voiceHints - id else it.voiceHints + (id to text)) }
 
     private suspend fun ensurePersisted() {
         if (!persisted) {

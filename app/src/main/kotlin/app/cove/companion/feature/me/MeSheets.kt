@@ -23,13 +23,14 @@ import app.cove.companion.design.components.ButtonKind
 import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.PillButton
 import app.cove.companion.data.local.entity.SettingsEntity
+import app.cove.companion.data.media.PhotoQuality
 import app.cove.companion.feature.onboarding.WakeWheel
 import app.cove.companion.design.components.Segmented
 import app.cove.companion.feature.plan.PlanSheet
 import app.cove.companion.feature.plan.TitleField
 
 /** Which Me sheet is open. */
-enum class MeSheet { Name, Wake, Nudges, Motion, Look, Privacy, Sync }
+enum class MeSheet { Name, Wake, Nudges, Motion, Look, Privacy, Sync, PhotoQuality, Backup, Restore }
 
 /** Hosts whichever sheet [sheet] names, reading and writing through [vm]. */
 @Composable
@@ -76,6 +77,17 @@ fun MeSheets(sheet: MeSheet?, s: SettingsEntity, vm: MeViewModel, onDismiss: () 
             )
         }
         MeSheet.Privacy -> PrivacySheet(onDismiss)
+        MeSheet.PhotoQuality -> PlanSheet(onDismiss, gap = 16) {
+            SheetHeading("Photo quality")
+            Segmented(
+                PhotoQuality.all.map(PhotoQuality::label),
+                PhotoQuality.all.indexOf(s.photoQuality).coerceAtLeast(0),
+                { i -> vm.update { it.copy(photoQuality = PhotoQuality.all[i]) } },
+                Modifier.fillMaxWidth(), fillWidth = true,
+            )
+            SheetCaption(photoQualityHelp(s.photoQuality))
+        }
+        MeSheet.Backup, MeSheet.Restore -> BackupSheet(sheet == MeSheet.Restore, vm, onDismiss)
         MeSheet.Sync -> PlanSheet(onDismiss, gap = 16) { close ->
             SheetHeading("Sync")
             SheetCaption("Your changes are copied to your own space whenever you are online.")
