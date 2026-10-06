@@ -1,5 +1,7 @@
 package app.cove.companion.feature.today
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -21,7 +23,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import app.cove.companion.container
 import app.cove.companion.data.local.entity.EventEntity
 import app.cove.companion.feature.plan.EventEditSheet
@@ -32,7 +33,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
@@ -57,7 +57,6 @@ import app.cove.companion.design.components.CoveCard
 import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.DockClearance
 import app.cove.companion.design.components.pressable
-import app.cove.companion.design.components.DockFloatBottom
 import app.cove.companion.design.components.PillButton
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.design.components.OfflineNotice
@@ -178,14 +177,14 @@ fun TodayScreen(nav: Nav) {
     }
     val done by vm.completed.collectAsState()
     done?.let { d ->
-        PlanUndoBar("Done “${d.title}”", vm::undoComplete, Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = DockFloatBottom))
+        PlanUndoBar("Done “${d.title}”", vm::undoComplete, Modifier.align(Alignment.TopCenter))
     }
     undo?.let { gone ->
         LaunchedEffect(gone.id) {
             delay(6000)
             undo = null
         }
-        PlanUndoBar("Deleted “${gone.title}”", { vm.restoreEvent(gone); undo = null }, Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = DockFloatBottom))
+        PlanUndoBar("Deleted “${gone.title}”", { vm.restoreEvent(gone); undo = null }, Modifier.align(Alignment.TopCenter))
     }
     }
     editing?.let { event ->

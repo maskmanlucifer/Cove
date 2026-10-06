@@ -1,5 +1,7 @@
 package app.cove.companion.feature.money
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -11,15 +13,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import app.cove.companion.design.components.TopUndoBar
 import app.cove.companion.design.components.cardRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -37,7 +37,6 @@ import app.cove.companion.data.local.entity.ExpenseCategoryEntity
 import app.cove.companion.design.Cove
 import app.cove.companion.design.CoveShapes
 import app.cove.companion.design.CoveType
-import app.cove.companion.design.components.ButtonKind
 import app.cove.companion.design.components.CoveScreen
 import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.PillButton
@@ -88,11 +87,11 @@ fun MoneyReviewScreen(nav: Nav) {
         if (!cross && s.review.acceptAllChanges().isNotEmpty()) {
             PillButton(
                 "Accept all", vm::acceptAll,
-                Modifier.align(Alignment.BottomCenter).padding(start = 24.dp, end = 24.dp, bottom = 40.dp).fillMaxWidth(),
+                Modifier.align(Alignment.TopCenter).fillMaxWidth(),
                 height = 56.dp, textStyle = MoneyType.Row.copy(fontWeight = FontWeight.Medium),
             )
         }
-        if (s.undoCount > 0) UndoBar("Filed ${s.undoCount}", vm::undoLast, Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = 108.dp))
+        if (s.undoCount > 0) TopUndoBar("Filed ${s.undoCount}", vm::undoLast, Modifier.align(Alignment.TopCenter), belowHeader = true)
     }
 }
 
@@ -157,17 +156,5 @@ private fun TextAction(text: String, strong: Boolean, onClick: () -> Unit) {
     val c = Cove.colors
     Box(Modifier.height(36.dp).pressable(onClick).padding(horizontal = 6.dp), contentAlignment = Alignment.Center) {
         CoveText(text, style = CoveType.Meta.copy(fontWeight = if (strong) FontWeight.Medium else FontWeight.Normal), color = if (strong) c.ink else c.muted)
-    }
-}
-
-@Composable
-private fun UndoBar(text: String, onUndo: () -> Unit, modifier: Modifier) {
-    val c = Cove.colors
-    Row(modifier.fillMaxWidth().height(56.dp).background(c.ink, CoveShapes.Pill).padding(start = 20.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        CoveText(text, Modifier.weight(1f), style = MoneyType.Sub, color = c.onInk)
-        Box(
-            Modifier.height(40.dp).background(c.onInk.copy(alpha = 0.12f), CoveShapes.Pill).pressable(onUndo).padding(horizontal = 16.dp),
-            contentAlignment = Alignment.Center,
-        ) { CoveText("Undo", style = CoveType.Button.copy(fontWeight = FontWeight.Medium), color = c.onInk) }
     }
 }

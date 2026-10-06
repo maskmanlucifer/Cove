@@ -1,5 +1,7 @@
 package app.cove.companion.feature.training.screens
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,12 +16,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
@@ -41,7 +41,6 @@ import app.cove.companion.feature.training.DayChip
 import app.cove.companion.feature.training.MiniStep
 import app.cove.companion.feature.training.PlanEditViewModel
 import app.cove.companion.feature.training.engine.TrainingText
-import app.cove.companion.feature.training.engine.WeightFormat
 import app.cove.companion.feature.training.engine.WeightUnit
 import app.cove.companion.feature.training.ui.BackChevron
 import app.cove.companion.feature.training.ui.PrimaryButton
@@ -102,7 +101,7 @@ fun PlanEditScreen(nav: Nav) {
                 }
             }
         }
-        UndoHost("training", Modifier.align(Alignment.BottomCenter).padding(start = 24.dp, end = 24.dp, bottom = 32.dp))
+        UndoHost("training", Modifier.align(Alignment.TopCenter))
         val s = snap
         val dayId = adding
         CoveSheet(dayId != null && s != null, { adding = null }) {

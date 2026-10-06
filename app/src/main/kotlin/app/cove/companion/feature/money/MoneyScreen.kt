@@ -1,5 +1,6 @@
 package app.cove.companion.feature.money
 
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,7 +17,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
@@ -31,7 +31,6 @@ import app.cove.companion.design.CoveIcons
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.DockClearance
-import app.cove.companion.design.components.DockFloatBottom
 import app.cove.companion.design.components.FitText
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.design.components.pressable
@@ -79,7 +78,7 @@ fun MoneyScreen(nav: Nav) {
             }
             s.reviewBanner?.let { ReviewLink(it) { nav.go(Routes.MoneyReview) } }
         }
-        MoneyUndoBar(Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = DockFloatBottom))
+        MoneyUndoBar(Modifier.align(Alignment.TopCenter))
     }
 }
 

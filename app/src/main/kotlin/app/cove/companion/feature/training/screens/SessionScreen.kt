@@ -1,5 +1,7 @@
 package app.cove.companion.feature.training.screens
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,11 +19,9 @@ import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -150,7 +150,7 @@ fun SessionScreen(nav: Nav) {
                 bottom()
             }
         }
-        UndoHost("training", Modifier.align(Alignment.BottomCenter).padding(start = 24.dp, end = 24.dp, bottom = 120.dp))
+        UndoHost("training", Modifier.align(Alignment.TopCenter))
 
         NumberEntrySheet(
             typing == Typing.Weight, "Weight, ${u.unit.label}", WeightFormat.number(u.weightKg, u.unit), u.unit.label, true,

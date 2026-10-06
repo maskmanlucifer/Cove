@@ -1,11 +1,10 @@
 package app.cove.companion.navigation
 
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import app.cove.companion.design.Cove
 import androidx.compose.ui.platform.LocalDensity
@@ -28,7 +27,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.cove.companion.design.components.CoveDock
 import app.cove.companion.design.components.CoveScreen
-import app.cove.companion.design.components.DockFloatBottom
 import app.cove.companion.design.components.Tab
 import app.cove.companion.feature.journal.JournalScreen
 import app.cove.companion.feature.me.MeScreen
@@ -69,6 +67,6 @@ fun MainScreen(nav: Nav) {
             )
         }
         if (!(oneThing && tab == Tab.Today)) CoveDock(tab, onSelect = { tab = it }, onVoice = { nav.go(Routes.Voice) })
-        UndoToastHost(Modifier.align(Alignment.BottomCenter).padding(bottom = DockFloatBottom))
+        UndoToastHost(Modifier.align(Alignment.TopCenter))
     }
 }

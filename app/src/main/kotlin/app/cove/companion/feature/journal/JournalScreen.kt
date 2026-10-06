@@ -1,5 +1,6 @@
 package app.cove.companion.feature.journal
 
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -15,12 +16,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
@@ -44,7 +42,6 @@ import app.cove.companion.design.CoveShapes
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.DockClearance
-import app.cove.companion.design.components.DockFloatBottom
 import app.cove.companion.design.components.Hairline
 import app.cove.companion.design.components.PillButton
 import app.cove.companion.design.components.UndoHost
@@ -84,7 +81,7 @@ fun JournalScreen(nav: Nav) {
                 else -> entryRows(s.recent, nav)
             }
         }
-        UndoHost("journal", Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = DockFloatBottom))
+        UndoHost("journal", Modifier.align(Alignment.TopCenter))
     }
 }
 

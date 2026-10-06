@@ -1,5 +1,6 @@
 package app.cove.companion.feature.training
 
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,7 +14,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -51,7 +51,7 @@ fun TrainingScreen(nav: Nav) {
             home == null -> SetupContent()
             else -> HomeContent(ui.snap!!.daysPerWeek, home, vm, nav)
         }
-        UndoHost("training", Modifier.align(Alignment.BottomCenter).padding(start = 24.dp, end = 24.dp, bottom = DockClearance))
+        UndoHost("training", Modifier.align(Alignment.TopCenter))
     }
 }
 
