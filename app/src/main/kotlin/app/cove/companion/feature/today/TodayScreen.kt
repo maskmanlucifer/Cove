@@ -75,7 +75,7 @@ fun TodayScreen(nav: Nav) {
         if (offline) OfflineNotice()
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (!offline) CoveText(state.date.longLabel(), style = CoveType.Meta, color = c.muted)
-            BalancedText(greeting(state), suggestion?.let { " ${it.title}" } ?: headline(state), CoveType.Title)
+            BalancedText(greeting(state), suggestion?.let { " ${it.title}" } ?: headline(state).let { h -> if (offline) h.replace(Regex(", nothing before .*\\.$"), ".") else h }, CoveType.Title)
         }
         if (suggestion != null) SuggestionCard(suggestion, sug.detail, suggest)
         else if (!offline) state.next?.let { NextCard(it, evening) }

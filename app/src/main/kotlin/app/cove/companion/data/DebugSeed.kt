@@ -5,6 +5,7 @@ import app.cove.companion.core.newId
 import app.cove.companion.core.toEpochMillis
 import app.cove.companion.data.local.entity.AlarmEntity
 import app.cove.companion.data.local.entity.BriefEntity
+import app.cove.companion.data.local.entity.DecisionEntity
 import app.cove.companion.feature.brief.BriefCodec
 import app.cove.companion.feature.brief.BriefSegment
 import app.cove.companion.feature.suggest.SuggestDebug
@@ -141,13 +142,18 @@ object DebugSeed {
         val day = c.clock.now().let { java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneId.systemDefault()).toLocalDate() }
         val segments = listOf(
             BriefSegment("Weather · mild, 24°", "Good morning, Maya. It is mild and clear, 24 degrees now, up to 27 later."),
-            BriefSegment("Your day", "Coffee with Jo at eleven. Leave by 10:45, it’s a short walk. Reply to Priya by one."),
+            BriefSegment("Your day", "Coffee with Jo at eleven. Leave by 10:45, it’s a short walk."),
             BriefSegment("Money · ₹11,580 left", "You have ₹11,580 left this month. No rush."),
             BriefSegment("One thing to read", "A slow start is still a start. Today only needs a few things from you."),
         )
         c.assistant.saveBrief(BriefEntity(day.toEpochDay(), BriefCodec.encode(segments), c.clock.now(), 124))
         if (SuggestDebug.lastUse != null && c.database.alarms().get("seed-run") == null) {
             c.plan.saveAlarm(AlarmEntity("seed-run", "Run", 7 * 60, 0b1111111, kind = "custom"))
+            listOf(3L, 6L).forEach { ago ->
+                c.assistant.saveDecision(
+                    DecisionEntity("seed-past-$ago", "late_night_shift", "Late night?", "", "[]", "confirmed", c.clock.now() - ago * 86_400_000L),
+                )
+            }
         }
     }
 }

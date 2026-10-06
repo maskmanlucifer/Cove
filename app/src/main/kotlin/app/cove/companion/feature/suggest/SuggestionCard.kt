@@ -20,10 +20,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.inset
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -50,9 +52,9 @@ fun SuggestionCard(decision: DecisionEntity, detail: DecisionDetail, vm: Suggest
     val c = Cove.colors
     Box(modifier.fillMaxWidth().clip(CoveShapes.Card).background(c.card)) {
         Canvas(
-            Modifier.align(Alignment.TopEnd).offset(60.dp, (-60).dp).size(180.dp)
+            Modifier.align(Alignment.TopEnd).offset(90.dp, (-90).dp).size(240.dp)
                 .blur(14.dp).alpha(if (c.isDark) 0.4f else 0.7f),
-        ) { drawBlobs() }
+        ) { inset(30.dp.toPx()) { drawBlobs() } }
         Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             CoveText("Suggestion", style = CoveType.Meta, color = c.muted)
             CoveText(decision.body, style = CoveType.Heading.copy(fontSize = 21.sp, lineHeight = 28.sp, letterSpacing = (-0.3).sp))
@@ -62,12 +64,13 @@ fun SuggestionCard(decision: DecisionEntity, detail: DecisionDetail, vm: Suggest
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 PillButton("Do it", vm::accept, height = 48.dp, horizontalPadding = 20.dp)
                 PillButton("Keep as is", vm::keep, kind = ButtonKind.Secondary, height = 48.dp, container = c.canvas)
-                Column(
-                    Modifier.height(48.dp).pressable({ vm.showWhy(true) }).padding(horizontal = 12.dp),
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    CoveText("Why?", style = CoveType.Button.copy(fontWeight = FontWeight.Normal), color = c.muted)
-                    Box(Modifier.fillMaxWidth().height(1.dp).background(if (c.isDark) c.tail else Color(0xFFC2C4C8)))
+                val line = if (c.isDark) c.tail else Color(0xFFC2C4C8)
+                Box(Modifier.height(48.dp).pressable({ vm.showWhy(true) }).padding(horizontal = 12.dp), contentAlignment = Alignment.Center) {
+                    CoveText(
+                        "Why?",
+                        Modifier.drawBehind { drawLine(line, Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx()) },
+                        style = CoveType.Button.copy(fontWeight = FontWeight.Normal), color = c.muted,
+                    )
                 }
             }
         }

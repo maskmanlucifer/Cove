@@ -8,9 +8,7 @@ import app.cove.companion.data.repo.pendingIds
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -34,7 +32,7 @@ class SuggestionViewModel(private val c: AppContainer) : ViewModel() {
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SuggestionState())
 
     init {
-        viewModelScope.launch { engine.refresh() }
+        viewModelScope.launch { c.plan.alarms.collect { engine.refresh() } }
     }
 
     fun accept() = act { engine.accept(it) }

@@ -31,7 +31,7 @@ class DecisionEngine(private val c: AppContainer, private val usage: UsageSignal
         if (c.assistant.decisionsSince(DecisionRules.LATE_NIGHT, dayStart) > 0 || c.assistant.isMuted(DecisionRules.LATE_NIGHT)) return
 
         val lastUse = (SuggestDebug.lastUse?.let { FakeUsageSignals(it) } ?: usage).lastScreenUse(dayStart, now)
-        val events = c.plan.eventsOn(today).first().map { it.startAt.toLocalDateTime().let { t -> t.hour * 60 + t.minute } }.sorted()
+        val events = c.plan.eventsOn(today).first().filter { it.repeat == "none" }.map { it.startAt.toLocalDateTime().let { t -> t.hour * 60 + t.minute } }.sorted()
         val ctx = SuggestionContext(
             now.toLocalDateTime(), lastUse?.toLocalDateTime(), events, c.plan.alarms.first(),
             c.assistant.recentConfirmed(DecisionRules.LATE_NIGHT, 2).size,

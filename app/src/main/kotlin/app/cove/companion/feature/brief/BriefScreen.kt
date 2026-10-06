@@ -86,7 +86,7 @@ fun BriefScreen(nav: Nav) {
 @Composable
 private fun Header(s: PlayerState, offline: Boolean, nav: Nav) {
     val c = Cove.colors
-    val label = "Brief · " + BriefTiming.minutesLabel(BriefTiming.totalSeconds(s.segments)) + if (offline) " · saved for offline" else ""
+    val label = "Brief · " + BriefTiming.minutesLabel(s.fixed?.second ?: BriefTiming.totalSeconds(s.segments)) + if (offline) " · saved for offline" else ""
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
         Box(Modifier.size(44.dp).background(c.card, CoveShapes.Circle).pressable(nav.back), contentAlignment = Alignment.Center) {
             CoveIcon(CoveIcons.ChevronDown, c.ink, size = 18.dp)
