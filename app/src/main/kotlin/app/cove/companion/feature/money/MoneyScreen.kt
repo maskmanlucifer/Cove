@@ -33,6 +33,9 @@ import app.cove.companion.design.CoveType
 import app.cove.companion.design.MessageIcon
 import app.cove.companion.design.components.AccentButton
 import app.cove.companion.design.components.CoveText
+import app.cove.companion.design.components.EmptyState
+import app.cove.companion.design.illustrations.Scene
+import app.cove.companion.design.components.EmptyAction
 import app.cove.companion.design.components.DockClearance
 import app.cove.companion.design.components.FitText
 import app.cove.companion.design.components.coveTopInset
@@ -81,7 +84,7 @@ fun MoneyScreen(nav: Nav) {
             }
             DailyBars(s.bars)
             if (s.empty) {
-                CoveText("Nothing spent yet this month. Tap + or just say it.", style = MoneyType.Note, color = c.muted)
+                EmptyState(Scene.Money, "No spending yet.", "Tap + or just say it, and it will show up here.", compact = true)
             } else {
                 CategoryCard(s.rows, nav)
             }

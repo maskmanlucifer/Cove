@@ -41,6 +41,9 @@ import app.cove.companion.design.Cove
 import app.cove.companion.design.CoveShapes
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.CoveText
+import app.cove.companion.design.components.EmptyAction
+import app.cove.companion.design.components.EmptyState
+import app.cove.companion.design.illustrations.Scene
 import app.cove.companion.design.components.DockClearance
 import app.cove.companion.design.components.Hairline
 import app.cove.companion.design.components.PillButton
@@ -76,7 +79,7 @@ fun JournalScreen(nav: Nav) {
             item { MonthCard(s, onShift = vm::shift) { date -> vm.tapDay(date)?.let(nav.go) } }
             val selected = s.selected
             when {
-                s.empty -> item { CoveText("Nothing here yet. Write a few lines whenever you like.", style = CoveType.Meta, color = Cove.colors.muted) }
+                s.empty -> item { EmptyState(Scene.Journal, "A blank page is a fine start.", "Write a few lines whenever you like.", primary = EmptyAction("Write") { nav.go(Routes.journalEdit()) }) }
                 selected != null -> dayEntries(selected, s.selectedEntries, nav)
                 else -> entryRows(s.recent, nav)
             }

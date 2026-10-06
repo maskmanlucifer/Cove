@@ -13,4 +13,8 @@ enum class Scene(internal val art: (ScenePalette) -> Art) {
     Alarms(::alarmsArt), Training(::trainingArt), Voice(::voiceArt), Messages(::messagesArt),
     Synced(::syncedArt), Offline(::offlineArt), Help(::helpArt), Lantern(::lanternArt), Secure(::secureArt),
     Cleared(::clearedArt),
+    ;
+
+    /** True for the four wide time-of-day scenes that carry their own sky. */
+    val isTimeOfDay: Boolean get() = ordinal < 4
 }

@@ -47,6 +47,8 @@ import app.cove.companion.design.components.CoveDock
 import app.cove.companion.design.components.CoveScreen
 import app.cove.companion.design.components.CoveSwitch
 import app.cove.companion.design.components.CoveText
+import app.cove.companion.design.components.EmptyState
+import app.cove.companion.design.illustrations.Scene
 import app.cove.companion.design.components.DockClearance
 import app.cove.companion.design.components.Hairline
 import app.cove.companion.design.components.Tab
@@ -112,9 +114,7 @@ fun AlarmsScreen(nav: Nav) {
 private fun LazyListScope.alarmRows(alarms: List<AlarmEntity>, onToggle: (AlarmEntity, Boolean) -> Unit, onOpen: (String) -> Unit) {
     if (alarms.isEmpty()) {
         item {
-            CoveCard(padding = 20) {
-                CoveText("No alarms yet. Tap + to add one.", style = CoveType.Body, color = Cove.colors.muted)
-            }
+            EmptyState(Scene.Alarms, "No alarms yet.", "Tap + to set a gentle one.")
         }
         return
     }

@@ -28,6 +28,8 @@ import app.cove.companion.design.CoveShapes
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.CoveScreen
 import app.cove.companion.design.components.CoveText
+import app.cove.companion.design.components.EmptyState
+import app.cove.companion.design.illustrations.Scene
 import app.cove.companion.design.components.DockClearance
 import app.cove.companion.design.components.Hairline
 import app.cove.companion.design.components.Segmented
@@ -65,7 +67,7 @@ fun ProgressScreen(nav: Nav) {
                 BodyCard(ui, range)
                 CoveText("Exercises", style = CoveType.Meta, color = c.muted)
                 if (ui.exercises.isEmpty()) {
-                    CoveText("Nothing logged yet. Tap an exercise on the Training page when you have done it.", style = CoveType.Meta, color = c.muted)
+                    EmptyState(Scene.Training, "Nothing logged yet.", "Tap an exercise on the Training page when you have done it.", compact = true)
                 } else Column(Modifier.fillMaxWidth().background(c.card, CoveShapes.Card).padding(horizontal = 20.dp)) {
                     ui.exercises.forEachIndexed { i, p ->
                         if (i > 0) Hairline()

@@ -31,7 +31,7 @@ internal fun morningArt(p: ScenePalette) = ArtBuilder(p).run {
     line(path { moveTo(98f, 34f); quadraticTo(102f, 29f, 106f, 34f); quadraticTo(110f, 29f, 114f, 34f) }, 1.3f, 0.35f)
     fill(hill(112f, 106f, 100f, 118f), lerp(p.lilac, p.base, 0.35f), 0.85f)
     fill(hill(132f, 128f, 130f, 140f, 10f), lerp(p.sky, p.lilac, 0.5f), 0.8f)
-    fill(hill(150f, 146f, 146f, 150f, 6f), lerp(p.paper, p.base, if (p.dark) 0.2f else 0.1f))
+    fill(hill(146f, 142f, 142f, 146f, 6f), lerp(p.lilac, p.paper, if (p.dark) 0.1f else 0.6f))
     build(W, H)
 }
 

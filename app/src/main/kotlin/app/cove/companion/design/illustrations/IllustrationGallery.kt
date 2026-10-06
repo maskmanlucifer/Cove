@@ -32,7 +32,7 @@ fun IllustrationGallery() {
                 listOf(false, true).forEach { dark ->
                     CoveTheme(dark = dark) {
                         Box(Modifier.weight(1f).background(Cove.colors.canvas).padding(vertical = 8.dp)) {
-                            if (scene.ordinal < 4) SceneBanner(scene, 90.dp, Modifier.fillMaxWidth().padding(horizontal = 4.dp), animate = false)
+                            if (scene.isTimeOfDay) SceneBanner(scene, 90.dp, Modifier.fillMaxWidth().padding(horizontal = 4.dp), animate = false)
                             else Illustration(scene, Modifier.fillMaxWidth(), animate = false)
                         }
                     }

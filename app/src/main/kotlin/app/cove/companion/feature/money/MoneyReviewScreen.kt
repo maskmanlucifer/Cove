@@ -39,6 +39,8 @@ import app.cove.companion.design.CoveShapes
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.CoveScreen
 import app.cove.companion.design.components.CoveText
+import app.cove.companion.design.components.EmptyState
+import app.cove.companion.design.illustrations.Scene
 import app.cove.companion.design.components.PillButton
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.design.components.pressable
@@ -74,7 +76,7 @@ fun MoneyReviewScreen(nav: Nav) {
                 s.message?.let { m -> item { CoveText(m, Modifier.padding(horizontal = 4.dp), style = MoneyType.Note, color = c.muted) } }
                 s.provenance?.let { p -> item { CoveText("Answered by: $p", Modifier.padding(horizontal = 4.dp), style = MoneyType.Small, color = c.muted) } }
                 if (s.loaded && open.isEmpty() && !s.busy && (cross || s.mode == ReviewMode.Unfiled)) {
-                    item { CoveText(if (cross) "AI agrees with how you filed everything." else "Everything is filed.", Modifier.padding(horizontal = 4.dp), style = MoneyType.Note, color = c.muted) }
+                    item { EmptyState(Scene.Cleared, if (cross) "All in agreement." else "Everything is filed.", if (cross) "AI agrees with how you filed everything." else "Nothing needs a second look.", Modifier.padding(top = 40.dp)) }
                 }
                 itemsIndexed(open, key = { _, row -> row.expense.id }) { i, row ->
                     Column(Modifier.cardRow(c.card, i, open.size, 24.dp, horizontal = 20.dp)) {

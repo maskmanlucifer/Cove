@@ -38,6 +38,9 @@ import app.cove.companion.design.CoveShapes
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.CoveScreen
 import app.cove.companion.design.components.CoveText
+import app.cove.companion.design.components.EmptyState
+import app.cove.companion.design.illustrations.Scene
+import app.cove.companion.design.components.EmptyAction
 import app.cove.companion.design.components.FitText
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.design.components.pressable
@@ -76,7 +79,7 @@ fun MoneyCategoryDetailScreen(id: String, nav: Nav) {
                 ) {
                     item { Hero(s) }
                     if (s.groups.isEmpty()) {
-                        item { CoveText("Nothing here yet this month.", Modifier.padding(horizontal = 4.dp), style = MoneyType.Note, color = c.muted) }
+                        item { EmptyState(Scene.Money, "Nothing here yet.", "No spending in this category this month.", compact = true) }
                     }
                     items(s.groups, key = { it.label }) { group ->
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {

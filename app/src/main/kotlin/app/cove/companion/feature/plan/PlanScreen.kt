@@ -40,6 +40,9 @@ import app.cove.companion.design.CoveIcon
 import app.cove.companion.design.CoveShapes
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.CoveText
+import app.cove.companion.design.components.EmptyAction
+import app.cove.companion.design.components.EmptyState
+import app.cove.companion.design.illustrations.Scene
 import app.cove.companion.design.components.DockClearance
 import app.cove.companion.design.components.DockFloatBottom
 import app.cove.companion.design.components.Segmented
@@ -109,6 +112,15 @@ fun PlanScreen(nav: Nav) {
             ) {
                 item { header(); Spacer(Modifier.height(24.dp)) }
                 scheduleRows(state.timeline, { sheet = TASK + it }, { sheet = EVENT + it }, { nav.go(Routes.alarmEdit(it)) })
+                if (state.now != 0L && state.timeline.none { it is TimelineRow.Entry }) item {
+                    EmptyState(
+                        Scene.Schedule,
+                        if (state.isToday) "Nothing planned." else "A free day.",
+                        if (state.isToday) "Enjoy the quiet, or add something." else "Nothing on this day yet.",
+                        Modifier.padding(top = 24.dp),
+                        primary = EmptyAction("Add to schedule") { sheet = ADD_EVENT },
+                    )
+                }
             }
         }
         if (!todos && drag.id == null) DayPill(state.day, state.isToday, vm::shiftDay, vm::showToday, Modifier.align(Alignment.BottomStart).padding(start = 20.dp, bottom = DockFloatBottom))
