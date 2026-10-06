@@ -37,6 +37,8 @@ import app.cove.companion.feature.plan.PlanScreen
 import app.cove.companion.feature.today.TodayScreen
 import app.cove.companion.feature.voice.UndoToastHost
 
+private val DockFadeHeight = 112.dp
+
 /** The five dock destinations. Each tab screen draws its own content and leaves room for the dock. */
 @Composable
 fun MainScreen(nav: Nav) {
@@ -59,6 +61,13 @@ fun MainScreen(nav: Nav) {
             Modifier.align(Alignment.TopCenter).fillMaxWidth().height(maxOf(topInset, 48.dp))
                 .background(Brush.verticalGradient(listOf(Cove.colors.canvas, Cove.colors.canvas, Color.Transparent))),
         )
+        if (!(oneThing && tab == Tab.Today)) {
+            // Soft fade so scrolled content never collides with the floating bar; matches the canvas, so invisible at rest.
+            Box(
+                Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(DockFadeHeight)
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, Cove.colors.canvas.copy(alpha = 0.92f), Cove.colors.canvas))),
+            )
+        }
         if (!(oneThing && tab == Tab.Today)) CoveDock(tab, onSelect = { tab = it }, onVoice = { nav.go(Routes.Voice) })
         UndoToastHost(Modifier.align(Alignment.BottomCenter).padding(bottom = DockFloatBottom))
     }

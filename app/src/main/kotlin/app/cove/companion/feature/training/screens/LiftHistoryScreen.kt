@@ -23,6 +23,7 @@ import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.CoveCard
 import app.cove.companion.design.components.CoveScreen
 import app.cove.companion.design.components.CoveText
+import app.cove.companion.design.components.PillButton
 import app.cove.companion.design.components.Segmented
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.feature.training.trainingSnapshots
@@ -64,6 +65,10 @@ fun LiftHistoryScreen(exerciseId: String, nav: Nav) {
             TrainingTopBar("Training", { BackChevron(nav.back) })
             val s = snap
             val e = s?.exercise(exerciseId) ?: s?.exercises?.firstOrNull { it.name.equals(exerciseId, true) }
+            if (s != null && e == null) {
+                MissingLift(nav)
+                return@Column
+            }
             if (s != null && e != null) {
                 val spec = s.spec(e)
                 val all = s.points(e.id)
@@ -105,5 +110,15 @@ fun LiftHistoryScreen(exerciseId: String, nav: Nav) {
                 }
             }
         }
+    }
+}
+
+/** Shown when a lift id no longer exists (removed from the plan), so the screen is never blank. */
+@Composable
+private fun MissingLift(nav: Nav) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        CoveText("This lift isn't in your plan.", style = CoveType.Title)
+        CoveText("It may have been removed. Your logged sets are still safe.", style = TrainingType.Sub, color = Cove.colors.muted)
+        PillButton("Back to Training", nav.back, Modifier.padding(top = 8.dp))
     }
 }
