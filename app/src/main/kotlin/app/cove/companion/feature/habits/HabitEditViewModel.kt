@@ -1,0 +1,99 @@
+package app.cove.companion.feature.habits
+
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import app.cove.companion.AppContainer
+import app.cove.companion.core.newId
+import app.cove.companion.data.local.entity.HabitEntity
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+/** Where a habit appears on Today. */
+enum class ShowMode(val label: String) {
+    AfterWakeUp("After wake-up"),
+    AllDay("All day"),
+    Never("Never"),
+}
+
+/** Cadence names as stored in [HabitEntity.cadence], in the order of the "How often" control. */
+val Cadences = listOf("daily", "days", "weekly")
+
+data class HabitEditState(
+    val isNew: Boolean = true,
+    val cadence: Int = 1,
+    val daysMask: Int = 0b0010101,
+    val remindMinutes: Int? = 7 * 60 + 30,
+    val show: ShowMode = ShowMode.AfterWakeUp,
+)
+
+/** Create or edit one habit. New habits start as the design shows: some days (M W F), a 7:30 am reminder, after wake-up. */
+class HabitEditViewModel(private val c: AppContainer, private val id: String) : ViewModel() {
+    val name = TextFieldState()
+    private val _state = MutableStateFlow(HabitEditState(isNew = id == "new"))
+    val state: StateFlow<HabitEditState> = _state.asStateFlow()
+    private var existing: HabitEntity? = null
+
+    init {
+        if (id != "new") viewModelScope.launch {
+            val h = c.habits.get(id) ?: return@launch
+            existing = h
+            name.setTextAndPlaceCursorAtEnd(h.name)
+            _state.value = HabitEditState(
+                isNew = false,
+                cadence = Cadences.indexOf(h.cadence).coerceAtLeast(0),
+                daysMask = h.daysMask,
+                remindMinutes = h.remindMinutes,
+                show = when {
+                    !h.showOnToday -> ShowMode.Never
+                    h.afterWakeUp -> ShowMode.AfterWakeUp
+                    else -> ShowMode.AllDay
+                },
+            )
+        }
+    }
+
+    fun setCadence(index: Int) = _state.update { s ->
+        val mask = when {
+            index == 2 && s.daysMask.countOneBits() != 1 -> s.daysMask and -s.daysMask
+            else -> s.daysMask
+        }
+        s.copy(cadence = index, daysMask = if (mask == 0) 0b0000001 else mask)
+    }
+
+    /** Toggles [bit] for "Some days"; "Weekly" picks exactly one day. Keeps at least one day. */
+    fun toggleDay(bit: Int) = _state.update { s ->
+        val mask = if (s.cadence == 2) bit else s.daysMask xor bit
+        if (mask == 0) s else s.copy(daysMask = mask)
+    }
+
+    fun setReminder(minutes: Int?) = _state.update { it.copy(remindMinutes = minutes) }
+
+    fun cycleShow() = _state.update { it.copy(show = ShowMode.entries[(it.show.ordinal + 1) % ShowMode.entries.size]) }
+
+    /** Saves the habit; false when the name is blank. */
+    suspend fun save(): Boolean {
+        val n = name.text.toString().trim()
+        if (n.isEmpty()) return false
+        val s = _state.value
+        val base = existing ?: HabitEntity(newId(), n, sort = (c.habits.habits.first().maxOfOrNull { it.sort } ?: -1) + 1)
+        c.habits.save(
+            base.copy(
+                name = n,
+                cadence = Cadences[s.cadence],
+                daysMask = if (s.cadence == 0) 127 else s.daysMask,
+                remindMinutes = s.remindMinutes,
+                afterWakeUp = s.show == ShowMode.AfterWakeUp,
+                showOnToday = s.show != ShowMode.Never,
+            ),
+        )
+        return true
+    }
+
+    suspend fun delete() = c.habits.delete(id)
+}

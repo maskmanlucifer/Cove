@@ -26,6 +26,8 @@ object Routes {
 
     const val Habits = "habits"
     const val HabitNew = "habits/new"
+    const val HabitEdit = "habits/edit/{id}"
+    fun habitEdit(id: String) = "habits/edit/$id"
 
     const val JournalEdit = "journal/{id}"
     fun journalEdit(id: String = "new") = "journal/$id"

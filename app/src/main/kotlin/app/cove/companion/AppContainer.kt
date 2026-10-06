@@ -2,7 +2,17 @@ package app.cove.companion
 
 import android.content.Context
 import app.cove.companion.core.Clock
+import app.cove.companion.data.insights.ForegroundTracker
+import app.cove.companion.data.insights.JournalSearch
+import app.cove.companion.data.insights.NanoInsights
+import app.cove.companion.data.insights.NoOpEmbedder
+import app.cove.companion.data.insights.SearchIndexer
 import app.cove.companion.data.local.CoveDatabase
+import app.cove.companion.data.media.ImageCompressor
+import app.cove.companion.data.media.JournalFiles
+import app.cove.companion.data.media.JournalMedia
+import app.cove.companion.data.media.VoiceNotePlayer
+import app.cove.companion.data.media.VoiceNoteRecorder
 import app.cove.companion.data.repo.AssistantRepository
 import app.cove.companion.data.repo.ChangeLog
 import app.cove.companion.data.repo.HabitRepository
@@ -11,6 +21,9 @@ import app.cove.companion.data.repo.MoneyRepository
 import app.cove.companion.data.repo.PlanRepository
 import app.cove.companion.data.repo.SettingsRepository
 import app.cove.companion.data.repo.TodoRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 /** Manual dependency graph, created once by [CoveApp]. */
 class AppContainer(context: Context, val clock: Clock = Clock.System) {
@@ -24,4 +37,15 @@ class AppContainer(context: Context, val clock: Clock = Clock.System) {
     val money = MoneyRepository(database, clock, changeLog)
     val journal = JournalRepository(database, clock, changeLog)
     val assistant = AssistantRepository(database, clock)
+
+    /** Outlives screens; used for work that must finish after a screen closes, such as indexing a saved entry. */
+    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val foreground = ForegroundTracker()
+    val journalFiles = JournalFiles(context)
+    private val appContext = context
+    fun voiceRecorder() = VoiceNoteRecorder(appContext)
+    fun voicePlayer() = VoiceNotePlayer()
+    val journalMedia = JournalMedia(journalFiles, ImageCompressor(context), journal, clock)
+    val journalSearch = JournalSearch(database, NoOpEmbedder)
+    val searchIndexer = SearchIndexer(database, journalSearch, NanoInsights(), NoOpEmbedder, clock, foreground)
 }

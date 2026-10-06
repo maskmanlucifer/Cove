@@ -86,6 +86,7 @@ fun CoveNavHost(start: String) {
 
         composable(Routes.Habits) { HabitsScreen(nav) }
         composable(Routes.HabitNew) { HabitNewScreen(nav) }
+        composable(Routes.HabitEdit, idArg) { HabitNewScreen(nav, id(it)) }
 
         composable(Routes.JournalEdit, idArg) { JournalEditScreen(id(it), nav) }
         composable(Routes.SyncConflict) { SyncConflictScreen(nav) }
