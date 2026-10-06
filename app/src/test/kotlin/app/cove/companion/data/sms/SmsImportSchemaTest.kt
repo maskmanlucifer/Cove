@@ -13,9 +13,9 @@ class SmsImportSchemaTest {
     private val zone = ZoneId.of("Asia/Kolkata")
     private fun ms(d: Int, h: Int = 12) = LocalDateTime.of(2026, 10, d, h, 0).atZone(zone).toInstant().toEpochMilli()
 
-    @Test fun schema8HasLogTableAndExternalRef() {
-        val json = file("schemas/app.cove.companion.data.local.CoveDatabase/8.json", "app/schemas/app.cove.companion.data.local.CoveDatabase/8.json").readText()
-        assertTrue(json.contains("\"version\": 8"))
+    @Test fun schema9HasLogTableAndExternalRef() {
+        val json = file("schemas/app.cove.companion.data.local.CoveDatabase/9.json", "app/schemas/app.cove.companion.data.local.CoveDatabase/9.json").readText()
+        assertTrue(json.contains("\"version\": 9"))
         assertTrue(json.contains("\"tableName\": \"sms_import_log\""))
         assertTrue(json.contains("\"columnName\": \"externalRef\""))
     }
@@ -28,7 +28,7 @@ class SmsImportSchemaTest {
     @Test fun supabaseKnowsExternalRef() {
         val sql = file("../supabase/setup.sql", "supabase/setup.sql").readText()
         assertTrue(sql.contains("add column if not exists external_ref text"))
-        assertTrue(file("../supabase/migrations/0006_expense_external_ref.sql", "supabase/migrations/0006_expense_external_ref.sql").exists())
+        assertTrue(file("../supabase/migrations/0008_expense_external_ref.sql", "supabase/migrations/0008_expense_external_ref.sql").exists())
     }
 
     @Test fun rangeStarts() {

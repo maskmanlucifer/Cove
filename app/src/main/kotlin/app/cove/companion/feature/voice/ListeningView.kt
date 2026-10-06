@@ -56,11 +56,11 @@ fun ListeningView(s: VoiceState, onClose: () -> Unit, onType: () -> Unit, onFini
             Modifier.fillMaxSize().coveTopInset().padding(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 48.dp),
         ) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                CoveText(if (s.onDevice) "Listening · on this phone" else "Listening", style = CoveType.Meta, color = c.muted)
+                CoveText(if (!s.ready) "Getting ready" else if (s.onDevice) "Listening · on this phone" else "Listening", style = CoveType.Meta, color = c.muted)
                 CloseButton(onClose)
             }
             Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterVertically)) {
-                LiveTranscript(s.transcript)
+                LiveTranscript(s.transcript, s.ready)
                 CoveText("%d:%02d".format(s.seconds / 60, s.seconds % 60), style = CoveType.Body.copy(fontSize = 15.sp), color = c.muted)
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
@@ -75,10 +75,10 @@ fun ListeningView(s: VoiceState, onClose: () -> Unit, onType: () -> Unit, onFini
 }
 
 @Composable
-private fun LiveTranscript(text: String) {
+private fun LiveTranscript(text: String, ready: Boolean) {
     val c = Cove.colors
     if (text.isBlank()) {
-        CoveText("Go ahead…", style = Transcript, color = c.tail)
+        CoveText(if (ready) "Say it now" else "Getting ready…", style = Transcript, color = c.tail)
         return
     }
     val cut = text.trimEnd().lastIndexOf(' ') + 1
@@ -99,7 +99,7 @@ private fun VoiceWash(level: Float, modifier: Modifier) {
     val breathe by rememberInfiniteTransition(label = "wash").animateFloat(
         1f, 1.05f, infiniteRepeatable(tween(2000), RepeatMode.Reverse), label = "breathe",
     )
-    val swell by animateFloatAsState(1f + 0.1f * level, tween(120), label = "swell")
+    val swell by animateFloatAsState(1f + 0.18f * level, tween(120), label = "swell")
     val alpha = if (Cove.colors.isDark) 0.4f else 0.9f
     Canvas(
         modifier

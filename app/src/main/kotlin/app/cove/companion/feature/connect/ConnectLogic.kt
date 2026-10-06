@@ -133,7 +133,7 @@ fun fieldHint(field: CredentialField): FieldHint = when (field) {
     CredentialField.SupabaseUrl -> FieldHint("Project URL", "https://abcdwxyz.supabase.co")
     CredentialField.SupabaseAnonKey -> FieldHint("Anon public key", "eyJ...", secret = true)
     CredentialField.GoogleWebClientId -> FieldHint("Web client ID", "1234-abc.apps.googleusercontent.com")
-    CredentialField.GeminiApiKey -> FieldHint("API key", "AIza...", secret = true)
+    CredentialField.GeminiApiKey -> FieldHint("API key", "AQ. or AIza...", secret = true)
     CredentialField.GeminiModel -> FieldHint("Model", Credentials.DEFAULT_MODEL)
     CredentialField.GeminiFallbackModel -> FieldHint("Fallback model", Credentials.DEFAULT_FALLBACK_MODEL)
 }

@@ -25,7 +25,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 /** Why a Gemini call failed, in terms a person can act on. */
-enum class GeminiError { InvalidKey, Forbidden, Quota, ModelNotFound, BadRequest, Offline, Timeout, Server, BadResponse }
+enum class GeminiError { InvalidKey, KeyTypeUnsupported, Forbidden, Quota, ModelNotFound, BadRequest, Offline, Timeout, Server, BadResponse }
 
 /** Result of one Gemini call. */
 sealed interface GeminiReply {
@@ -63,6 +63,11 @@ class GeminiDirectClient(
     }
 
     override suspend fun suggestCategories(system: String, user: String): String? {
+        if (!enabled) return null
+        return withFallback(system, user, { it }, CATEGORY_TIMEOUT_MS)
+    }
+
+    override suspend fun adviseWorkout(system: String, user: String): String? {
         if (!enabled) return null
         return withFallback(system, user, { it }, CATEGORY_TIMEOUT_MS)
     }
@@ -131,6 +136,7 @@ class GeminiDirectClient(
 
         /** Maps an HTTP failure to a [GeminiError]; the key is never part of [body] handling output. */
         fun mapFailure(status: Int, body: String): GeminiError = when {
+            body.contains("ACCESS_TOKEN_TYPE_UNSUPPORTED") -> GeminiError.KeyTypeUnsupported
             body.contains("API_KEY_INVALID") || body.contains("API key not valid") || status == 401 -> GeminiError.InvalidKey
             status == 403 -> GeminiError.Forbidden
             status == 404 -> GeminiError.ModelNotFound

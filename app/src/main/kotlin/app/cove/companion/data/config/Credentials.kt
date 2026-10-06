@@ -34,11 +34,11 @@ data class Credentials(
     /** A Gemini API key is present. */
     val hasGemini: Boolean get() = geminiApiKey.isNotBlank()
 
-    /** The model to call first. */
-    val model: String get() = geminiModel.ifBlank { DEFAULT_MODEL }
+    /** The model to call first; retired defaults saved by older builds are replaced by the current one. */
+    val model: String get() = geminiModel.takeUnless { it.isBlank() || it in RETIRED_MODELS } ?: DEFAULT_MODEL
 
     /** The model to retry on once when the first fails. */
-    val fallbackModel: String get() = geminiFallbackModel.ifBlank { DEFAULT_FALLBACK_MODEL }
+    val fallbackModel: String get() = geminiFallbackModel.takeUnless { it.isBlank() || it in RETIRED_MODELS } ?: DEFAULT_FALLBACK_MODEL
 
     /** Value of [field]. */
     operator fun get(field: CredentialField): String = when (field) {
@@ -78,10 +78,13 @@ data class Credentials(
     override fun toString(): String = "Credentials(supabase=$hasSupabase, google=$hasGoogle, gemini=$hasGemini)"
 
     companion object {
-        /** Cheap, fast, good at short structured replies. */
-        const val DEFAULT_MODEL = "gemini-2.5-flash-lite"
+        /** Cheap, fast, good at short structured replies; the one model every free-tier key can use. */
+        const val DEFAULT_MODEL = "gemini-3.5-flash-lite"
 
-        /** Retried once when the first model fails. */
-        const val DEFAULT_FALLBACK_MODEL = "gemini-2.5-flash"
+        /** Retried once when the first model fails; also a Flash-Lite model so it stays within the free tier. */
+        const val DEFAULT_FALLBACK_MODEL = "gemini-3.1-flash-lite"
+
+        /** Earlier defaults that Google no longer offers to new projects. */
+        private val RETIRED_MODELS = setOf("gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite")
     }
 }

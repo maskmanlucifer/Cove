@@ -12,6 +12,19 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import androidx.core.app.ActivityCompat
+import app.cove.companion.ai.model.SpeechFailure
+import app.cove.companion.core.PermissionStep
+import app.cove.companion.core.Permissions
+import app.cove.companion.core.permissionStep
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.core.content.ContextCompat
@@ -34,13 +47,20 @@ fun VoiceScreen(nav: Nav) {
     val nowMillis = context.container.clock.now()
     fun granted() = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 
+    var deniedBefore by rememberSaveable { mutableStateOf(false) }
+    var refreshStep by remember { mutableIntStateOf(0) }
     val request = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
-        if (ok) vm.begin() else vm.micDenied()
+        if (ok) vm.micGranted() else { deniedBefore = true; refreshStep++; vm.micDenied() }
+    }
+    fun micStep(): PermissionStep {
+        val activity = context.findActivity()
+        val canAsk = activity == null || ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.RECORD_AUDIO)
+        return permissionStep(granted(), deniedBefore, canAsk)
     }
     LaunchedEffect(Unit) {
         if (granted() || VoiceDebug.hasPending) vm.begin() else request.launch(Manifest.permission.RECORD_AUDIO)
     }
-    LaunchedEffect(state.done) { if (state.done) { nav.home(); state.route?.let { nav.go(it) } } }
+    LaunchedEffect(state.done) { if (state.done) nav.home() }
 
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle) {
@@ -61,6 +81,19 @@ fun VoiceScreen(nav: Nav) {
             Stage.Result -> ResultView(state, nowMillis, vm)
             Stage.Partial -> PartialView(state, nowMillis, vm, nav.back)
             Stage.Answer -> AnswerView(state) { nav.back() }
+            Stage.Trouble -> TroubleView(
+                state, speechGuidance(state.trouble ?: SpeechFailure.Other, remember(refreshStep, state.trouble) { micStep() }),
+                onAction = { action ->
+                    when (action) {
+                        FixAction.AllowMic -> request.launch(Manifest.permission.RECORD_AUDIO)
+                        FixAction.OpenSettings -> context.startActivity(Permissions.appSettings(context))
+                        FixAction.DownloadOffline -> VoiceActions.openSpeechSettings(context)
+                        FixAction.TryAgain -> vm.listen()
+                        FixAction.TypeInstead -> vm.typeInstead()
+                    }
+                },
+                onClose = nav.back,
+            )
             Stage.Typing -> TypingView(
                 state, nav.back, vm::onTyped, vm::submitTyped, vm::listen,
                 onSettings = {
@@ -71,4 +104,10 @@ fun VoiceScreen(nav: Nav) {
             )
         }
     }
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }

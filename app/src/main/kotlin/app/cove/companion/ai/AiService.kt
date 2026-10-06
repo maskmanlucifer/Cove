@@ -1,5 +1,6 @@
 package app.cove.companion.ai
 
+import app.cove.companion.ai.model.AdviceRequest
 import app.cove.companion.ai.model.AiResult
 import app.cove.companion.ai.model.BriefInput
 import app.cove.companion.ai.model.BriefLines
@@ -8,6 +9,7 @@ import app.cove.companion.ai.model.CategorySuggestion
 import app.cove.companion.ai.model.CloudCheck
 import app.cove.companion.ai.model.IntentContext
 import app.cove.companion.ai.model.ParsedIntents
+import app.cove.companion.ai.model.SpeechEngineInfo
 import app.cove.companion.ai.model.SpeechSession
 import app.cove.companion.ai.model.Summary
 import app.cove.companion.ai.model.TypedSession
@@ -31,8 +33,17 @@ interface AiService {
     /** The optional generated intro and thought of the morning brief; [BriefInput] must hold non-journal facts only. */
     suspend fun composeBriefLines(facts: BriefInput): AiResult<BriefLines>
 
-    /** Starts a microphone session on the best recognizer, or null when the phone has none (offer typing). */
-    suspend fun openSpeech(): SpeechSession?
+    /**
+     * A microphone session that fails over between recognizers by itself. Never null: when no recognizer can work, the
+     * session ends with a [app.cove.companion.ai.model.SpeechEvent.Failure] saying why (offer typing).
+     */
+    suspend fun openSpeech(): SpeechSession
+
+    /** Every microphone engine with its availability and details, for the Voice check sheet. */
+    suspend fun speechEngines(): List<SpeechEngineInfo>
+
+    /** A session on exactly one engine ([id] as in [speechEngines]), without failover, for the Voice check sheet; null if unknown. */
+    fun openSpeechEngine(id: String): SpeechSession?
 
     /** A session fed by the keyboard instead of the microphone. */
     fun openTyped(): TypedSession
@@ -52,6 +63,12 @@ interface AiService {
      * Suggestions refer to notes by position; nothing is changed by this call.
      */
     suspend fun suggestCategories(notes: List<String>, categories: List<String>): AiResult<List<CategorySuggestion>>
+
+    /**
+     * One-sentence second opinion on today's weight for a lift. Everyday data (lift name and recent sessions), manual use
+     * only (the "Ask Cove" link); rules always answer first in the app, this never changes a weight by itself.
+     */
+    suspend fun adviseWorkout(request: AdviceRequest): AiResult<String>
 
     /** What each capability can use right now and why not, for settings screens. */
     suspend fun status(): AiStatus

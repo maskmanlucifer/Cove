@@ -1,139 +1,105 @@
 package app.cove.companion.feature.training.voice
 
 import app.cove.companion.AppContainer
-import app.cove.companion.ai.model.VoiceIntent
 import app.cove.companion.ai.model.ExerciseNames
-import app.cove.companion.core.newId
+import app.cove.companion.ai.model.VoiceIntent
+import app.cove.companion.ai.model.workoutDayLabel
 import app.cove.companion.core.toLocalDate
-import app.cove.companion.data.local.entity.ExerciseEntity
-import app.cove.companion.data.repo.idList
-import app.cove.companion.feature.training.DefaultProgramme
-import app.cove.companion.feature.training.TrainingSnapshot
-import app.cove.companion.feature.training.engine.ExerciseKind
-import app.cove.companion.feature.training.engine.LoggedSet
-import app.cove.companion.feature.training.engine.ProgressionEngine
-import app.cove.companion.feature.training.engine.Schedule
+import app.cove.companion.data.local.entity.DayOverrideEntity
+import app.cove.companion.data.local.entity.ExerciseLogEntity
+import app.cove.companion.feature.training.engine.TodayWorkout
 import app.cove.companion.feature.training.engine.TrainingText
+import app.cove.companion.feature.training.engine.WeekPlan
 import app.cove.companion.feature.training.engine.WeightFormat
 import app.cove.companion.feature.training.engine.WeightUnit
 import kotlinx.coroutines.flow.first
-import kotlin.math.abs
 
 /** [TrainingVoice] over the training repository: every write goes through it, so sync and undo see it. */
 class RepoTrainingVoice(private val c: AppContainer) : TrainingVoice {
-    private suspend fun snapshot() = TrainingSnapshot(c.training.tables.first(), c.clock.now().toLocalDate())
+    private suspend fun unit() = WeightUnit.of(c.training.settingsNow().unit)
+    private fun today() = c.clock.now().toLocalDate()
 
-    override suspend fun exerciseNames(): List<String> = c.training.exercises().map { it.name }
+    override suspend fun exerciseNames(): List<String> = c.training.knownNames()
 
-    /** The user's lift for [spoken], or an unsaved one built from the default programme (saved only when logging). */
-    private fun resolve(snap: TrainingSnapshot, spoken: String): ExerciseEntity {
-        val names = snap.exercises.map { it.name }
-        val name = ExerciseNames.resolve(spoken, names) ?: spoken.trim().replaceFirstChar { it.uppercase() }
-        snap.exercises.firstOrNull { it.name.equals(name, true) }?.let { return it }
-        val d = DefaultProgramme.find(name)
-        return ExerciseEntity(
-            id = "", name = d?.name ?: name, muscleGroup = d?.group ?: "other", kind = (d?.kind ?: ExerciseKind.Weighted).key,
-            incrementKg = d?.let { DefaultProgramme.incrementFor(it.incrementKg, snap.unit) } ?: 2.5,
-            repMin = d?.repMin ?: 8, repMax = d?.repMax ?: 8, sets = d?.sets ?: 3, sort = snap.exercises.size,
+    /** The user's own name for [spoken] when they have one, else the built-in name or the words as said. */
+    private suspend fun resolve(spoken: String): String =
+        ExerciseNames.resolve(spoken, c.training.knownNames()) ?: spoken.trim().replaceFirstChar { it.uppercase() }
+
+    override suspend fun planExercise(intent: VoiceIntent.PlanExercise): TrainingOutcome {
+        val u = intent.unit?.let { WeightUnit.of(it) } ?: unit()
+        val name = resolve(intent.exercise)
+        val weekday = intent.date.dayOfWeek.value
+        val (row, before) = c.training.planExercise(weekday, name, intent.weight?.let(u::toKg), intent.sets, intent.reps)
+        val day = TrainingText.weekdayName(weekday)
+        return TrainingOutcome(
+            summary = "Planned ${row.name} for ${workoutDayLabel(intent.date, today())}",
+            undo = if (before == null) TrainingUndo(created = listOf(row.id)) else TrainingUndo(changed = listOf(PlanSnap(before.id, before.weightKg, before.sets, before.reps))),
+            label = "changed $day's plan",
         )
-    }
-
-    private fun sets(snap: TrainingSnapshot, e: ExerciseEntity, intent: VoiceIntent.LogSets, exclude: String?): List<PreviewSet> {
-        val unit = intent.unit?.let { WeightUnit.of(it) } ?: snap.unit
-        val bodyweight = e.kind == ExerciseKind.Bodyweight.key
-        val planned = snap.suggestion(e, exclude).target.weightKg
-        return intent.sets.map { PreviewSet(if (bodyweight) 0.0 else it.weight?.let(unit::toKg) ?: planned, it.reps) }
-    }
-
-    override suspend fun preview(intent: VoiceIntent.LogSets): SetsPreview? {
-        val snap = snapshot()
-        if (!snap.hasPlan) return null
-        val e = resolve(snap, intent.exercise)
-        val exclude = snap.active?.id
-        val drafted = sets(snap, e, intent, exclude)
-        val earlier = snap.active?.let { s -> snap.liftSets(s.id, e.id).map { LoggedSet(it.weightKg, it.reps) } }.orEmpty()
-        val all = earlier + drafted.map { LoggedSet(it.weightKg, it.reps) }
-        val history = if (e.id.isEmpty()) emptyList() else snap.history(e.id, exclude)
-        val spec = snap.spec(e)
-        val goal = ProgressionEngine.next(spec, history, snap.startKg(e)).target.reps
-        val next = ProgressionEngine.next(spec, history + listOf(all), snap.startKg(e))
-        val top = if (spec.isBodyweight) 0.0 else all.maxOf { it.weightKg }
-        val working = if (spec.isBodyweight) all else all.filter { abs(it.weightKg - top) < 0.01 }
-        return SetsPreview(e.name, snap.unit, drafted, TrainingText.draftNote(next, working, goal, snap.unit), spec.isBodyweight)
     }
 
     override suspend fun logSets(intent: VoiceIntent.LogSets): TrainingOutcome {
-        val snap = snapshot()
-        if (!snap.hasPlan) return TrainingOutcome(error = "Set up Training first, then I can log your sets")
-        var e = resolve(snap, intent.exercise)
-        if (e.id.isEmpty()) e = c.training.saveExercise(e.copy(id = newId()))
-        val before = snap.active
-        val session = before ?: c.training.startSession(dayTypeFor(snap, e), listOf(e.id))
-        val startedHere = before == null
-        if (!startedHere && e.id !in session.exerciseIds.idList()) c.training.addToSession(session.id, e.id)
-        val rows = sets(snap, e, intent, session.id)
-        val ids = rows.map { c.training.logSet(session.id, e.id, it.weightKg, it.reps, "voice").id }
-        if (startedHere) c.training.finishSession(session.id)
-        val n = ids.size
+        val t = c.training.tables.first()
+        val u = intent.unit?.let { WeightUnit.of(it) } ?: unit()
+        val name = resolve(intent.exercise)
+        val day = today()
+        val planned = TodayWorkout.rows(t, day, u).firstOrNull { WeekPlan.nameKey(it.exercise.name) == WeekPlan.nameKey(name) }?.exercise
+        val plannedKg = planned?.weightKg ?: 0.0
+        val kg = intent.sets.maxOf { it.weight?.let(u::toKg) ?: plannedKg }
+        val reps = intent.sets.map { it.reps }
+        val before = c.training.logExercise(day.toEpochDay(), planned?.name ?: name, kg, planned?.sets ?: reps.size, planned?.reps ?: reps.first(), reps)
         return TrainingOutcome(
-            summary = "Logged ${if (n == 1) "a set" else "$n sets"} of ${e.name}",
-            undo = TrainingUndo(sets = ids, sessions = if (startedHere) listOf(session.id) else emptyList()),
-            label = "removed $n ${if (n == 1) "set" else "sets"} of ${e.name}",
+            summary = "Logged ${planned?.name ?: name}",
+            undo = TrainingUndo(logs = listOf(LogUndo(day.toEpochDay(), planned?.name ?: name, before?.let { LogSnap(it.weightKg, it.targetSets, it.targetReps, it.reps) }))),
+            label = "removed ${planned?.name ?: name} from today",
         )
     }
 
-    private fun dayTypeFor(snap: TrainingSnapshot, e: ExerciseEntity): String =
-        snap.tables.planDays.firstOrNull { e.id in it.exerciseIds.idList() }?.dayType ?: "Extra"
-
-    override suspend fun startWorkout(intent: VoiceIntent.StartWorkout): TrainingOutcome {
-        val snap = snapshot()
-        if (!snap.hasPlan) return TrainingOutcome(error = "Set up Training first, then I can start a workout")
-        snap.active?.let { return TrainingOutcome(summary = "Your ${it.dayType} workout is already going", route = SESSION_ROUTE) }
-        val day = snap.dayTypes.firstOrNull { it.equals(intent.day, true) } ?: snap.upcoming(1).firstOrNull()?.dayType ?: snap.dayTypes.firstOrNull()
-            ?: return TrainingOutcome(error = "I couldn't find a workout to start")
-        val ids = snap.dayExercises(day).map { it.id }
-        if (ids.isEmpty()) return TrainingOutcome(error = "The $day day has no exercises yet")
-        val session = c.training.startSession(day, ids)
+    override suspend fun changeWeight(intent: VoiceIntent.ChangeWeight): TrainingOutcome {
+        val t = c.training.tables.first()
+        val u = intent.unit?.let { WeightUnit.of(it) } ?: unit()
+        val name = resolve(intent.exercise)
+        val row = TodayWorkout.rows(t, today(), u).firstOrNull { WeekPlan.nameKey(it.exercise.name) == WeekPlan.nameKey(name) }
+            ?: return TrainingOutcome(error = "$name isn't planned today")
+        val day = today().toEpochDay()
+        val before = c.training.setDayWeight(day, row.exercise.id, u.toKg(intent.weight))
         return TrainingOutcome(
-            summary = "Started $day day", undo = TrainingUndo(sessions = listOf(session.id)), label = "discarded the $day workout", route = SESSION_ROUTE,
+            summary = "${row.exercise.name} is ${WeightFormat.withUnit(u.toKg(intent.weight), u)} today",
+            undo = TrainingUndo(overrides = listOf(OverrideUndo(day, row.exercise.id, before != null, before?.weightKg, before?.dismissed ?: false))),
+            label = "${row.exercise.name} weight changed back",
         )
     }
 
     override suspend fun logBodyWeight(intent: VoiceIntent.LogBodyWeight): TrainingOutcome {
-        val snap = snapshot()
-        val unit = intent.unit?.let { WeightUnit.of(it) } ?: snap.unit
-        val kg = unit.toKg(intent.weight)
-        val day = c.clock.now().toLocalDate().toEpochDay()
+        val u = intent.unit?.let { WeightUnit.of(it) } ?: unit()
+        val shown = unit()
+        val kg = u.toKg(intent.weight)
+        val day = today().toEpochDay()
         val previous = c.training.bodyWeight(day)
         c.training.saveBodyWeight(day, kg, previous?.note.orEmpty())
         return TrainingOutcome(
-            summary = "Logged ${WeightFormat.withUnit(kg, snap.unit)}",
+            summary = "Logged ${WeightFormat.withUnit(kg, shown)}",
             undo = TrainingUndo(bodyWeights = listOf(BodyWeightUndo(day, previous?.kg))),
             label = "removed today's weigh-in",
         )
     }
 
-    override suspend fun nextWorkout(): String {
-        val snap = snapshot()
-        if (!snap.hasPlan) return "Training isn't set up yet. Open Training from Me to start"
-        snap.active?.let { return "Your ${it.dayType} workout is running" }
-        val slot = snap.upcoming(1).firstOrNull() ?: return "Nothing is planned yet"
-        val at = TrainingText.timeLabel(snap.startMinutes)
-        return when (val label = Schedule.dayLabel(snap.today, slot.date)) {
-            "Today" -> "Next is ${slot.dayType} today at $at"
-            "Tomorrow" -> "Next is ${slot.dayType} tomorrow at $at"
-            else -> "Next is ${slot.dayType} on $label at $at"
-        }
+    override suspend fun todaySummary(): String {
+        val u = unit()
+        val rows = TodayWorkout.rows(c.training.tables.first(), today(), u)
+        if (rows.isEmpty()) return "Nothing planned for today"
+        return "Today: " + rows.joinToString(", ") { TrainingText.rowLine(it.exercise.name, it.exercise.weightKg, it.exercise.sets, it.exercise.reps, u) }
     }
 
     override suspend fun undo(undo: TrainingUndo) {
-        undo.sets.forEach { c.training.deleteSet(it) }
-        undo.sessions.forEach { c.training.discardSession(it) }
+        c.training.deleteExercises(undo.created)
+        undo.changed.forEach { s -> c.training.planExercise(s.id)?.let { c.training.updateExercise(it.copy(weightKg = s.weightKg, sets = s.sets, reps = s.reps)) } }
+        undo.overrides.forEach { o ->
+            c.training.restoreOverride(o.day, o.planId, if (o.had) DayOverrideEntity(WeekPlan.overrideId(o.day, o.planId), o.day, o.planId, o.weightKg, o.dismissed) else null)
+        }
+        undo.logs.forEach { l ->
+            c.training.restoreLog(l.day, l.name, l.previous?.let { ExerciseLogEntity(WeekPlan.logId(l.day, l.name), l.day, l.name, it.weightKg, it.targetSets, it.targetReps, it.reps) })
+        }
         undo.bodyWeights.forEach { b -> if (b.previousKg == null) c.training.deleteBodyWeight(b.day) else c.training.saveBodyWeight(b.day, b.previousKg) }
-    }
-
-    companion object {
-        /** The route the voice screen opens after "start workout". */
-        const val SESSION_ROUTE = "training/session"
     }
 }

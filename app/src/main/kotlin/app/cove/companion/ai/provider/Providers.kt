@@ -3,6 +3,7 @@ package app.cove.companion.ai.provider
 import app.cove.companion.ai.model.AiResult
 import app.cove.companion.ai.model.Availability
 import app.cove.companion.ai.model.BriefRequest
+import app.cove.companion.ai.model.AdviceRequest
 import app.cove.companion.ai.model.CategoryRequest
 import app.cove.companion.ai.model.CategorySuggestion
 import app.cove.companion.ai.model.IntentRequest
@@ -43,6 +44,15 @@ interface BriefProvider : AiProvider {
 /** Opens microphone (or typed) sessions; [open] is only called when [availability] says so. */
 interface SpeechProvider : AiProvider {
     fun open(): SpeechSession
+
+    /**
+     * Whether the engine reports input loudness. When true, a run with no level change is "no audio activity"
+     * and hands over to the next engine; when false only the start-up and run-time rules apply.
+     */
+    val reportsLevels: Boolean get() = false
+
+    /** Extra, content-free facts for the Voice check sheet (language pack, locale), one `label to value` per line. */
+    suspend fun details(): List<Pair<String, String>> = emptyList()
 }
 
 /** Describes a photo in one sentence. */
@@ -58,6 +68,11 @@ interface SummaryProvider : AiProvider {
 /** Files a batch of expense notes under the user's categories. */
 interface CategoryProvider : AiProvider {
     suspend fun suggest(request: CategoryRequest): AiResult<List<CategorySuggestion>>
+}
+
+/** One-sentence second opinion on a lift's weight (ordinary workout data). */
+interface AdviceProvider : AiProvider {
+    suspend fun advise(request: AdviceRequest): AiResult<String>
 }
 
 /** Turns text into a fixed-size vector for semantic search. */

@@ -30,7 +30,7 @@ data class UndoPayload(
     val habits: List<HabitTick> = emptyList(),
     val journal: List<String> = emptyList(),
     val habitsCreated: List<String> = emptyList(),
-    /** Sets, sessions and weigh-ins a training command added. */
+    /** Plan, log and weigh-in changes a training command made. */
     val training: TrainingUndo = TrainingUndo(),
     /** What undoing says it did, e.g. "removed 'Buy milk'". */
     val labels: List<String> = emptyList(),
@@ -53,13 +53,11 @@ data class ExecResult(
     val failed: List<String> = emptyList(),
     /** To-dos created by the command (reminders included), so Today can flag them "New". */
     val createdTodos: List<String> = emptyList(),
-    /** Screen to open after saving, e.g. the workout just started. */
-    val route: String? = null,
 )
 
 /** Runs confirmed intents against the repositories and records them so they can be undone. */
 class IntentExecutor(private val store: VoiceStore, private val clock: Clock, private val training: TrainingVoice? = null) {
-    private val json = Json
+    private val json = Json { ignoreUnknownKeys = true }
 
     /** Executes [intents] for [transcript]. Query and undo intents are answered but not recorded. */
     suspend fun execute(transcript: String, intents: List<VoiceIntent>): ExecResult {
@@ -67,20 +65,18 @@ class IntentExecutor(private val store: VoiceStore, private val clock: Clock, pr
             when (only) {
                 VoiceIntent.UndoLast -> return undoLast()
                 VoiceIntent.QueryNext -> return ExecResult(null, nextUp())
-                VoiceIntent.QueryNextWorkout -> return ExecResult(null, training?.nextWorkout() ?: "Training isn't available")
+                VoiceIntent.QueryNextWorkout -> return ExecResult(null, training?.todaySummary() ?: "Training isn't available")
                 else -> Unit
             }
         }
         var acc = UndoPayload()
         val summaries = mutableListOf<String>()
         val failed = mutableListOf<String>()
-        var route: String? = null
         for (intent in intents) {
             val step = run(intent)
             if (step.error != null) failed += step.error else summaries += step.summary
-            step.route?.let { route = it }
             acc = step.undo.let { u ->
-                acc.copy(training = TrainingUndo(acc.training.sets + u.training.sets, acc.training.sessions + u.training.sessions, acc.training.bodyWeights + u.training.bodyWeights),
+                acc.copy(training = acc.training + u.training,
                     todos = acc.todos + u.todos, alarms = acc.alarms + u.alarms, alarmRestore = acc.alarmRestore + u.alarmRestore,
                     expenses = acc.expenses + u.expenses, habits = acc.habits + u.habits, journal = acc.journal + u.journal,
                     habitsCreated = acc.habitsCreated + u.habitsCreated, labels = acc.labels + u.labels,
@@ -95,7 +91,7 @@ class IntentExecutor(private val store: VoiceStore, private val clock: Clock, pr
             summaries.isEmpty() -> failed.firstOrNull() ?: "Nothing saved"
             else -> "Saved ${summaries.size} things"
         }
-        return ExecResult(command?.id, summary, failed, acc.todos, route)
+        return ExecResult(command?.id, summary, failed, acc.todos)
     }
 
     /** Reverses the command [commandId], or the most recent one when null. */
@@ -125,7 +121,7 @@ class IntentExecutor(private val store: VoiceStore, private val clock: Clock, pr
     private class Step(val summary: String = "", val undo: UndoPayload = UndoPayload(), val error: String? = null, val route: String? = null)
 
     private fun step(o: TrainingOutcome) = Step(
-        o.summary, UndoPayload(training = o.undo, labels = if (o.label.isEmpty()) emptyList() else listOf(o.label)), o.error, o.route,
+        o.summary, UndoPayload(training = o.undo, labels = if (o.label.isEmpty()) emptyList() else listOf(o.label)), o.error,
     )
 
     private suspend fun run(intent: VoiceIntent): Step = when (intent) {
@@ -156,7 +152,8 @@ class IntentExecutor(private val store: VoiceStore, private val clock: Clock, pr
             Step("Added habit ${intent.name}", UndoPayload(habitsCreated = listOf(habit.id), labels = listOf("removed habit '${intent.name}'")))
         }
         is VoiceIntent.LogSets -> training?.let { step(it.logSets(intent)) } ?: Step(error = "Training isn't available")
-        is VoiceIntent.StartWorkout -> training?.let { step(it.startWorkout(intent)) } ?: Step(error = "Training isn't available")
+        is VoiceIntent.PlanExercise -> training?.let { step(it.planExercise(intent)) } ?: Step(error = "Training isn't available")
+        is VoiceIntent.ChangeWeight -> training?.let { step(it.changeWeight(intent)) } ?: Step(error = "Training isn't available")
         is VoiceIntent.LogBodyWeight -> training?.let { step(it.logBodyWeight(intent)) } ?: Step(error = "Training isn't available")
         VoiceIntent.QueryNext, VoiceIntent.QueryNextWorkout, VoiceIntent.UndoLast -> Step(error = "That can't be combined with other requests")
     }

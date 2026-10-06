@@ -3,7 +3,7 @@
 
 Usage:
   tools/make-setup-code.py                      # asks for each value, press Enter to skip one
-  tools/make-setup-code.py --supabase-url https://abcd.supabase.co --gemini-key AIza...
+  tools/make-setup-code.py --supabase-url https://abcd.supabase.co --gemini-key AQ...
 
 Any subset of the values works. Treat the code like a password: it contains your keys.
 """
@@ -17,8 +17,8 @@ FIELDS = [
     ("supabaseUrl", "--supabase-url", "Supabase Project URL (https://<ref>.supabase.co)", False),
     ("supabaseAnonKey", "--anon-key", "Supabase anon public key (starts with eyJ)", True),
     ("googleWebClientId", "--google-client-id", "Google web client ID (ends .apps.googleusercontent.com)", False),
-    ("geminiApiKey", "--gemini-key", "Gemini API key (starts with AIza)", True),
-    ("geminiModel", "--gemini-model", "Gemini model (optional, e.g. gemini-2.5-flash-lite)", False),
+    ("geminiApiKey", "--gemini-key", "Gemini API key (starts with AQ. or AIza)", True),
+    ("geminiModel", "--gemini-model", "Gemini model (optional, e.g. gemini-3.5-flash-lite)", False),
     ("geminiFallbackModel", "--gemini-fallback-model", "Gemini fallback model (optional)", False),
 ]
 

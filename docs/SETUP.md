@@ -15,7 +15,7 @@ Shortcut: once you have the values, `tools/make-setup-code.py` turns them into o
 Each service sheet in the app has the same steps with "Open dashboard" buttons and a **Test connection** button that tells you in plain words what is wrong.
 
 ## 1. Supabase (sync)
-1. Create a free project at [supabase.com/dashboard](https://supabase.com/dashboard).
+1. Create a free project at [supabase.com/dashboard](https://supabase.com/dashboard). On the new-project form leave **Enable Data API** on (Cove syncs through it). **Automatically expose new tables** can stay on or off: `setup.sql` grants signed-in users access itself, and every table is protected by row-level security so each user only ever sees their own rows.
 2. Open **SQL Editor > New query**, paste the contents of `supabase/setup.sql` (in the app: Supabase sheet > **Copy setup SQL**), and run it. It is safe to run twice.
 3. Open **Project Settings > API**. Copy the **Project URL** (`https://xxxx.supabase.co`) and the **anon public** key (a long text starting `eyJ`). Never use the `service_role` key; the app refuses it.
 4. In the app: Connect services > Supabase, paste both, **Test connection**. A good result says it is reachable, the key works and the tables are there. If it says the tables are missing, step 2 was not run.
@@ -39,8 +39,8 @@ Files are saved in a visible `Cove` folder in your Drive (scope `drive.file`: Co
 
 ## 4. Gemini
 1. Open [Google AI Studio API keys](https://aistudio.google.com/apikey), create a key.
-2. In Cloud billing set a **budget alert** (and, if you like, a daily quota) so a leaked key cannot cost much. Usage here is a few tiny requests a day.
-3. Connect services > Gemini: paste the key (starts `AIza`), **Test connection**. Under Advanced you may change the model (default `gemini-2.5-flash-lite`) and the fallback (`gemini-2.5-flash`).
+2. Free plan is enough (Cove's usage is a few small requests a day, and it uses Flash-Lite models, which stay free). Note that on the free plan Google may use prompts to improve its products; Cove never sends journal text. If you turn billing on, set a **budget alert** (and, if you like, a daily quota) so a leaked key cannot cost much. Usage here is a few tiny requests a day.
+3. Connect services > Gemini: paste the key (new keys start `AQ.`, older ones `AIza`: both work), **Test connection**. Under Advanced you may change the model (default `gemini-3.5-flash-lite`) and the fallback (`gemini-3.1-flash-lite`).
 
 The phone calls Gemini directly with your key. Only short, non-journal text is sent (a spoken command, or a few facts such as the weather); journal content and transcripts over 600 characters never leave the device.
 
@@ -54,8 +54,8 @@ Pasted values are encrypted with a non-exportable Android Keystore key and store
 Instead of keeping the Gemini key on the phone you can deploy the Edge Function in `supabase/functions/ai-gateway`:
 ```
 supabase functions deploy ai-gateway
-supabase secrets set GEMINI_API_KEY=... GEMINI_MODEL=gemini-2.5-flash-lite \
-  GEMINI_RETRY_MODEL=gemini-2.5-flash ALLOWED_USER_ID=<your user id from Authentication > Users>
+supabase secrets set GEMINI_API_KEY=... GEMINI_MODEL=gemini-3.5-flash-lite \
+  GEMINI_RETRY_MODEL=gemini-3.1-flash-lite ALLOWED_USER_ID=<your user id from Authentication > Users>
 ```
 Leave the Gemini field in the app empty. When Supabase is configured and no Gemini key is set, the app uses the function (signed-in users only). A Gemini key in the app always wins. Tests: `deno test supabase/functions/ai-gateway`.
 

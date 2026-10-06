@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 8,
-    "identityHash": "b5bb5ff2f9dfb7995ca08dfc954d26c6",
+    "identityHash": "c43412cc13239ac0b21d170397ebbe66",
     "entities": [
       {
         "tableName": "settings",
@@ -613,7 +613,7 @@
       },
       {
         "tableName": "expenses",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `amountPaise` INTEGER NOT NULL, `kind` TEXT NOT NULL, `categoryId` TEXT, `note` TEXT NOT NULL, `paidWith` TEXT NOT NULL, `spentAt` INTEGER NOT NULL, `source` TEXT NOT NULL, `updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `externalRef` TEXT, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `amountPaise` INTEGER NOT NULL, `kind` TEXT NOT NULL, `categoryId` TEXT, `note` TEXT NOT NULL, `paidWith` TEXT NOT NULL, `spentAt` INTEGER NOT NULL, `source` TEXT NOT NULL, `updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -672,11 +672,6 @@
             "fieldPath": "deletedAt",
             "columnName": "deletedAt",
             "affinity": "INTEGER"
-          },
-          {
-            "fieldPath": "externalRef",
-            "columnName": "externalRef",
-            "affinity": "TEXT"
           }
         ],
         "primaryKey": {
@@ -1260,293 +1255,25 @@
         }
       },
       {
-        "tableName": "exercises",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `muscleGroup` TEXT NOT NULL, `kind` TEXT NOT NULL, `incrementKg` REAL NOT NULL, `repMin` INTEGER NOT NULL, `repMax` INTEGER NOT NULL, `sets` INTEGER NOT NULL, `sort` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, PRIMARY KEY(`id`))",
+        "tableName": "plan_exercises",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `weekday` INTEGER NOT NULL, `name` TEXT NOT NULL, `weightKg` REAL NOT NULL, `sets` INTEGER NOT NULL, `reps` INTEGER NOT NULL, `incrementKg` REAL NOT NULL, `sort` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
             "columnName": "id",
             "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "weekday",
+            "columnName": "weekday",
+            "affinity": "INTEGER",
             "notNull": true
           },
           {
             "fieldPath": "name",
             "columnName": "name",
             "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "muscleGroup",
-            "columnName": "muscleGroup",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "kind",
-            "columnName": "kind",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "incrementKg",
-            "columnName": "incrementKg",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "repMin",
-            "columnName": "repMin",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "repMax",
-            "columnName": "repMax",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "sets",
-            "columnName": "sets",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "sort",
-            "columnName": "sort",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "updatedAt",
-            "columnName": "updatedAt",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "deletedAt",
-            "columnName": "deletedAt",
-            "affinity": "INTEGER"
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": [
-            "id"
-          ]
-        }
-      },
-      {
-        "tableName": "workout_plans",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `daysPerWeek` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, PRIMARY KEY(`id`))",
-        "fields": [
-          {
-            "fieldPath": "id",
-            "columnName": "id",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "name",
-            "columnName": "name",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "daysPerWeek",
-            "columnName": "daysPerWeek",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "updatedAt",
-            "columnName": "updatedAt",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "deletedAt",
-            "columnName": "deletedAt",
-            "affinity": "INTEGER"
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": [
-            "id"
-          ]
-        }
-      },
-      {
-        "tableName": "plan_days",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `planId` TEXT NOT NULL, `dayType` TEXT NOT NULL, `exerciseIds` TEXT NOT NULL, `sort` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, PRIMARY KEY(`id`))",
-        "fields": [
-          {
-            "fieldPath": "id",
-            "columnName": "id",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "planId",
-            "columnName": "planId",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "dayType",
-            "columnName": "dayType",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "exerciseIds",
-            "columnName": "exerciseIds",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "sort",
-            "columnName": "sort",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "updatedAt",
-            "columnName": "updatedAt",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "deletedAt",
-            "columnName": "deletedAt",
-            "affinity": "INTEGER"
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": [
-            "id"
-          ]
-        },
-        "indices": [
-          {
-            "name": "index_plan_days_planId",
-            "unique": false,
-            "columnNames": [
-              "planId"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_plan_days_planId` ON `${TABLE_NAME}` (`planId`)"
-          }
-        ]
-      },
-      {
-        "tableName": "workout_sessions",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `dayType` TEXT NOT NULL, `plannedAt` INTEGER NOT NULL, `startedAt` INTEGER, `endedAt` INTEGER, `note` TEXT NOT NULL, `exerciseIds` TEXT NOT NULL, `skippedIds` TEXT NOT NULL, `updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, PRIMARY KEY(`id`))",
-        "fields": [
-          {
-            "fieldPath": "id",
-            "columnName": "id",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "dayType",
-            "columnName": "dayType",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "plannedAt",
-            "columnName": "plannedAt",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "startedAt",
-            "columnName": "startedAt",
-            "affinity": "INTEGER"
-          },
-          {
-            "fieldPath": "endedAt",
-            "columnName": "endedAt",
-            "affinity": "INTEGER"
-          },
-          {
-            "fieldPath": "note",
-            "columnName": "note",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "exerciseIds",
-            "columnName": "exerciseIds",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "skippedIds",
-            "columnName": "skippedIds",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "updatedAt",
-            "columnName": "updatedAt",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "deletedAt",
-            "columnName": "deletedAt",
-            "affinity": "INTEGER"
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": [
-            "id"
-          ]
-        },
-        "indices": [
-          {
-            "name": "index_workout_sessions_startedAt",
-            "unique": false,
-            "columnNames": [
-              "startedAt"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_workout_sessions_startedAt` ON `${TABLE_NAME}` (`startedAt`)"
-          }
-        ]
-      },
-      {
-        "tableName": "set_logs",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `sessionId` TEXT NOT NULL, `exerciseId` TEXT NOT NULL, `setNo` INTEGER NOT NULL, `weightKg` REAL NOT NULL, `reps` INTEGER NOT NULL, `loggedAt` INTEGER NOT NULL, `source` TEXT NOT NULL, `updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, PRIMARY KEY(`id`))",
-        "fields": [
-          {
-            "fieldPath": "id",
-            "columnName": "id",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "sessionId",
-            "columnName": "sessionId",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "exerciseId",
-            "columnName": "exerciseId",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "setNo",
-            "columnName": "setNo",
-            "affinity": "INTEGER",
             "notNull": true
           },
           {
@@ -1556,20 +1283,165 @@
             "notNull": true
           },
           {
+            "fieldPath": "sets",
+            "columnName": "sets",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
             "fieldPath": "reps",
             "columnName": "reps",
             "affinity": "INTEGER",
             "notNull": true
           },
           {
-            "fieldPath": "loggedAt",
-            "columnName": "loggedAt",
+            "fieldPath": "incrementKg",
+            "columnName": "incrementKg",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sort",
+            "columnName": "sort",
             "affinity": "INTEGER",
             "notNull": true
           },
           {
-            "fieldPath": "source",
-            "columnName": "source",
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deletedAt",
+            "columnName": "deletedAt",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_plan_exercises_weekday",
+            "unique": false,
+            "columnNames": [
+              "weekday"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_plan_exercises_weekday` ON `${TABLE_NAME}` (`weekday`)"
+          }
+        ]
+      },
+      {
+        "tableName": "day_overrides",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `day` INTEGER NOT NULL, `planExerciseId` TEXT NOT NULL, `weightKg` REAL, `dismissed` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "day",
+            "columnName": "day",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "planExerciseId",
+            "columnName": "planExerciseId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "weightKg",
+            "columnName": "weightKg",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "dismissed",
+            "columnName": "dismissed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deletedAt",
+            "columnName": "deletedAt",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_day_overrides_day",
+            "unique": false,
+            "columnNames": [
+              "day"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_day_overrides_day` ON `${TABLE_NAME}` (`day`)"
+          }
+        ]
+      },
+      {
+        "tableName": "exercise_logs",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `day` INTEGER NOT NULL, `name` TEXT NOT NULL, `weightKg` REAL NOT NULL, `targetSets` INTEGER NOT NULL, `targetReps` INTEGER NOT NULL, `reps` TEXT NOT NULL, `updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "day",
+            "columnName": "day",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "weightKg",
+            "columnName": "weightKg",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "targetSets",
+            "columnName": "targetSets",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "targetReps",
+            "columnName": "targetReps",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reps",
+            "columnName": "reps",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -1593,22 +1465,13 @@
         },
         "indices": [
           {
-            "name": "index_set_logs_sessionId",
+            "name": "index_exercise_logs_day",
             "unique": false,
             "columnNames": [
-              "sessionId"
+              "day"
             ],
             "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_set_logs_sessionId` ON `${TABLE_NAME}` (`sessionId`)"
-          },
-          {
-            "name": "index_set_logs_exerciseId",
-            "unique": false,
-            "columnNames": [
-              "exerciseId"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_set_logs_exerciseId` ON `${TABLE_NAME}` (`exerciseId`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_exercise_logs_day` ON `${TABLE_NAME}` (`day`)"
           }
         ]
       },
@@ -1655,7 +1518,7 @@
       },
       {
         "tableName": "training_settings",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `unit` TEXT NOT NULL, `daysPerWeek` INTEGER NOT NULL, `restSeconds` INTEGER NOT NULL, `weekdays` TEXT NOT NULL, `startMinutes` INTEGER NOT NULL, `startWeights` TEXT NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `unit` TEXT NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -1666,36 +1529,6 @@
           {
             "fieldPath": "unit",
             "columnName": "unit",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "daysPerWeek",
-            "columnName": "daysPerWeek",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "restSeconds",
-            "columnName": "restSeconds",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "weekdays",
-            "columnName": "weekdays",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "startMinutes",
-            "columnName": "startMinutes",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "startWeights",
-            "columnName": "startWeights",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -1712,142 +1545,11 @@
             "id"
           ]
         }
-      },
-      {
-        "tableName": "sms_import_log",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`key` TEXT NOT NULL, `providerId` INTEGER, `outcome` TEXT NOT NULL, `amountPaise` INTEGER NOT NULL, `kind` TEXT NOT NULL, `merchant` TEXT, `last4` TEXT, `externalRef` TEXT, `expenseId` TEXT, `batchId` TEXT, `messageAt` INTEGER NOT NULL, `loggedAt` INTEGER NOT NULL, `parserVersion` INTEGER NOT NULL, PRIMARY KEY(`key`))",
-        "fields": [
-          {
-            "fieldPath": "key",
-            "columnName": "key",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "providerId",
-            "columnName": "providerId",
-            "affinity": "INTEGER"
-          },
-          {
-            "fieldPath": "outcome",
-            "columnName": "outcome",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "amountPaise",
-            "columnName": "amountPaise",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "kind",
-            "columnName": "kind",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "merchant",
-            "columnName": "merchant",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "last4",
-            "columnName": "last4",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "externalRef",
-            "columnName": "externalRef",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "expenseId",
-            "columnName": "expenseId",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "batchId",
-            "columnName": "batchId",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "messageAt",
-            "columnName": "messageAt",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "loggedAt",
-            "columnName": "loggedAt",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "parserVersion",
-            "columnName": "parserVersion",
-            "affinity": "INTEGER",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": [
-            "key"
-          ]
-        },
-        "indices": [
-          {
-            "name": "index_sms_import_log_providerId",
-            "unique": false,
-            "columnNames": [
-              "providerId"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_sms_import_log_providerId` ON `${TABLE_NAME}` (`providerId`)"
-          },
-          {
-            "name": "index_sms_import_log_externalRef",
-            "unique": false,
-            "columnNames": [
-              "externalRef"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_sms_import_log_externalRef` ON `${TABLE_NAME}` (`externalRef`)"
-          },
-          {
-            "name": "index_sms_import_log_messageAt",
-            "unique": false,
-            "columnNames": [
-              "messageAt"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_sms_import_log_messageAt` ON `${TABLE_NAME}` (`messageAt`)"
-          },
-          {
-            "name": "index_sms_import_log_batchId",
-            "unique": false,
-            "columnNames": [
-              "batchId"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_sms_import_log_batchId` ON `${TABLE_NAME}` (`batchId`)"
-          },
-          {
-            "name": "index_sms_import_log_expenseId",
-            "unique": false,
-            "columnNames": [
-              "expenseId"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_sms_import_log_expenseId` ON `${TABLE_NAME}` (`expenseId`)"
-          }
-        ]
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'b5bb5ff2f9dfb7995ca08dfc954d26c6')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c43412cc13239ac0b21d170397ebbe66')"
     ]
   }
 }

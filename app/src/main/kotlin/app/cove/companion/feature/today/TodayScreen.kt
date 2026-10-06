@@ -131,6 +131,7 @@ fun TodayScreen(nav: Nav) {
         }
         if (suggestion != null) SuggestionCard(suggestion, sug.detail, suggest)
         else if (!offline) state.next?.let { NextCard(it, actions, Modifier.padding(top = if (it.windDown) 0.dp else 12.dp)) }
+        if (!offline) WorkoutCard(nav)
         if (offline) OfflineTodos(state.todos, sug.pendingTodoIds) { id, d -> vm.toggle(id, d) }
         else Column(Modifier.padding(top = 4.dp)) {
             state.todos.forEachIndexed { index, row ->

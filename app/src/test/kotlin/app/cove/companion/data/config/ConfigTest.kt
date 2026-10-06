@@ -30,6 +30,7 @@ import org.junit.Test
 private const val JWT = "eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoiYW5vbiJ9.c2ln"
 private const val SERVICE_JWT = "eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIn0.c2ln"
 private const val KEY = "AIzaSyA-1234567890abcdefghijklmnopqrstu"
+private const val AUTH_KEY = "AQ.Ab8RN6Jabcdefghijklmnopqrstuvwxyz0123456789"
 private const val CLIENT = "123-abc.apps.googleusercontent.com"
 
 private class XorSealer : Sealer {
@@ -70,6 +71,22 @@ class ValidationTest {
 
     @Test fun normalizeTrimsQuotesAndSlash() {
         assertEquals("https://a.supabase.co", CredentialValidator.normalize(CredentialField.SupabaseUrl, " \"https://a.supabase.co/\"\n"))
+    }
+
+    @Test
+    fun geminiKeyAcceptsNewAuthKeysAndLegacyKeys() {
+        assertNull(err(CredentialField.GeminiApiKey, AUTH_KEY))
+        assertNull(err(CredentialField.GeminiApiKey, KEY))
+        assertNotNull(err(CredentialField.GeminiApiKey, "sk-not-a-gemini-key-0123456789012345"))
+        assertNotNull(err(CredentialField.GeminiApiKey, "AQ.short"))
+    }
+
+    @Test
+    fun retiredDefaultModelsAreReplacedByCurrentOnes() {
+        val old = Credentials(geminiApiKey = KEY, geminiModel = "gemini-2.5-flash-lite", geminiFallbackModel = "gemini-2.5-flash")
+        assertEquals(Credentials.DEFAULT_MODEL, old.model)
+        assertEquals(Credentials.DEFAULT_FALLBACK_MODEL, old.fallbackModel)
+        assertEquals("gemini-3.8-flash", Credentials(geminiModel = "gemini-3.8-flash").model)
     }
 }
 
@@ -244,4 +261,5 @@ class ConnectionTesterTest {
         val r = ConnectionTester(HttpClient(engine), NoopAi.service).supabase("https://a.supabase.co", JWT)
         assertTrue(r.offerSetupSql)
     }
+
 }
