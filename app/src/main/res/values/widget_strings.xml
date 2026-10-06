@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_next_label">Next thing</string>
+    <string name="widget_next_desc">Your next event or to-do at a glance.</string>
+    <string name="widget_voice_label">Talk to Cove</string>
+    <string name="widget_voice_desc">Tap to start talking to Cove.</string>
+    <string name="widget_spent_label">Spent today</string>
+    <string name="widget_spent_desc">What you have spent today and what is left this month.</string>
+    <string name="widget_tasks_label">Tasks</string>
+    <string name="widget_tasks_desc">Today\'s to-dos you can tick off.</string>
+</resources>

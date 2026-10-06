@@ -4,6 +4,8 @@ import android.app.Application
 import android.content.Context
 import app.cove.companion.core.Notifications
 import app.cove.companion.feature.alarms.AlarmRescheduler
+import app.cove.companion.feature.nudges.NudgeScheduler
+import app.cove.companion.feature.widgets.WidgetUpdater
 
 /** Application entry point; holds the [AppContainer]. */
 class CoveApp : Application() {
@@ -16,6 +18,8 @@ class CoveApp : Application() {
         container.foreground.attach(this)
         Notifications.createChannels(this)
         AlarmRescheduler(this, container).start()
+        NudgeScheduler(this, container).start(container.appScope)
+        WidgetUpdater.start(this, container, container.appScope)
     }
 }
 

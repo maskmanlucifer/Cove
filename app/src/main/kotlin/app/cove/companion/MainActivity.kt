@@ -21,6 +21,7 @@ import app.cove.companion.core.toEpochMillis
 import app.cove.companion.data.DebugSeed
 import app.cove.companion.feature.voice.VoiceDebug
 import app.cove.companion.feature.alarms.DebugAlarms
+import app.cove.companion.feature.widgets.DebugWidgets
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -98,6 +99,7 @@ class MainActivity : ComponentActivity() {
             }
         }
         CoroutineScope(Dispatchers.IO).launch { DebugAlarms.handle(this@MainActivity, container, intent) }
+        CoroutineScope(Dispatchers.IO).launch { DebugWidgets.handle(this@MainActivity, container, intent) }
     }
 
     companion object {
