@@ -13,6 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -123,8 +124,10 @@ fun SessionScreen(nav: Nav) {
                 }
                 val bottom: @Composable () -> Unit = {
                     Column(Modifier.padding(start = 24.dp, end = 24.dp, bottom = 40.dp, top = 8.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                        Box(Modifier.fillMaxWidth().heightIn(min = 48.dp).pressable({ nav.go(Routes.Voice) }, role = Role.Button), contentAlignment = Alignment.Center) {
-                            CoveText(u.hint, style = CoveType.Meta, color = c.tail, textAlign = TextAlign.Center)
+                        Box(Modifier.fillMaxWidth().height(19.dp), contentAlignment = Alignment.Center) {
+                            Box(Modifier.fillMaxWidth().requiredHeight(48.dp).pressable({ nav.go(Routes.Voice) }, role = Role.Button), contentAlignment = Alignment.Center) {
+                                CoveText(u.hint, style = CoveType.Meta, color = c.tail, textAlign = TextAlign.Center)
+                            }
                         }
                         PrimaryButton("Log set", {
                             guard.launch(scope) {

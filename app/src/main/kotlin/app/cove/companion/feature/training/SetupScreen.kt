@@ -90,17 +90,7 @@ class SetupViewModel(private val c: AppContainer) : ViewModel() {
 
     suspend fun create() {
         val s = _state.value
-        val planId = newId()
-        val main = listOf("Bench press", "Squat", "Overhead press", "Barbell row", "Romanian deadlift")
-        val ids = DefaultProgramme.all.associate { it.name to newId() }
-        val sorted = DefaultProgramme.all.sortedBy { l -> main.indexOf(l.name).takeIf { it >= 0 } ?: (10 + DefaultProgramme.all.indexOf(l)) }
-        val rows = sorted.mapIndexed { i, l -> DefaultProgramme.exerciseRows(listOf(l), s.unit, { ids.getValue(l.name) }, i).first() }
-        val days = DefaultProgramme.dayRows(planId, { t -> DefaultProgramme.lifts(t).map { ids.getValue(it.name) } }, { newId() })
-        val weights = DefaultProgramme.all.joinToString(";") { l -> "${l.name}=${s.starts[l.name] ?: DefaultProgramme.startIn(l.startKg, s.unit)}" }
-        val settings = TrainingSettingsEntity(
-            unit = s.unit.key, daysPerWeek = s.weekdays.size, weekdays = Schedule.formatWeekdays(s.weekdays), startWeights = weights,
-        )
-        c.training.createProgramme(settings, WorkoutPlanEntity(planId, daysPerWeek = s.weekdays.size), days, rows)
+        DefaultProgramme.create(c.training, s.unit, s.weekdays, s.starts)
     }
 }
 

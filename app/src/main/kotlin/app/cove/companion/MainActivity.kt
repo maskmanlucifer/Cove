@@ -182,6 +182,8 @@ class MainActivity : FragmentActivity() {
      * at elapsed/total seconds; `--ez offline true` forces the offline look.
      * `--ez appLock true|false` switches the app lock setting without authenticating; `--ez lockNow true` locks immediately; `--ez screenshots true` drops FLAG_SECURE so adb screencap works;
      * `--ez plainDb true` rewrites the database as plaintext and kills the process, so the next launch runs the plaintext migration.
+     * `--ez trainingDone true` (with seed) adds today's finished Push session; `--ez trainingStart true` starts today's session;
+     * `--ei restLeft N` shows a rest with N seconds left.
      * `--es voiceState listening|result|partial|saved|micoff --es transcript "..."` opens the Voice screen in that state.
      */
     private fun handleDebugIntent() {
@@ -223,7 +225,7 @@ class MainActivity : FragmentActivity() {
                 if (seed) {
                     DebugSeed.load(
                         container, intent.getBooleanExtra("dark", false), intent.getBooleanExtra("evening", false),
-                        intent.getStringExtra("plan"), intent.getBooleanExtra("moneyLogged", false),
+                        intent.getStringExtra("plan"), intent.getBooleanExtra("moneyLogged", false), intent.getBooleanExtra("trainingDone", false),
                     )
                     intent.getIntExtra("bulk", 0).takeIf { it > 0 }?.let { DebugSeed.seedBulk(container, it) }
                     if (intent.getBooleanExtra("conflict", false)) DebugSeed.seedConflict(container)
@@ -232,6 +234,7 @@ class MainActivity : FragmentActivity() {
                 VoiceDebug.runSaved(container)
             }
         }
+        CoroutineScope(Dispatchers.IO).launch { app.cove.companion.feature.training.TrainingDebug.handle(this@MainActivity, container, intent) }
         if (intent.getBooleanExtra("fakeDriveOnly", false)) CoroutineScope(Dispatchers.IO).launch { container.driveKit.useFake() }
         if (intent.getBooleanExtra("fakeDrive", false)) {
             CoroutineScope(Dispatchers.IO).launch { DebugSeed.seedDrive(container, intent.getBooleanExtra("driveRun", false)) }

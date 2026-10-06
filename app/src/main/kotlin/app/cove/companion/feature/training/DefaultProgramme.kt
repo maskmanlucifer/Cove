@@ -34,8 +34,8 @@ object DefaultProgramme {
         DefaultLift("Biceps curl", "pull", ExerciseKind.Weighted, 1.0, 10, 12, 3, 8.0),
     )
     val legs = listOf(
-        DefaultLift("Squat", "legs", ExerciseKind.Weighted, 2.5, 8, 8, 3, 50.0, main = true),
-        DefaultLift("Romanian deadlift", "legs", ExerciseKind.Weighted, 2.5, 8, 8, 3, 50.0, main = true),
+        DefaultLift("Squat", "legs", ExerciseKind.Weighted, 5.0, 8, 8, 3, 50.0, main = true),
+        DefaultLift("Romanian deadlift", "legs", ExerciseKind.Weighted, 5.0, 8, 8, 3, 50.0, main = true),
         DefaultLift("Leg press", "legs", ExerciseKind.Weighted, 5.0, 10, 12, 3, 80.0),
         DefaultLift("Calf raise", "legs", ExerciseKind.Weighted, 2.5, 12, 15, 3, 30.0),
     )
@@ -48,8 +48,8 @@ object DefaultProgramme {
         DefaultLift("Deadlift", "legs", ExerciseKind.Weighted, 2.5, 5, 5, 3, 60.0),
     )
 
-    /** Order of the programme's days. */
-    val dayTypes = listOf("Push", "Pull", "Legs")
+    /** Order the days rotate in: Push, then Legs, then Pull (so a Tuesday Push is followed by Legs on Thursday). */
+    val dayTypes = listOf("Push", "Legs", "Pull")
 
     val all: List<DefaultLift> get() = push + pull + legs
 
@@ -89,4 +89,36 @@ object DefaultProgramme {
     /** Plan day rows for the three days from the lift ids of each. */
     fun dayRows(planId: String, idsOf: (String) -> List<String>, idOf: (String) -> String): List<PlanDayEntity> =
         dayTypes.mapIndexed { i, type -> PlanDayEntity(idOf(type), planId, type, idsOf(type).joinToString(","), i) }
+
+    private val mainOrder = listOf("Bench press", "Squat", "Overhead press", "Barbell row", "Romanian deadlift")
+
+    /**
+     * Creates the whole programme in [repo]: settings, plan, the three days and their lifts.
+     *
+     * @param starts first weights in kilograms by lift name (others use the built-in defaults).
+     * @param pushLifts lifts of the Push day (all four by default).
+     * @return lift ids by name.
+     */
+    suspend fun create(
+        repo: app.cove.companion.data.repo.TrainingRepository,
+        unit: WeightUnit,
+        weekdays: Set<java.time.DayOfWeek>,
+        starts: Map<String, Double>,
+        restSeconds: Int = 90,
+        pushLifts: List<DefaultLift> = push,
+    ): Map<String, String> {
+        val planId = app.cove.companion.core.newId()
+        val lifts = pushLifts + pull + legs
+        val ids = lifts.associate { it.name to app.cove.companion.core.newId() }
+        val sorted = lifts.sortedBy { l -> mainOrder.indexOf(l.name).takeIf { it >= 0 } ?: (10 + lifts.indexOf(l)) }
+        val rows = sorted.mapIndexed { i, l -> exerciseRows(listOf(l), unit, { ids.getValue(l.name) }, i).first() }
+        val days = dayRows(planId, { t -> (if (t == "Push") pushLifts else lifts(t)).map { ids.getValue(it.name) } }, { app.cove.companion.core.newId() })
+        val weights = lifts.joinToString(";") { l -> "${l.name}=${starts[l.name] ?: startIn(l.startKg, unit)}" }
+        val settings = app.cove.companion.data.local.entity.TrainingSettingsEntity(
+            unit = unit.key, daysPerWeek = weekdays.size, restSeconds = restSeconds,
+            weekdays = app.cove.companion.feature.training.engine.Schedule.formatWeekdays(weekdays), startWeights = weights,
+        )
+        repo.createProgramme(settings, app.cove.companion.data.local.entity.WorkoutPlanEntity(planId, daysPerWeek = weekdays.size), days, rows)
+        return ids
+    }
 }

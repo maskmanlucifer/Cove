@@ -127,7 +127,7 @@ fun LabelRow(label: String, value: String, first: Boolean, muted: Color = Cove.c
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        CoveText(label, Modifier.weight(1f, fill = false), style = TrainingType.Row, color = muted)
+        CoveText(label, style = TrainingType.Row, color = muted)
         Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
             CoveText(value, style = TrainingType.Row, color = valueColor, textAlign = TextAlign.End, maxLines = 2)
             if (chevron) CoveIcon(CoveIcons.ChevronRight, Cove.colors.tail, size = 14.dp)

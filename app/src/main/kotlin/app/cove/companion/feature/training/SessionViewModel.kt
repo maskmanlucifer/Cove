@@ -69,7 +69,7 @@ class SessionViewModel(private val c: AppContainer, context: Context) : ViewMode
         val spec = snap.spec(e)
         val prev = snap.liftSets(s.id, e.id)
         val target = snap.suggestion(e, s.id).target
-        val base = prev.lastOrNull()?.let { it.weightKg to it.reps } ?: (target.weightKg to target.reps)
+        val base = (prev.lastOrNull()?.weightKg ?: target.weightKg) to target.reps
         val (w, r) = d["${e.id}#${pos.setNo}"] ?: base
         val last = snap.lastTime(e, s.id)
         val lt = last.getOrNull(pos.setNo - 1) ?: last.lastOrNull()
