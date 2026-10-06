@@ -35,9 +35,9 @@ class AlarmEditViewModel(private val c: AppContainer, private val id: String) : 
 
     fun edit(change: (AlarmEntity) -> AlarmEntity) = _draft.update { it?.let(change) }
 
-    /** Saves the draft; editing an alarm switches it on. */
+    /** Saves the draft with a trimmed label; a new alarm starts on, an existing one keeps its on/off state. */
     suspend fun save() {
-        _draft.value?.let { c.plan.saveAlarm(it.copy(enabled = true)) }
+        _draft.value?.let { c.plan.saveAlarm(it.copy(label = it.label.trim().ifEmpty { "Alarm" }, enabled = if (existing) it.enabled else true)) }
     }
 
     suspend fun delete() {

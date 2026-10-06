@@ -21,6 +21,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -60,9 +66,16 @@ fun HabitsScreen(nav: Nav) {
             verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                CoveText("Habits", style = CoveType.Title)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier.size(32.dp, 44.dp).pressable(nav.back, role = Role.Button).semantics { contentDescription = "Back" },
+                        contentAlignment = Alignment.CenterStart,
+                    ) { CoveIcon(CoveIcons.ChevronLeft, c.muted, size = 22.dp) }
+                    CoveText("Habits", style = CoveType.Title, modifier = Modifier.semantics { heading() })
+                }
                 Box(
-                    Modifier.size(44.dp).background(c.card, CoveShapes.Circle).pressable({ nav.go(Routes.HabitNew) }),
+                    Modifier.size(44.dp).background(c.card, CoveShapes.Circle).pressable({ nav.go(Routes.HabitNew) }, role = Role.Button)
+                        .semantics { contentDescription = "Add habit" },
                     contentAlignment = Alignment.Center,
                 ) { CoveIcon(CoveIcons.Plus, c.ink, size = 18.dp) }
             }
@@ -80,9 +93,9 @@ fun HabitsScreen(nav: Nav) {
         }
         Box(Modifier.align(Alignment.BottomCenter).padding(start = 12.dp, end = 12.dp, bottom = 24.dp)) {
             CoveDock(
-                Tab.Plan,
+                Tab.Me,
                 onSelect = { tab ->
-                    if (tab == Tab.Plan) nav.back() else {
+                    if (tab == Tab.Me) nav.back() else {
                         DebugLaunch.tab = tab.name
                         nav.home()
                     }
@@ -101,19 +114,26 @@ private fun HabitCard(row: HabitRow, onOpen: () -> Unit, onToggleToday: () -> Un
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Column(Modifier.weight(1f).pressable(onOpen), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            CoveText(row.name, style = CoveType.BodyMedium, maxLines = 1)
+        Column(Modifier.weight(1f).pressable(onOpen, onClickLabel = "Edit habit", role = Role.Button), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            CoveText(row.name, style = CoveType.BodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             CoveText(row.summary, style = CoveType.Meta, color = c.muted)
         }
         Row(Modifier.height(44.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
             row.days.forEachIndexed { i, on ->
                 val today = i == row.days.lastIndex
                 if (today) {
-                    Box(Modifier.width(32.dp).fillMaxHeight().pressable(onToggleToday), contentAlignment = Alignment.CenterStart) {
+                    Box(
+                        Modifier.width(32.dp).fillMaxHeight().pressable(onToggleToday, role = Role.Checkbox)
+                            .semantics {
+                                contentDescription = "${row.name} today"
+                                stateDescription = if (on) "Done" else "Not done"
+                            },
+                        contentAlignment = Alignment.CenterStart,
+                    ) {
                         Dot(on, today = true)
                     }
                 } else {
-                    Dot(on, today = false)
+                    Box(Modifier.semantics { contentDescription = "${row.name}, ${row.days.lastIndex - i} days ago: ${if (on) "done" else "not done"}" }) { Dot(on, today = false) }
                 }
             }
         }
