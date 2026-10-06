@@ -19,7 +19,7 @@ import java.time.temporal.TemporalAdjusters
 
 /** Debug-only sample data matching the design frames, used to compare screens pixel by pixel. */
 object DebugSeed {
-    suspend fun load(c: AppContainer, dark: Boolean, evening: Boolean, plan: String? = null) {
+    suspend fun load(c: AppContainer, dark: Boolean, evening: Boolean, plan: String? = null, moneyLogged: Boolean = false) {
         c.settings.update {
             it.copy(displayName = "Maya", onboarded = true, theme = if (dark) "dark" else "light", wakeMinutes = 6 * 60 + 30)
         }
@@ -49,20 +49,40 @@ object DebugSeed {
         habits.forEach { c.habits.save(it) }
         if (!evening) habits.take(2).forEach { c.habits.toggle(it.id, day) }
 
-        val cats = listOf("Food" to 9000, "Home" to 8000, "Transport" to 5000, "Fun" to 2000, "Other" to 6000)
-            .mapIndexed { i, (n, b) -> ExpenseCategoryEntity(newId(), n, budgetPaise = b * 100L, sort = i) }
-        cats.forEach { c.money.saveCategory(it) }
-        suspend fun add(cat: String, paise: Long, d: LocalDate, hour: Int = 9) =
-            c.money.save(ExpenseEntity(newId(), paise, categoryId = cats.first { it.name == cat }.id, note = cat, spentAt = at(hour, 0, d)))
-        add("Food", 34_000, day)
-        add("Transport", 50_000, day)
-        val earlier = day.withDayOfMonth(1)
-        add("Food", 666_000, earlier)
-        add("Home", 442_000, earlier.plusDays(1))
-        add("Transport", 245_000, earlier.plusDays(2))
-        add("Fun", 221_000, earlier.plusDays(3))
-        add("Other", 184_050, earlier.plusDays(4))
+        seedMoney(c, day, moneyLogged)
         seedPlan(c, day, plan)
+    }
+
+    /**
+     * Categories and this month's spending. Default matches frame 07 (Food ₹7,000, total ₹18,420.50);
+     * [logged] matches frames 25/34/36 (Food ₹7,340 of ₹9,000, with today's and yesterday's rows).
+     */
+    private suspend fun seedMoney(c: AppContainer, day: LocalDate, logged: Boolean) {
+        fun at(h: Int, m: Int, d: LocalDate) = LocalDateTime.of(d, LocalTime.of(h, m)).toEpochMillis()
+        val cats = listOf("Food" to 9000, "Home" to 8000, "Transport" to 5000, "Fun" to 2000, "Other" to 6000)
+            .mapIndexed { i, (n, b) -> ExpenseCategoryEntity("cat-" + n.lowercase(), n, budgetPaise = b * 100L, sort = i) }
+        cats.forEach { c.money.saveCategory(it) }
+        suspend fun add(
+            cat: String, paise: Long, d: LocalDate, h: Int = 9, m: Int = 0, note: String = cat,
+            paidWith: String = "UPI", source: String = "manual", id: String = newId(),
+        ) = c.money.save(
+            ExpenseEntity(id, paise, categoryId = cats.first { it.name == cat }.id, note = note, paidWith = paidWith, spentAt = at(h, m, d), source = source),
+        )
+        val first = day.withDayOfMonth(1)
+        add("Food", if (logged) 545_000 else 666_000, first, note = "Weekly shop")
+        add("Home", 442_000, first.plusDays(1), paidWith = "Card")
+        add("Transport", 245_000, first.plusDays(2))
+        add("Fun", 221_000, first.plusDays(3), paidWith = "Card")
+        add("Other", 184_050, first.plusDays(4))
+        add("Transport", 50_000, day, 8, 15, note = "Cab")
+        if (logged) {
+            add("Food", 34_000, day, 13, 12, note = "Lunch · Café Ivy", source = "voice")
+            add("Food", 25_000, day, 18, 40, note = "Groceries", id = "seed-groceries")
+            add("Food", 112_000, day.minusDays(1), 20, 30, note = "Dinner with Jo", paidWith = "Card")
+            add("Food", 18_000, day.minusDays(1), 9, 5, note = "Coffee")
+        } else {
+            add("Food", 34_000, day, 13, 12, note = "Lunch")
+        }
     }
 
     /**

@@ -155,6 +155,26 @@ class MoneyRepository(private val db: CoveDatabase, private val clock: Clock, pr
         db.expenses().upsertCategory(category.copy(updatedAt = clock.now()))
         log.mark("expense_categories", category.id)
     }
+
+    suspend fun expense(id: String): ExpenseEntity? = db.expenses().get(id)?.takeIf { it.deletedAt == null }
+
+    /** Brings back an expense removed with [delete] (used by Undo). */
+    suspend fun restore(id: String) {
+        db.expenses().get(id)?.let { save(it.copy(deletedAt = null)) }
+    }
+
+    suspend fun category(id: String): ExpenseCategoryEntity? = db.expenses().getCategory(id)?.takeIf { it.deletedAt == null }
+
+    /** Stores the order of [ids] as the categories' `sort`. */
+    suspend fun reorderCategories(ids: List<String>) {
+        ids.forEachIndexed { i, id -> db.expenses().getCategory(id)?.takeIf { it.sort != i }?.let { saveCategory(it.copy(sort = i)) } }
+    }
+
+    /** Removes a category; its expenses fall back to "Other" (no category). */
+    suspend fun deleteCategory(id: String) {
+        db.expenses().inCategory(id).forEach { save(it.copy(categoryId = null)) }
+        db.expenses().getCategory(id)?.let { saveCategory(it.copy(deletedAt = clock.now())) }
+    }
 }
 
 /** Journal entries and attached media. */

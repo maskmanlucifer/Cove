@@ -23,6 +23,8 @@ import kotlinx.coroutines.launch
 
 /** Single activity hosting the Compose navigation graph. */
 class MainActivity : ComponentActivity() {
+    private var debugRoute: String? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -36,20 +38,21 @@ class MainActivity : ComponentActivity() {
                 else -> isSystemInDarkTheme()
             }
             CoveTheme(dark) {
-                CoveNavHost(start = if (s.onboarded) Routes.Main else Routes.Welcome)
+                CoveNavHost(start = debugRoute ?: if (s.onboarded) Routes.Main else Routes.Welcome)
             }
         }
     }
 
     /**
-     * Debug only. `--es now HH:mm` freezes the clock; `--ez seed true [--ez dark true] [--ez evening true]`
-     * loads the design's sample data (`--es plan todos` swaps in the to-do frames' lists).
+     * Debug only. `--es now HH:mm` freezes the clock (`--es date yyyy-MM-dd` picks the day); `--es route <route>` starts on that route.
+     * `--ez seed true [--ez dark true] [--ez evening true] [--ez moneyLogged true] [--es plan todos|empty|drag]` loads the design's sample data.
      * `--es tab plan --es segment 1 --es sheet categories --es title Dentist` open a Plan tab view directly.
      */
     private fun handleDebugIntent() {
+        debugRoute = intent.getStringExtra("route")
         intent.getStringExtra("now")?.let { hm ->
             val (h, m) = hm.split(":").map(String::toInt)
-            Clock.frozenAt = LocalDateTime.of(LocalDate.now(), LocalTime.of(h, m)).toEpochMillis()
+            Clock.frozenAt = LocalDateTime.of(intent.getStringExtra("date")?.let(LocalDate::parse) ?: LocalDate.now(), LocalTime.of(h, m)).toEpochMillis()
         }
         DebugLaunch.tab = intent.getStringExtra("tab")
         DebugLaunch.segment = intent.getStringExtra("segment")?.toIntOrNull()
@@ -57,7 +60,10 @@ class MainActivity : ComponentActivity() {
         DebugLaunch.title = intent.getStringExtra("title")
         if (intent.getBooleanExtra("seed", false)) {
             CoroutineScope(Dispatchers.IO).launch {
-                DebugSeed.load(container, intent.getBooleanExtra("dark", false), intent.getBooleanExtra("evening", false), intent.getStringExtra("plan"))
+                DebugSeed.load(
+                    container, intent.getBooleanExtra("dark", false), intent.getBooleanExtra("evening", false),
+                    intent.getStringExtra("plan"), intent.getBooleanExtra("moneyLogged", false),
+                )
             }
         }
     }
