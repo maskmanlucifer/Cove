@@ -29,6 +29,10 @@ data class SettingsEntity(
     val photoQuality: String = "balanced",
     /** When true, media uploads wait for an unmetered network. */
     val uploadOnWifiOnly: Boolean = true,
+    /** `immediately`, `1min` or `5min`: how long the app may stay in the background before the lock returns. */
+    val lockAfter: String = "1min",
+    /** With the app lock on, hide the app's content in recents and screenshots even while unlocked. */
+    val hideInRecents: Boolean = true,
     val updatedAt: Long = 0,
 ) {
     companion object {
