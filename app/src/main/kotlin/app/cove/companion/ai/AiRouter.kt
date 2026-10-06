@@ -8,6 +8,10 @@ import app.cove.companion.ai.model.Location
 import app.cove.companion.ai.model.ProviderRef
 import app.cove.companion.ai.model.Sensitivity
 import app.cove.companion.ai.model.SpeechSession
+import app.cove.companion.ai.provider.SpeechProvider
+import app.cove.companion.ai.speech.SpeechChain
+import app.cove.companion.ai.speech.SpeechDemotions
+import app.cove.companion.ai.speech.SpeechTiming
 import app.cove.companion.ai.provider.AiProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -23,7 +27,11 @@ class AiRouter(
     private val policy: AiPolicy,
     private val backoffMs: Long = 400,
     private val callTimeoutMs: Long = 20_000,
+    private val speechTiming: SpeechTiming = SpeechTiming(),
+    private val speechLog: (String) -> Unit = {},
 ) {
+    private val demotions = SpeechDemotions()
+
     /**
      * Runs [call] on the first provider of [capability] that policy and availability allow and that succeeds.
      *
@@ -77,18 +85,17 @@ class AiRouter(
     private fun AiError?.orPrefer(next: AiError): AiError =
         if (this == null || this == AiError.PrivacyBlocked) next else this
 
-    /**
-     * Opens a microphone session on the first allowed, available speech provider. Typed input is not a
-     * microphone, so it is skipped; null means "no recognizer here", and the UI offers typing.
-     */
-    suspend fun openSpeech(sensitivity: Sensitivity): SpeechSession? {
-        for (p in providers.speech) {
-            if (p.location == Location.Rules) continue
-            if (policy.check(p.ref, Capability.Speech, sensitivity) != null) continue
-            if (p.availability() == Availability.Available) return p.open()
-        }
-        return null
+    /** Microphone engines policy allows for [sensitivity], in priority order. A network recognizer is kept when offline: it may still run from an offline pack. */
+    fun speechEngines(sensitivity: Sensitivity): List<SpeechProvider> = providers.speech.filter { p ->
+        p.location != Location.Rules && policy.check(p.ref, Capability.Speech, sensitivity).let { it == null || it == AiError.Offline }
     }
+
+    /**
+     * A microphone session over every allowed engine with failover (see [SpeechChain]). Typed input is not a
+     * microphone and is never part of it. With no engine at all the session ends at once with a failure the UI explains.
+     */
+    fun openSpeech(sensitivity: Sensitivity): SpeechSession =
+        SpeechChain(speechEngines(sensitivity), speechTiming, demotions, log = speechLog)
 
     /** What each provider could do now; [AiStatus] marks the one that would serve a request. */
     suspend fun status(): AiStatus = AiStatus(

@@ -43,6 +43,15 @@ interface BriefProvider : AiProvider {
 /** Opens microphone (or typed) sessions; [open] is only called when [availability] says so. */
 interface SpeechProvider : AiProvider {
     fun open(): SpeechSession
+
+    /**
+     * Whether the engine reports input loudness. When true, a run with no level change is "no audio activity"
+     * and hands over to the next engine; when false only the start-up and run-time rules apply.
+     */
+    val reportsLevels: Boolean get() = false
+
+    /** Extra, content-free facts for the Voice check sheet (language pack, locale), one `label to value` per line. */
+    suspend fun details(): List<Pair<String, String>> = emptyList()
 }
 
 /** Describes a photo in one sentence. */
