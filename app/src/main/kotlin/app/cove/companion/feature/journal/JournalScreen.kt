@@ -38,6 +38,8 @@ import androidx.compose.ui.unit.sp
 import app.cove.companion.core.appViewModel
 import app.cove.companion.core.longLabel
 import app.cove.companion.design.Cove
+import app.cove.companion.design.HueName
+import app.cove.companion.design.hue
 import app.cove.companion.design.CoveShapes
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.CoveText
@@ -127,7 +129,7 @@ private fun MonthCard(s: JournalMonthState, onShift: (Long) -> Unit, onDay: (Loc
     Column(
         Modifier
             .fillMaxWidth()
-            .background(c.card, CoveShapes.Card)
+            .background(c.hue(HueName.Lilac).tint, CoveShapes.Card)
             .pointerInput(Unit) {
                 detectHorizontalDragGestures(
                     onDragStart = { drag = 0f },
@@ -168,11 +170,11 @@ private fun MonthCard(s: JournalMonthState, onShift: (Long) -> Unit, onDay: (Loc
 @Composable
 private fun DayCell(cell: MonthCell, selected: Boolean, onClick: () -> Unit) {
     val c = Cove.colors
-    val ink = if (selected) c.onInk else c.ink
+    val ink = if (selected) c.onAccent else c.ink
     Column(
         Modifier
             .fillMaxSize()
-            .background(if (selected) c.ink else Color.Transparent, RoundedCornerShape(12.dp))
+            .background(if (selected) c.accent else Color.Transparent, RoundedCornerShape(12.dp))
             .pressable(onClick)
             .semantics(mergeDescendants = true) {
                 contentDescription = cell.date.longLabel() + if (cell.hasEntry) ", has an entry" else ""
@@ -183,7 +185,7 @@ private fun DayCell(cell: MonthCell, selected: Boolean, onClick: () -> Unit) {
     ) {
         CoveText(cell.day.toString(), style = CoveType.Meta, color = if (cell.hasEntry || selected) ink else c.placeholder)
         Box(
-            Modifier.size(4.dp).background(if (cell.hasEntry) ink else Color.Transparent, CoveShapes.Circle),
+            Modifier.size(5.dp).background(if (cell.hasEntry) (if (selected) c.onAccent else c.accent) else Color.Transparent, CoveShapes.Circle),
         )
     }
 }

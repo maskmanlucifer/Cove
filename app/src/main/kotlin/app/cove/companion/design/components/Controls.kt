@@ -164,14 +164,14 @@ fun Segmented(
     }
 }
 
-/** Small tinted pill (mood, category, filters). */
+/** Small pill (mood, category, filters); [container] tints it when not [selected]. */
 @Composable
-fun Chip(text: String, onClick: (() -> Unit)? = null, modifier: Modifier = Modifier, selected: Boolean = false, height: Int = 40) {
+fun Chip(text: String, onClick: (() -> Unit)? = null, modifier: Modifier = Modifier, selected: Boolean = false, height: Int = 40, container: Color = Cove.colors.card) {
     val c = Cove.colors
     Box(
         modifier
             .height(height.dp)
-            .background(if (selected) c.accent else c.card, CoveShapes.Pill)
+            .background(if (selected) c.accent else container, CoveShapes.Pill)
             .let { if (onClick != null) it.pressable(onClick, role = Role.Button).semantics { this.selected = selected } else it }
             .padding(horizontal = 14.dp),
         contentAlignment = Alignment.Center,
@@ -179,6 +179,9 @@ fun Chip(text: String, onClick: (() -> Unit)? = null, modifier: Modifier = Modif
         CoveText(text, style = CoveType.Meta, color = if (selected) c.onAccent else c.ink, maxLines = 1)
     }
 }
+
+/** Background of the surface being drawn on, for rows that must match a tinted [CoveCard] (for example swipe rows); null means the plain card. */
+val LocalSurface = androidx.compose.runtime.staticCompositionLocalOf<Color?> { null }
 
 /** Warm rounded surface used for grouped content; pass a hue's tint as [color] for a gently coloured card. */
 @Composable
@@ -188,7 +191,7 @@ fun CoveCard(modifier: Modifier = Modifier, padding: Int = 24, color: Color = Co
             .fillMaxWidth()
             .background(color, CoveShapes.Card)
             .padding(padding.dp),
-    ) { content() }
+    ) { androidx.compose.runtime.CompositionLocalProvider(LocalSurface provides color) { content() } }
 }
 
 /** 1dp hairline between rows. */

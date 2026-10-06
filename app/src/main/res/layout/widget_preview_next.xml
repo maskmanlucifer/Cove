@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools" tools:ignore="HardcodedText,ContentDescription" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@drawable/widget_card" android:gravity="center_vertical" android:orientation="vertical" android:padding="20dp">
-    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Next · in 25 min" android:textColor="#6B6D73" android:textSize="14sp" />
-    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="11:00 am" android:textColor="#16171A" android:textSize="40sp" />
-    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Coffee with Jo" android:textColor="#16171A" android:textSize="17sp" android:textStyle="bold" />
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Next · in 25 min" android:textColor="#55614F" android:textSize="14sp" />
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="11:00 am" android:textColor="#1F2B22" android:textSize="40sp" />
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Coffee with Jo" android:textColor="#1F2B22" android:textSize="17sp" android:textStyle="bold" />
 </LinearLayout>

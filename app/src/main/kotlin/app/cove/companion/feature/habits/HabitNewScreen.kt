@@ -193,7 +193,7 @@ private fun DayCircles(mask: Int, onToggle: (Int) -> Unit) {
             Box(
                 Modifier
                     .size(40.dp)
-                    .background(if (on) c.ink else c.canvas, CoveShapes.Circle)
+                    .background(if (on) c.accent else c.canvas, CoveShapes.Circle)
                     .pressable({ onToggle(maskBit(day)) }, role = Role.Checkbox)
                     .semantics {
                         contentDescription = day.getDisplayName(TextStyle.FULL, Locale.ENGLISH)
@@ -204,7 +204,7 @@ private fun DayCircles(mask: Int, onToggle: (Int) -> Unit) {
                 CoveText(
                     day.getDisplayName(TextStyle.NARROW, Locale.ENGLISH),
                     style = CoveType.Meta.copy(fontWeight = if (on) FontWeight.Medium else FontWeight.Normal),
-                    color = if (on) c.onInk else c.muted,
+                    color = if (on) c.onAccent else c.muted,
                 )
             }
         }

@@ -35,6 +35,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cove.companion.core.appViewModel
 import app.cove.companion.design.Cove
+import app.cove.companion.design.hueFor
+import app.cove.companion.design.components.bloom
+import app.cove.companion.design.components.easeIn
 import app.cove.companion.design.CoveIcon
 import app.cove.companion.design.CoveIcons
 import app.cove.companion.design.CoveShapes
@@ -109,8 +112,9 @@ fun HabitsScreen(nav: Nav) {
 @Composable
 private fun HabitCard(row: HabitRow, onOpen: () -> Unit, onToggleToday: () -> Unit) {
     val c = Cove.colors
+    val tint = c.hueFor(row.id).tint
     Row(
-        Modifier.fillMaxWidth().background(c.card, RoundedCorner24).padding(start = 20.dp, top = 18.dp, bottom = 18.dp),
+        Modifier.fillMaxWidth().easeIn().background(tint, RoundedCorner24).padding(start = 20.dp, top = 18.dp, bottom = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -130,30 +134,31 @@ private fun HabitCard(row: HabitRow, onOpen: () -> Unit, onToggleToday: () -> Un
                             },
                         contentAlignment = Alignment.CenterStart,
                     ) {
-                        Dot(on, today = true)
+                        Dot(on, today = true, surface = tint)
                     }
                 } else {
-                    Box(Modifier.semantics { contentDescription = "${row.name}, ${row.days.lastIndex - i} days ago: ${if (on) "done" else "not done"}" }) { Dot(on, today = false) }
+                    Box(Modifier.semantics { contentDescription = "${row.name}, ${row.days.lastIndex - i} days ago: ${if (on) "done" else "not done"}" }) { Dot(on, today = false, surface = tint) }
                 }
             }
         }
     }
 }
 
-/** 12 dp dot: ink when done, a ring when not; today's dot gets a faint outer ring. */
+/** 12 dp dot: leaf green when done, a ring when not; today's dot gets a faint outer ring. */
 @Composable
-private fun Dot(on: Boolean, today: Boolean) {
+private fun Dot(on: Boolean, today: Boolean, surface: Color) {
     val c = Cove.colors
     val ring = c.ring
     Box(
         Modifier
             .size(12.dp)
+            .let { if (today) it.bloom(on, c.accent) else it }
             .let { m ->
                 if (!today) m else m.drawBehind {
-                    drawCircle(c.canvas, radius = 8.dp.toPx(), center = Offset(size.width / 2, size.height / 2), style = Stroke(2.dp.toPx()))
+                    drawCircle(surface, radius = 8.dp.toPx(), center = Offset(size.width / 2, size.height / 2), style = Stroke(2.dp.toPx()))
                 }
             }
-            .background(if (on) c.ink else Color.Transparent, CoveShapes.Circle)
+            .background(if (on) c.accent else Color.Transparent, CoveShapes.Circle)
             .let { if (on) it else it.border(1.5.dp, ring, CoveShapes.Circle) },
     )
 }

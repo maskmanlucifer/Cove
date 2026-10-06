@@ -21,6 +21,8 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.TextUnitType
 import app.cove.companion.design.Cove
+import app.cove.companion.design.HueName
+import app.cove.companion.design.hue
 import app.cove.companion.design.Geist
 import app.cove.companion.feature.training.engine.Axis
 import app.cove.companion.feature.training.engine.ChartMath
@@ -64,13 +66,13 @@ fun LineChart(values: List<Double>, axis: Axis, labels: List<ChartLabel>, summar
                 lineTo(xs.first(), 126f * s)
                 close()
             }
-            drawPath(area, c.ink.copy(alpha = 0.04f))
-            drawPath(line, c.ink, style = Stroke(1.75f * s, cap = StrokeCap.Round, join = StrokeJoin.Round))
+            drawPath(area, c.hue(HueName.Sun).strong.copy(alpha = 0.28f))
+            drawPath(line, c.accent, style = Stroke(1.75f * s, cap = StrokeCap.Round, join = StrokeJoin.Round))
         }
         values.forEachIndexed { i, v ->
             val last = i == values.lastIndex
-            drawCircle(if (last) c.ink else c.card, (if (last) 4f else 2.5f) * s, Offset(xs[i], y(v)))
-            drawCircle(c.ink, (if (last) 4f else 2.5f) * s, Offset(xs[i], y(v)), style = Stroke(1.5f * s))
+            drawCircle(if (last) c.accent else c.card, (if (last) 4f else 2.5f) * s, Offset(xs[i], y(v)))
+            drawCircle(c.accent, (if (last) 4f else 2.5f) * s, Offset(xs[i], y(v)), style = Stroke(1.5f * s))
         }
         labels.forEachIndexed { k, l ->
             val x = xs.getOrNull(l.index) ?: return@forEachIndexed

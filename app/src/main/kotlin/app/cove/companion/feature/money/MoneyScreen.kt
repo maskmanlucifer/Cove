@@ -4,6 +4,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import app.cove.companion.design.HueName
+import app.cove.companion.design.hue
+import app.cove.companion.design.hueFor
+import app.cove.companion.design.components.CoveCard
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -73,6 +80,7 @@ fun MoneyScreen(nav: Nav) {
                     )
                 }
             }
+            CoveCard(color = c.hue(HueName.Coral).tint, padding = 20) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 CoveText("Spent so far · ${s.month}", style = CoveType.Meta, color = c.muted)
                 val figure = rupees(s.spent, decimals = true)
@@ -82,7 +90,9 @@ fun MoneyScreen(nav: Nav) {
                 )
                 CoveText(summaryLine(s), style = MoneyType.Sub, color = c.muted)
             }
+            Spacer(Modifier.height(20.dp))
             DailyBars(s.bars)
+            }
             if (s.empty) {
                 EmptyState(Scene.Money, "No spending yet.", "Tap + or just say it, and it will show up here.", compact = true)
             } else {
@@ -99,17 +109,16 @@ private fun summaryLine(s: MoneyState): String {
     return s.left?.let { "${MoneyMath.wholeRupees(it.coerceAtLeast(0))} left · $days" } ?: days
 }
 
-/** One bar per day: ink for days with spending, grey for quiet days, faint dots for days to come. */
+/** One bar per day: leaf green for days with spending, paper for quiet days, fainter dots for days to come. */
 @Composable
 private fun DailyBars(bars: List<DayBar>) {
     val c = Cove.colors
-    val quiet = c.quiet
     Row(Modifier.fillMaxWidth().height(40.dp), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.Bottom) {
         bars.forEach { bar ->
             val (color, h) = when (bar.kind) {
-                BarKind.Spent -> c.ink to (6 + 28 * bar.fraction).dp
-                BarKind.Quiet -> quiet to 6.dp
-                BarKind.Future -> c.wellStrong to 6.dp
+                BarKind.Spent -> c.accent to (6 + 28 * bar.fraction).dp
+                BarKind.Quiet -> c.card to 6.dp
+                BarKind.Future -> c.card.copy(alpha = 0.6f) to 6.dp
             }
             Box(Modifier.weight(1f).height(h).background(color, RoundedCornerShape(3.dp)))
         }
@@ -118,6 +127,7 @@ private fun DailyBars(bars: List<DayBar>) {
 
 @Composable
 private fun CategoryCard(rows: List<MoneyRow>, nav: Nav) {
+    val c = Cove.colors
     val stacked = LocalDensity.current.fontScale > 1.3f
     RowsCard {
         rows.forEachIndexed { i, row ->
@@ -127,12 +137,18 @@ private fun CategoryCard(rows: List<MoneyRow>, nav: Nav) {
             val rowModifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).pressable(open).semantics(mergeDescendants = true) { contentDescription = spoken }
             if (stacked) {
                 Column(rowModifier.padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    CoveText(row.name, style = MoneyType.Row)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Box(Modifier.size(10.dp).background(c.hueFor(row.name).strong, CircleShape))
+                        CoveText(row.name, style = MoneyType.Row)
+                    }
                     CategoryValue(row, stacked = true)
                 }
             } else {
                 Row(rowModifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                    CoveText(row.name, Modifier.weight(1f, fill = false), style = MoneyType.Row, maxLines = 1)
+                    Row(Modifier.weight(1f, fill = false), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Box(Modifier.size(10.dp).background(c.hueFor(row.name).strong, CircleShape))
+                        CoveText(row.name, Modifier.weight(1f, fill = false), style = MoneyType.Row, maxLines = 1)
+                    }
                     CategoryValue(row)
                 }
             }

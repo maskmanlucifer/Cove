@@ -38,7 +38,7 @@ class NextWidgetReceiver : GlanceAppWidgetReceiver() {
 @androidx.compose.runtime.Composable
 private fun NextContent(next: NextCard?) {
     Column(
-        modifier = cardModifier(20, vertical = 14).fillMaxSize().clickable(openApp()),
+        modifier = cardModifier(20, WidgetColors.sunCard, vertical = 14).fillMaxSize().clickable(openApp()),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(if (next == null) "Next" else "Next · ${next.inText}", style = WidgetText.label)

@@ -2,7 +2,7 @@
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <shape android:shape="oval">
-            <solid android:color="#EDE8F4" />
+            <solid android:color="#F3EBD8" />
         </shape>
     </item>
     <item>
@@ -12,12 +12,12 @@
     </item>
     <item>
         <shape android:shape="oval">
-            <gradient android:type="radial" android:centerX="0.7" android:centerY="0.45" android:gradientRadius="45%" android:startColor="#C7BAF2" android:endColor="#00C7BAF2" />
+            <gradient android:type="radial" android:centerX="0.7" android:centerY="0.45" android:gradientRadius="45%" android:startColor="#D3C6EE" android:endColor="#00C7BAF2" />
         </shape>
     </item>
     <item>
         <shape android:shape="oval">
-            <gradient android:type="radial" android:centerX="0.5" android:centerY="0.75" android:gradientRadius="47%" android:startColor="#A8D6EA" android:endColor="#00A8D6EA" />
+            <gradient android:type="radial" android:centerX="0.5" android:centerY="0.75" android:gradientRadius="47%" android:startColor="#B9D8A6" android:endColor="#00A8D6EA" />
         </shape>
     </item>
 </layer-list>

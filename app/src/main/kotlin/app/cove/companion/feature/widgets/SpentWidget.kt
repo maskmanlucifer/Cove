@@ -25,7 +25,7 @@ class SpentWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val snapshot = WidgetData.load(context.container)
         provideContent {
-            Column(modifier = cardModifier(18).fillMaxSize().clickable(openApp())) {
+            Column(modifier = cardModifier(18, WidgetColors.coralCard).fillMaxSize().clickable(openApp())) {
                 Text("Spent today", style = WidgetText.label)
                 Spacer(GlanceModifier.defaultWeight())
                 Text(rupees(snapshot.spentTodayPaise), style = TextStyle(fontSize = 30.sp, fontWeight = FontWeight.Medium, color = WidgetColors.ink))

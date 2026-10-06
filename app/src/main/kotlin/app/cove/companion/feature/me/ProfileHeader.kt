@@ -43,6 +43,8 @@ import androidx.core.content.FileProvider
 import app.cove.companion.container
 import app.cove.companion.core.Undo
 import app.cove.companion.design.Cove
+import app.cove.companion.design.HueName
+import app.cove.companion.design.hue
 import app.cove.companion.design.CoveIcon
 import app.cove.companion.design.CoveIcons
 import app.cove.companion.design.CoveShapes
@@ -151,13 +153,13 @@ private fun Avatar(name: String, photo: ImageBitmap?, onClick: () -> Unit) {
     val c = Cove.colors
     val initial = avatarInitial(name)
     Box(
-        Modifier.size(56.dp).clip(CoveShapes.Circle).background(c.wellStrong)
+        Modifier.size(56.dp).clip(CoveShapes.Circle).background(c.hue(HueName.Leaf).tint)
             .pressable(onClick, role = Role.Button).semantics { contentDescription = "Profile photo, double tap to change" },
         contentAlignment = Alignment.Center,
     ) {
         when {
             photo != null -> Image(photo, null, Modifier.size(56.dp), contentScale = ContentScale.Crop)
-            initial != null -> CoveText(initial, style = CoveType.Value.copy(fontSize = 20.sp, lineHeight = 27.sp), color = c.muted)
+            initial != null -> CoveText(initial, style = CoveType.Value.copy(fontSize = 20.sp, lineHeight = 27.sp), color = c.accent)
             else -> CoveIcon(CoveIcons.Me, c.muted, size = 24.dp)
         }
     }

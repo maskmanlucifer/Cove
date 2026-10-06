@@ -58,6 +58,15 @@ fun CoveColors.hue(name: HueName): Hue = hues[name.ordinal]
  */
 fun CoveColors.hueFor(key: String): Hue = hues[PaletteHues[Math.floorMod(stableHash(key), PaletteHues.size)].ordinal]
 
+/** Hue of a mood word (calm leaf, good sun, tired lilac, low coral); anything else falls back to [hueFor]. */
+fun CoveColors.moodHue(mood: String): Hue = when (mood.lowercase()) {
+    "calm" -> hue(HueName.Leaf)
+    "good" -> hue(HueName.Sun)
+    "tired" -> hue(HueName.Lilac)
+    "low" -> hue(HueName.Coral)
+    else -> hueFor(mood)
+}
+
 private val PaletteHues = listOf(HueName.Leaf, HueName.Sun, HueName.Coral, HueName.Lilac, HueName.Blossom)
 
 /** FNV-1a so hue assignment never depends on the JVM's `hashCode`. */
