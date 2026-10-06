@@ -37,6 +37,7 @@ import java.time.LocalTime
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** Single activity hosting the Compose navigation graph. */
 class MainActivity : ComponentActivity() {
@@ -55,7 +56,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                container.driveKit.consentRequests.collect { pending ->
+                withContext(Dispatchers.Default) { container.driveKit }.consentRequests.collect { pending ->
                     if (pending != null) {
                         container.driveKit.consumeConsent()
                         driveConsent.launch(IntentSenderRequest.Builder(pending).build())

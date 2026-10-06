@@ -62,9 +62,9 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
     private val httpClient by lazy { HttpClient(OkHttp) }
 
     /** Supabase session; [AuthState.Disabled] when the build has no backend configured. */
-    val auth = AuthRepository(
-        BuildConfig.SUPABASE_URL, BuildConfig.SUPABASE_ANON_KEY, EncryptedSessionStore(context), httpClient,
-    )
+    val auth by lazy {
+        AuthRepository(BuildConfig.SUPABASE_URL, BuildConfig.SUPABASE_ANON_KEY, EncryptedSessionStore(context), httpClient)
+    }
 
     /** Cloud sync; inert until configured and signed in. */
     val sync by lazy {

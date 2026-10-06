@@ -7,7 +7,7 @@ import java.io.File
 
 /** Folders under `filesDir/journal/` for stored photos, thumbnails, voice notes and camera captures. */
 class JournalFiles(private val context: Context) {
-    private val root = File(context.filesDir, "journal")
+    private val root by lazy { File(context.filesDir, "journal") }
 
     private fun dir(name: String) = File(root, name).also { it.mkdirs() }
 
