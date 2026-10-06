@@ -129,7 +129,7 @@ fun HabitNewScreen(nav: Nav, id: String = "new") {
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     CoveText("How often", style = CoveType.Meta, color = c.muted)
-                    Segmented(listOf("Every day", "Some days", "Weekly"), s.cadence, vm::setCadence, Modifier.fillMaxWidth(), height = 40.dp, fillWidth = true)
+                    Segmented(listOf("Every day", "Some days"), s.cadence, vm::setCadence, Modifier.fillMaxWidth(), height = 40.dp, fillWidth = true)
                     if (s.cadence != 0) DayCircles(s.daysMask, vm::toggleDay)
                 }
                 Column {
@@ -155,11 +155,11 @@ fun HabitNewScreen(nav: Nav, id: String = "new") {
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     PillButton(
-                        if (s.isNew) "Add habit" else "Save", submit,
+                        "Save", submit,
                         Modifier.weight(1f).graphicsLayerAlpha(if (blank) 0.4f else 1f),
                         height = 56.dp, textStyle = ButtonText,
                     )
-                    PillButton("Cancel", nav.back, Modifier.widthIn(min = 104.dp), kind = ButtonKind.Secondary, height = 56.dp, container = c.canvas, textStyle = ButtonText)
+                    PillButton("Cancel", nav.back, Modifier.widthIn(min = 96.dp), kind = ButtonKind.Text, height = 56.dp, textStyle = ButtonText.copy(fontWeight = FontWeight.Normal))
                 }
                 if (!s.isNew && !confirmDelete) {
                     PillButton(

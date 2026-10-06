@@ -159,9 +159,7 @@ fun TodayScreen(nav: Nav) {
         if (!offline && suggestion == null && state.todos.isEmpty() && state.next == null) {
             CoveText("Add something in Plan, or just say it.", style = CoveType.Meta, color = c.muted)
         }
-        if (suggestion != null) {
-            CoveText("One suggestion at a time. Ignored ones disappear at noon.", style = CoveType.Meta, color = c.muted)
-        } else if (offline) {
+        if (offline) {
             CoveText(
                 "Voice, alarms and your journal work offline. Only weather and the brief’s one thing to read wait for a connection.",
                 style = CoveType.Meta.copy(lineHeight = 21.sp), color = c.muted,
@@ -198,7 +196,7 @@ fun TodayScreen(nav: Nav) {
     if (suggestion != null && sug.whyOpen) WhySheet(sug.detail, suggest)
 }
 
-/** What the Next card's buttons do: open the event editor, start the wind-down, or hide the card for a while. */
+/** What the Next card's buttons do: open the event editor ("Edit"), start the wind-down, or hide the card for a while. */
 private class NextActions(val move: (EventEntity) -> Unit, val startWindDown: () -> Unit, val later: () -> Unit)
 
 @Composable
@@ -227,7 +225,7 @@ private fun NextCard(next: NextItem, actions: NextActions, modifier: Modifier = 
                     val place = next.event?.place?.takeIf { it.isNotBlank() }
                     if (place != null) PillButton("Directions", { openDirections(context, place) })
                     CoveText(
-                        "Move",
+                        "Edit",
                         Modifier.heightIn(min = 44.dp).pressable({ next.event?.let(actions.move) }, role = Role.Button).padding(horizontal = 14.dp).wrapContentHeight(Alignment.CenterVertically),
                         style = CoveType.Button.copy(fontWeight = FontWeight.Normal),
                         color = c.muted,

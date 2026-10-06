@@ -56,6 +56,7 @@ fun MeScreen(nav: Nav) {
     val conflictTitle by vm.conflictTitle.collectAsState()
     val backupLabel by vm.backupLabel.collectAsState()
     val settings = s ?: return
+    var advanced by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
 
     Column(
@@ -78,8 +79,9 @@ fun MeScreen(nav: Nav) {
         SettingsGroup("Day") {
             SettingsRow("Alarms", value = alarmSummary(alarms.map { it.minutes }), onClick = { nav.go(Routes.Alarms) })
             RowDivider()
+            SettingsRow("Habits", onClick = { nav.go(Routes.Habits) })
+            RowDivider()
             SettingsRow("Morning brief", value = onOff(settings.briefOn), onClick = { sheet = MeSheet.Brief })
-            BriefSettingsRows()
             RowDivider()
             SettingsRow("Nudges", value = nudgeLabel(settings.nudgeMode), onClick = { sheet = MeSheet.Nudges })
         }
@@ -90,23 +92,14 @@ fun MeScreen(nav: Nav) {
         SettingsGroup("Calm") {
             SettingsRow("One-thing mode", value = onOff(settings.oneThingMode), onClick = { sheet = MeSheet.OneThing })
             RowDivider()
-            SettingsRow("Spoken replies", value = onOff(settings.spokenReplies), onClick = { sheet = MeSheet.Spoken })
-            RowDivider()
-            SettingsRow("Reduce motion", value = settings.reduceMotion.replaceFirstChar { it.uppercase() }, onClick = { sheet = MeSheet.Motion })
-        }
-        SettingsGroup("More") {
             SettingsRow("Look and text size", value = lookSummary(settings.theme, settings.textScale), onClick = { sheet = MeSheet.Look })
-            RowDivider()
-            SettingsRow("Privacy and data", value = "Yours", onClick = { sheet = MeSheet.Privacy })
         }
-        SettingsGroup("Photos and backup") {
-            SettingsRow("Photo quality", value = PhotoQuality.label(settings.photoQuality), onClick = { vm.resetBackup(); sheet = MeSheet.PhotoQuality })
-            RowDivider()
-            SettingsRow("Upload on Wi-Fi only", checked = settings.uploadOnWifiOnly, onCheck = { v -> vm.update { it.copy(uploadOnWifiOnly = v) } })
+        SettingsGroup("Your data") {
+            SettingsRow("Connect services", value = sync.label, onClick = { nav.go(Routes.Connect) })
             RowDivider()
             SettingsRow("Back up now", value = backupLabel, onClick = { vm.resetBackup(); sheet = MeSheet.Backup })
             RowDivider()
-            SettingsRow("Restore from backup", onClick = { vm.resetBackup(); sheet = MeSheet.Restore })
+            SettingsRow("Privacy and data", value = "Yours", onClick = { sheet = MeSheet.Privacy })
         }
         SecurityGroup(
             settings,
@@ -123,14 +116,25 @@ fun MeScreen(nav: Nav) {
             onLockAfter = { sheet = MeSheet.LockAfter },
             onHideInRecents = { v -> vm.update { it.copy(hideInRecents = v) } },
         )
-        SettingsGroup("Also") {
-            SettingsRow("Wake-up time", value = clockLabel(settings.wakeMinutes), onClick = { sheet = MeSheet.Wake })
-            RowDivider()
-            SettingsRow("Habits", onClick = { nav.go(Routes.Habits) })
-            RowDivider()
-            SettingsRow("Connect services", value = sync.label, onClick = { nav.go(Routes.Connect) })
-            RowDivider()
-            SettingsRow("Version", value = BuildConfig.VERSION_NAME)
+        SettingsGroup("Advanced") {
+            SettingsRow("Advanced settings", value = if (advanced) "Hide" else "Show", onClick = { advanced = !advanced })
+            if (advanced) {
+                RowDivider()
+                SettingsRow("Wake-up time", value = clockLabel(settings.wakeMinutes), onClick = { sheet = MeSheet.Wake })
+                RowDivider()
+                SettingsRow("Spoken replies", value = onOff(settings.spokenReplies), onClick = { sheet = MeSheet.Spoken })
+                RowDivider()
+                SettingsRow("Reduce motion", value = settings.reduceMotion.replaceFirstChar { it.uppercase() }, onClick = { sheet = MeSheet.Motion })
+                BriefSettingsRows()
+                RowDivider()
+                SettingsRow("Photo quality", value = PhotoQuality.label(settings.photoQuality), onClick = { vm.resetBackup(); sheet = MeSheet.PhotoQuality })
+                RowDivider()
+                SettingsRow("Upload photos on Wi-Fi only", checked = settings.uploadOnWifiOnly, onCheck = { v -> vm.update { it.copy(uploadOnWifiOnly = v) } })
+                RowDivider()
+                SettingsRow("Restore from backup", onClick = { vm.resetBackup(); sheet = MeSheet.Restore })
+                RowDivider()
+                SettingsRow("Version", value = BuildConfig.VERSION_NAME)
+            }
         }
     }
     MeSheets(sheet, settings, vm, briefPlay = { nav.go(Routes.Brief) }, openConnect = { nav.go(Routes.Connect) }) { sheet = null }

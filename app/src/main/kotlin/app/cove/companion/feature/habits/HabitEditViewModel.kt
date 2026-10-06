@@ -16,13 +16,13 @@ import kotlinx.coroutines.launch
 
 /** Where a habit appears on Today. */
 enum class ShowMode(val label: String) {
-    AfterWakeUp("After wake-up"),
+    AfterWakeUp("From wake-up"),
     AllDay("All day"),
-    Never("Never"),
+    Never("Not on Today"),
 }
 
 /** Cadence names as stored in [HabitEntity.cadence], in the order of the "How often" control. */
-val Cadences = listOf("daily", "days", "weekly")
+val Cadences = listOf("daily", "days")
 
 data class HabitEditState(
     val isNew: Boolean = true,
@@ -46,7 +46,7 @@ class HabitEditViewModel(private val c: AppContainer, private val id: String) : 
             name.setTextAndPlaceCursorAtEnd(h.name)
             _state.value = HabitEditState(
                 isNew = false,
-                cadence = Cadences.indexOf(h.cadence).coerceAtLeast(0),
+                cadence = if (h.cadence == "daily") 0 else 1,
                 daysMask = h.daysMask,
                 remindMinutes = h.remindMinutes,
                 show = when {
@@ -58,17 +58,11 @@ class HabitEditViewModel(private val c: AppContainer, private val id: String) : 
         }
     }
 
-    fun setCadence(index: Int) = _state.update { s ->
-        val mask = when {
-            index == 2 && s.daysMask.countOneBits() != 1 -> s.daysMask and -s.daysMask
-            else -> s.daysMask
-        }
-        s.copy(cadence = index, daysMask = if (mask == 0) 0b0000001 else mask)
-    }
+    fun setCadence(index: Int) = _state.update { s -> s.copy(cadence = index, daysMask = if (s.daysMask == 0) 0b0000001 else s.daysMask) }
 
-    /** Toggles [bit] for "Some days"; "Weekly" picks exactly one day. Keeps at least one day. */
+    /** Toggles [bit] for "Some days". Keeps at least one day. */
     fun toggleDay(bit: Int) = _state.update { s ->
-        val mask = if (s.cadence == 2) bit else s.daysMask xor bit
+        val mask = s.daysMask xor bit
         if (mask == 0) s else s.copy(daysMask = mask)
     }
 

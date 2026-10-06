@@ -139,8 +139,9 @@ private fun DockMorph(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                if (selected.ordinal >= DockMotion.LEFT_EXTENDING_FROM) CoveIcon(CoveIcons.ChevronUp, c.muted, size = 14.dp)
                 CoveText(selected.label, style = CoveType.Button, color = c.ink, maxLines = 1)
-                CoveIcon(CoveIcons.ChevronUp, c.muted, size = 14.dp)
+                if (selected.ordinal < DockMotion.LEFT_EXTENDING_FROM) CoveIcon(CoveIcons.ChevronUp, c.muted, size = 14.dp)
             }
             Tab.entries.forEach { tab ->
                 val on = tab == selected

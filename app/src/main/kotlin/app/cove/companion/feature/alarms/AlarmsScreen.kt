@@ -147,9 +147,8 @@ private fun Bedtime(bedtime: AlarmEntity?, onOpen: (String) -> Unit) {
         CoveText("Bedtime", Modifier.padding(start = 4.dp), style = CoveType.Meta, color = c.muted)
         Column(Modifier.fillMaxWidth().background(c.card, RoundedCornerShape(24.dp)).padding(horizontal = 20.dp)) {
             BedtimeRow("Wind down", bedtime?.let { clockText(it.minutes).let { t -> t.digits + t.suffix } } ?: "Off", open)
-            Hairline()
-            BedtimeRow("Screen dims", "30 min before", open)
         }
+        CoveText("Dims your screen 30 minutes before.", Modifier.padding(start = 4.dp), style = CoveType.Meta, color = c.muted)
     }
 }
 
