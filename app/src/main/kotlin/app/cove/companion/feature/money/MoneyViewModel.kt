@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.cove.companion.AppContainer
 import app.cove.companion.core.toLocalDate
+import app.cove.companion.data.categorize.ReviewLogic
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -23,6 +24,8 @@ data class MoneyState(
     val bars: List<DayBar> = emptyList(),
     val rows: List<MoneyRow> = emptyList(),
     val empty: Boolean = true,
+    /** "5 in Other · Review" when enough recent expenses are unfiled; null otherwise. */
+    val reviewBanner: String? = null,
 )
 
 /** Month overview for the Money tab: spend so far, daily strip and the four busiest categories. */
@@ -30,9 +33,12 @@ class MoneyViewModel(c: AppContainer) : ViewModel() {
     private val today = c.clock.now().toLocalDate()
     private val range = ledgerRange(today)
 
+    private val now = c.clock.now()
+
     val state: StateFlow<MoneyState> = combine(
         c.money.categories, c.money.expenses(range.first, range.last),
-    ) { categories, all ->
+        c.money.expenses(now - ReviewLogic.UNFILED_DAYS * 24L * 60 * 60 * 1000, now),
+    ) { categories, all, recent ->
         val month = thisMonth(all, today)
         val spending = categories.filter { it.kind == "spending" }
         val perCategory = categoryMonths(spending, all, today)
@@ -52,6 +58,7 @@ class MoneyViewModel(c: AppContainer) : ViewModel() {
             bars = MoneyMath.dailyBars(month, today),
             rows = rows,
             empty = month.none { it.kind == "spent" },
+            reviewBanner = ReviewLogic.bannerText(ReviewLogic.unfiled(recent, categories, now).size),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MoneyState())
 }

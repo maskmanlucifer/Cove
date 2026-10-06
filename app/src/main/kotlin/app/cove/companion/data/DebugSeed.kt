@@ -246,4 +246,20 @@ object DebugSeed {
             }
         }
     }
+
+    /** `--ez reviewSeed true`: five recent expenses in Other (with notes the rules know) and a few misfiled ones for Review. */
+    suspend fun seedReview(c: AppContainer) {
+        val day = c.clock.now().toLocalDate()
+        fun at(d: Long, h: Int) = LocalDateTime.of(day.minusDays(d), LocalTime.of(h, 0)).toEpochMillis()
+        val other = "cat-other"
+        suspend fun add(cat: String, note: String, paise: Long, daysAgo: Long, h: Int = 12) =
+            c.money.save(ExpenseEntity(newId(), paise, categoryId = cat, note = note, spentAt = at(daysAgo, h)))
+        add(other, "Blinkit", 45_000, 1)
+        add(other, "uber to office", 21_000, 2)
+        add(other, "Netflix", 64_900, 3)
+        add(other, "Pharmacy", 38_000, 4)
+        add(other, "Birthday cake for Ana", 80_000, 5)
+        add("cat-fun", "Swiggy dinner", 52_000, 2, 20)
+        add("cat-food", "Uber to airport", 90_000, 6, 7)
+    }
 }

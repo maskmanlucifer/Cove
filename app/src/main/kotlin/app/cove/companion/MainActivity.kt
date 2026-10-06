@@ -158,6 +158,7 @@ class MainActivity : FragmentActivity() {
      * Debug only. `--es now HH:mm` freezes the clock (`--es date yyyy-MM-dd` picks the day); `--es route <route>` starts on that route.
      * `--ez seed true [--ez dark true] [--ez evening true] [--ez moneyLogged true] [--es plan todos|empty|drag]` loads the design's sample data.
      * `--es route alarms` starts on that route; see also `DebugAlarms`.
+     * `--ez reviewSeed true` (with seed) adds five unfiled expenses and two misfiled ones for `--es route money/review`.
      * `--ez conflict true` (with seed) adds the sync conflict from frame 31; open it with `--es route sync/conflict`.
      * `--es tab plan --es segment 1 --es sheet categories --es title Dentist` open a Plan tab view directly.
      * `--ez fakeDrive true [--ez driveRun true]` uses a folder-backed fake Drive with a seeded pending photo; driveRun uploads it and backs up.
@@ -208,6 +209,7 @@ class MainActivity : FragmentActivity() {
                         intent.getStringExtra("plan"), intent.getBooleanExtra("moneyLogged", false),
                     )
                     if (intent.getBooleanExtra("conflict", false)) DebugSeed.seedConflict(container)
+                    if (intent.getBooleanExtra("reviewSeed", false)) DebugSeed.seedReview(container)
                 }
                 VoiceDebug.runSaved(container)
             }

@@ -24,6 +24,8 @@ object Routes {
     const val MoneyCategoryDetail = "money/category-detail/{id}"
     fun moneyCategoryDetail(id: String) = "money/category-detail/$id"
 
+    const val MoneyReview = "money/review"
+
     const val Habits = "habits"
     const val HabitNew = "habits/new"
     const val HabitEdit = "habits/edit/{id}"

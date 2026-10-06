@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import app.cove.companion.core.appViewModel
 import app.cove.companion.core.rupees
 import app.cove.companion.design.Cove
+import app.cove.companion.design.CoveIcon
 import app.cove.companion.design.CoveIcons
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.CoveText
@@ -67,6 +68,7 @@ fun MoneyScreen(nav: Nav) {
             } else {
                 CategoryCard(s.rows, nav)
             }
+            s.reviewBanner?.let { ReviewLink(it) { nav.go(Routes.MoneyReview) } }
         }
         MoneyUndoBar(Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = 112.dp))
     }
@@ -114,5 +116,19 @@ private fun CategoryCard(rows: List<MoneyRow>, nav: Nav) {
                 }
             }
         }
+    }
+}
+
+/** Quiet link to the Review screen, shown only when several recent expenses sit in Other. */
+@Composable
+private fun ReviewLink(text: String, onClick: () -> Unit) {
+    val c = Cove.colors
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 44.dp).pressable(onClick).padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        CoveText(text, style = MoneyType.Sub, color = c.muted)
+        CoveIcon(CoveIcons.ChevronRight, c.tail, size = 14.dp)
     }
 }
