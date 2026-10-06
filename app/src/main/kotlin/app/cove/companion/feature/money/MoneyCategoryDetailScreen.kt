@@ -1,6 +1,5 @@
 package app.cove.companion.feature.money
 
-import app.cove.companion.design.components.DockFloatBottom
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -75,7 +74,7 @@ fun MoneyCategoryDetailScreen(id: String, nav: Nav) {
             if (cat != null) {
                 LazyColumn(
                     Modifier.weight(1f).fillMaxWidth(),
-                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = DockFloatBottom + 64.dp),
+                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 176.dp),
                     verticalArrangement = Arrangement.spacedBy(20.dp),
                 ) {
                     item { Hero(s) }
@@ -106,7 +105,7 @@ fun MoneyCategoryDetailScreen(id: String, nav: Nav) {
                 }
             }
         }
-        Box(Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = DockFloatBottom)) {
+        Box(Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = 112.dp)) {
             val shadow = Color(0x1F141420)
             Row(
                 Modifier
@@ -122,7 +121,7 @@ fun MoneyCategoryDetailScreen(id: String, nav: Nav) {
                 CoveText("Add", style = CoveType.Button, color = c.onInk)
             }
         }
-        MoneyUndoBar(Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = DockFloatBottom + 64.dp))
+        MoneyUndoBar(Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = 176.dp))
         MoneyDock(nav)
     }
 }

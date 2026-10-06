@@ -127,10 +127,10 @@ fun TodayScreen(nav: Nav) {
         PermissionGuides(permissionIssues, alarmsInUse = false)
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (!offline) CoveText(state.date.longLabel(), style = CoveType.Meta, color = c.muted)
-            BalancedText(greeting(state), suggestion?.let { " ${it.title}" } ?: headline(state).let { h -> if (offline) h.replace(Regex("^ Nothing before .*\\.$"), "") else h }, CoveType.Title)
+            BalancedText(greeting(state), suggestion?.let { " ${it.title}" } ?: headline(state, offline), CoveType.Title)
         }
         if (suggestion != null) SuggestionCard(suggestion, sug.detail, suggest)
-        else if (!offline) state.next?.let { NextCard(it, actions, Modifier.padding(top = 12.dp)) }
+        else if (!offline) state.next?.let { NextCard(it, actions, Modifier.padding(top = if (it.windDown) 0.dp else 12.dp)) }
         if (offline) OfflineTodos(state.todos, sug.pendingTodoIds) { id, d -> vm.toggle(id, d) }
         else Column(Modifier.padding(top = 4.dp)) {
             state.todos.forEachIndexed { index, row ->
@@ -209,7 +209,12 @@ private fun NextCard(next: NextItem, actions: NextActions, modifier: Modifier = 
     val time = clockText(next.minutes)
     CoveCard(modifier) {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            CoveText("Next · ${inText(next.inMinutes)}", style = CoveType.Meta, color = c.muted)
+            if (next.windDown) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    CoveText("Next", style = CoveType.Meta, color = c.muted)
+                    CoveText(inText(next.inMinutes), style = CoveType.Meta, color = c.muted)
+                }
+            } else CoveText("Next · ${inText(next.inMinutes)}", style = CoveType.Meta, color = c.muted)
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 CoveText(time.digits, time.suffix, style = CoveType.Hero)
                 CoveText(next.title, style = CoveType.Heading)
@@ -253,7 +258,7 @@ private fun greeting(s: TodayState): String {
     return if (s.name.isBlank()) "$word." else "$word, ${s.name}."
 }
 
-private fun headline(s: TodayState): String {
+private fun headline(s: TodayState, offline: Boolean): String {
     if (s.phase == DayPhase.Evening && s.doneCount > 0) {
         return " ${numberWords.getOrElse(s.doneCount) { s.doneCount.toString() }} done. That’s enough."
     }
@@ -261,7 +266,7 @@ private fun headline(s: TodayState): String {
     if (count == 0) return if (s.next != null) " Nothing else on your list." else " Nothing planned. Enjoy the quiet."
     val things = if (count == 1) "thing" else "things"
     val first = s.next?.event?.let { clockText(s.next.minutes) }
-    if (first != null && s.next.minutes >= 180) return " Nothing before ${hourWord(s.next.minutes / 60)}."
+    if (!offline && first != null && s.next.minutes >= 180) return " Nothing before ${hourWord(s.next.minutes / 60)}."
     return " ${numberWords.getOrElse(count) { count.toString() }} $things today."
 }
 
