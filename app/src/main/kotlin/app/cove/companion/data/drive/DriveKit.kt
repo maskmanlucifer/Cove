@@ -54,7 +54,18 @@ class DriveKit(
     private val prefs = context.getSharedPreferences("cove_drive", Context.MODE_PRIVATE)
     private var fake: FakeDriveClient? = null
 
-    private val googleAuth = GoogleDriveAuth(context, { webClientId.isNotBlank() && auth.state.value is AuthState.SignedIn })
+    private val _connected = MutableStateFlow(prefs.getBoolean(CONNECTED, false))
+
+    /** True once Google has granted Drive access on this phone. */
+    val connected: StateFlow<Boolean> = _connected
+
+    private val googleAuth = GoogleDriveAuth(
+        context, { webClientId.isNotBlank() && auth.state.value is AuthState.SignedIn },
+        onGranted = {
+            prefs.edit().putBoolean(CONNECTED, true).apply()
+            _connected.value = true
+        },
+    )
     private val realClient by lazy { KtorDriveClient(http, googleAuth) }
 
     /** True when Drive can be used right now. */
@@ -74,6 +85,12 @@ class DriveKit(
         googleAuth.onConsentResult(data)
         requestUpload()
     }
+
+    /**
+     * Asks Google for Drive access now, for the "Connect Drive" button. [DriveToken.NeedsConsent] means Google's
+     * approval screen is being shown (see [consentRequests]); the result arrives through [onConsentResult].
+     */
+    suspend fun connect(): DriveToken = googleAuth.token()
 
     /** Debug only: keep "Drive" in plain files under `filesDir/drive-fake`. */
     fun useFake() {
@@ -114,7 +131,13 @@ class DriveKit(
 
     /** Starts the schedules once signed in and keeps the network constraint in step with the setting. Call once. */
     fun start() {
-        if (webClientId.isBlank()) return
+        if (webClientId.isBlank()) {
+            if (fake == null) {
+                BackupScheduler.cancel(context)
+                MediaUploadScheduler.cancelAll(context)
+            }
+            return
+        }
         scope.launch {
             auth.state.collect { state ->
                 if (state is AuthState.SignedIn) {
@@ -140,5 +163,6 @@ class DriveKit(
 
     private companion object {
         const val LAST_BACKUP = "lastBackupAt"
+        const val CONNECTED = "connected"
     }
 }

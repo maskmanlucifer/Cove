@@ -2,8 +2,6 @@ package app.cove.companion.feature.voice
 
 import android.content.Context
 import app.cove.companion.AppContainer
-import app.cove.companion.BuildConfig
-import app.cove.companion.data.ai.KtorAiGateway
 import app.cove.companion.data.ai.MlKitOnDeviceLlm
 import app.cove.companion.feature.voice.exec.IntentExecutor
 import app.cove.companion.feature.voice.exec.RepoVoiceStore
@@ -19,7 +17,7 @@ class VoiceKit(context: Context, container: AppContainer) {
     val parser = IntentParser(
         container.clock,
         MlKitOnDeviceLlm(),
-        KtorAiGateway(BuildConfig.SUPABASE_URL, BuildConfig.SUPABASE_ANON_KEY, tokenProvider = container.auth::accessToken),
+        container.aiGateway,
     )
     val engines = SpeechEngines(listOf(MlKitSpeechEngine(), AndroidSpeechEngine(context)))
     val speaker = TtsSpeaker(context) { container.settings.settings.first().spokenReplies }

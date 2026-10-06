@@ -72,7 +72,7 @@ class MainActivity : FragmentActivity() {
         enableEdgeToEdge()
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                withContext(Dispatchers.Default) { container.driveKit }.consentRequests.collect { pending ->
+                container.driveConsents().collect { pending ->
                     if (pending != null) {
                         container.driveKit.consumeConsent()
                         driveConsent.launch(IntentSenderRequest.Builder(pending).build())

@@ -75,7 +75,7 @@ fun WelcomeScreen(nav: Nav) {
             }
             BigButton("Get started", next)
             Box(Modifier.padding(top = 4.dp)) {
-                TextAction("I already use Cove") { SignIn.launcher.signIn(context) { next() } }
+                TextAction("I already use Cove") { nav.go(Routes.Connect) }
             }
         }
     }

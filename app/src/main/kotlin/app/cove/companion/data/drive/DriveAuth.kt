@@ -25,6 +25,18 @@ sealed interface DriveToken {
 
     /** Drive is switched off (no Google client id, or signed out). */
     data object Unavailable : DriveToken
+
+    /** Google refused the request for a reason the user can act on. */
+    data class Failed(val reason: DriveFailure) : DriveToken
+}
+
+/** Why Google would not hand out a Drive token. */
+enum class DriveFailure {
+    /** Google does not recognise this app's package name and signing certificate (no matching Android OAuth client). */
+    UnknownApp,
+    Offline,
+    Cancelled,
+    Other,
 }
 
 /** Source of Drive access tokens for scope `drive.file`. */
@@ -49,6 +61,7 @@ class GoogleDriveAuth(
     private val context: Context,
     private val available: () -> Boolean,
     private val now: () -> Long = System::currentTimeMillis,
+    private val onGranted: () -> Unit = {},
 ) : DriveAuth {
     private val mutex = Mutex()
     private var cached: String? = null
@@ -72,12 +85,22 @@ class GoogleDriveAuth(
                 token != null -> {
                     cached = token
                     cachedAt = now()
+                    onGranted()
                     DriveToken.Granted(token)
                 }
                 else -> DriveToken.NeedsConsent
             }
         } catch (e: com.google.android.gms.common.api.ApiException) {
-            DriveToken.NeedsConsent
+            DriveToken.Failed(
+                when (e.statusCode) {
+                    DEVELOPER_ERROR -> DriveFailure.UnknownApp
+                    NETWORK_ERROR, INTERNAL_ERROR -> DriveFailure.Offline
+                    CANCELED -> DriveFailure.Cancelled
+                    else -> DriveFailure.Other
+                },
+            )
+        } catch (e: java.io.IOException) {
+            DriveToken.Failed(DriveFailure.Offline)
         }
     }
 
@@ -96,6 +119,7 @@ class GoogleDriveAuth(
             .getOrNull()?.accessToken?.let {
                 cached = it
                 cachedAt = now()
+                onGranted()
             }
     }
 
@@ -109,6 +133,10 @@ class GoogleDriveAuth(
     private companion object {
         /** Google access tokens last an hour; refresh a little early. */
         const val TOKEN_TTL_MS = 50 * 60 * 1000L
+        const val DEVELOPER_ERROR = 10
+        const val NETWORK_ERROR = 7
+        const val INTERNAL_ERROR = 8
+        const val CANCELED = 16
     }
 }
 

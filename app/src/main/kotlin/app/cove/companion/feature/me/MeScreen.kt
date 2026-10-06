@@ -35,7 +35,6 @@ import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.DockClearance
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.design.components.pressable
-import app.cove.companion.feature.onboarding.SignIn
 import app.cove.companion.feature.security.AuthAvailability
 import app.cove.companion.feature.security.Authenticator
 import app.cove.companion.feature.security.SecurityGroup
@@ -115,12 +114,7 @@ fun MeScreen(nav: Nav) {
             RowDivider()
             SettingsRow("Habits", onClick = { nav.go(Routes.Habits) })
             RowDivider()
-            SettingsRow("Sync", value = sync.label, onClick = when {
-                sync.canSignIn -> ({ SignIn.launcher.signIn(context) {} })
-                sync.conflicts > 0 -> ({ nav.go(Routes.SyncConflict) })
-                sync.signedIn -> ({ sheet = MeSheet.Sync })
-                else -> null
-            })
+            SettingsRow("Connect services", value = sync.label, onClick = { nav.go(Routes.Connect) })
             RowDivider()
             SettingsRow("Version", value = BuildConfig.VERSION_NAME)
         }
