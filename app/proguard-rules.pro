@@ -1,0 +1,1 @@
+-keep class app.cove.companion.data.local.entity.** { *; }
