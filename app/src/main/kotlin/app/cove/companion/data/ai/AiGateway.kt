@@ -32,6 +32,13 @@ interface AiGateway {
      * @return the `{"intents":[...]}` JSON text to validate, or null on error, timeout or low confidence.
      */
     suspend fun parseIntent(transcript: String, now: String, zone: String, todoCategories: List<String>): String?
+
+    /**
+     * Asks for one short line of brief copy: [kind] is `intro` or `thought`, [facts] are non-journal facts only.
+     *
+     * @return the line, or null when disabled, offline or on any error.
+     */
+    suspend fun briefLine(kind: String, facts: Map<String, String>): String? = null
 }
 
 /** Ktor implementation; URL and key come from `BuildConfig`, and a blank URL disables it. */
@@ -63,6 +70,34 @@ class KtorAiGateway(
                     setBody(body.toString())
                 }
                 if (response.status.isSuccess()) accept(response.bodyAsText()) else null
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    override suspend fun briefLine(kind: String, facts: Map<String, String>): String? {
+        if (!enabled) return null
+        val body = buildJsonObject {
+            put("task", "brief")
+            put("payload", buildJsonObject {
+                put("kind", kind)
+                put("facts", buildJsonObject { facts.forEach { (k, v) -> put(k, v) } })
+            })
+        }
+        return try {
+            withTimeoutOrNull(timeoutMs) {
+                val response = client.post(baseUrl.trimEnd('/') + "/functions/v1/ai-gateway") {
+                    header("apikey", anonKey)
+                    header(HttpHeaders.Authorization, "Bearer $anonKey")
+                    contentType(ContentType.Application.Json)
+                    setBody(body.toString())
+                }
+                if (!response.status.isSuccess()) return@withTimeoutOrNull null
+                val obj = runCatching { Json.parseToJsonElement(response.bodyAsText()) as? JsonObject }.getOrNull()
+                (obj?.get("text") as? JsonPrimitive)?.content?.trim()?.takeIf { it.isNotEmpty() && obj.containsKey("error").not() && it.length < 280 }
             }
         } catch (e: CancellationException) {
             throw e

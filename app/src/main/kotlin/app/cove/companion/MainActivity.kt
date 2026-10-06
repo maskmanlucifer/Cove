@@ -18,7 +18,11 @@ import app.cove.companion.navigation.DebugLaunch
 import app.cove.companion.navigation.Routes
 import app.cove.companion.core.Clock
 import app.cove.companion.core.toEpochMillis
+import app.cove.companion.core.net.ConnectivityMonitor
+import app.cove.companion.core.toLocalDate
 import app.cove.companion.data.DebugSeed
+import app.cove.companion.feature.brief.BriefDebug
+import app.cove.companion.feature.suggest.SuggestDebug
 import app.cove.companion.feature.voice.VoiceDebug
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -68,6 +72,8 @@ class MainActivity : ComponentActivity() {
      * Debug only. `--es now HH:mm` freezes the clock (`--es date yyyy-MM-dd` picks the day); `--es route <route>` starts on that route.
      * `--ez seed true [--ez dark true] [--ez evening true] [--ez moneyLogged true] [--es plan todos|empty|drag]` loads the design's sample data.
      * `--es tab plan --es segment 1 --es sheet categories --es title Dentist` open a Plan tab view directly.
+     * `--es suggest late-night` fakes a 1:40 am phone use so the late-night suggestion appears; `--es briefAt 51/124` freezes the brief player
+     * at elapsed/total seconds; `--ez offline true` forces the offline look.
      * `--es voiceState listening|result|partial|saved|micoff --es transcript "..."` opens the Voice screen in that state.
      */
     private fun handleDebugIntent() {
@@ -80,6 +86,12 @@ class MainActivity : ComponentActivity() {
         DebugLaunch.segment = intent.getStringExtra("segment")?.toIntOrNull()
         DebugLaunch.sheet = intent.getStringExtra("sheet")
         DebugLaunch.title = intent.getStringExtra("title")
+        intent.getStringExtra("suggest")?.let {
+            val day = Clock.System.now().toLocalDate()
+            SuggestDebug.lastUse = LocalDateTime.of(day, LocalTime.of(1, 40)).toEpochMillis()
+        }
+        BriefDebug.frozen = intent.getStringExtra("briefAt")?.split("/")?.let { it[0].toInt() to it[1].toInt() }
+        ConnectivityMonitor.forceOffline = intent.getBooleanExtra("offline", false)
         val voiceState = intent.getStringExtra("voiceState")
         VoiceDebug.set(voiceState, intent.getStringExtra("transcript"), intent.getIntExtra("voiceSeconds", 7))
         if (voiceState != null && voiceState != "saved") voiceRequest.intValue++

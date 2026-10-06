@@ -11,6 +11,16 @@ import app.cove.companion.data.repo.MoneyRepository
 import app.cove.companion.data.repo.PlanRepository
 import app.cove.companion.data.repo.SettingsRepository
 import app.cove.companion.data.repo.TodoRepository
+import app.cove.companion.core.net.ConnectivityMonitor
+import app.cove.companion.data.ai.KtorAiGateway
+import app.cove.companion.feature.brief.AndroidSpeechOut
+import app.cove.companion.feature.brief.BriefGenerator
+import app.cove.companion.feature.brief.BriefPlayer
+import app.cove.companion.feature.brief.BriefPrefs
+import app.cove.companion.feature.brief.CalendarSource
+import app.cove.companion.feature.brief.WeatherClient
+import app.cove.companion.feature.suggest.DecisionEngine
+import app.cove.companion.feature.suggest.UsageStatsSignals
 import app.cove.companion.feature.voice.VoiceKit
 
 /** Manual dependency graph, created once by [CoveApp]. */
@@ -28,4 +38,27 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
 
     /** Voice assistant services (parser, executor, TTS, undo chip). */
     val voice by lazy { VoiceKit(context.applicationContext, this) }
+
+    /** Network state for the offline notice and "will sync" markers. */
+    val connectivity by lazy { ConnectivityMonitor(context.applicationContext) }
+
+    /** Calendar access for the brief (needs READ_CALENDAR, tolerated when denied). */
+    val calendar by lazy { CalendarSource(context.applicationContext) }
+
+    /** Builds the morning brief from facts and templates. */
+    val briefGenerator by lazy {
+        val prefs = BriefPrefs(context)
+        BriefGenerator(
+            this, context.applicationContext, WeatherClient(prefs, clock::now), prefs, calendar,
+            KtorAiGateway(BuildConfig.SUPABASE_URL, BuildConfig.SUPABASE_ANON_KEY), clock,
+        )
+    }
+
+    /** Reads the brief aloud; start it from anywhere with [BriefPlayer.playToday]. */
+    val briefPlayer by lazy {
+        BriefPlayer(speech = { AndroidSpeechOut(context) }, today = { briefGenerator.today() })
+    }
+
+    /** Rule-based suggestions shown on Today. */
+    val decisions by lazy { DecisionEngine(this, UsageStatsSignals(context), clock) }
 }

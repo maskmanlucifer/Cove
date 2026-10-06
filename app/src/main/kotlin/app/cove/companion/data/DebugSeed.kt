@@ -4,6 +4,10 @@ import app.cove.companion.AppContainer
 import app.cove.companion.core.newId
 import app.cove.companion.core.toEpochMillis
 import app.cove.companion.data.local.entity.AlarmEntity
+import app.cove.companion.data.local.entity.BriefEntity
+import app.cove.companion.feature.brief.BriefCodec
+import app.cove.companion.feature.brief.BriefSegment
+import app.cove.companion.feature.suggest.SuggestDebug
 import app.cove.companion.data.local.entity.EventEntity
 import app.cove.companion.data.local.entity.ExpenseCategoryEntity
 import app.cove.companion.data.local.entity.ExpenseEntity
@@ -23,6 +27,7 @@ object DebugSeed {
         c.settings.update {
             it.copy(displayName = "Maya", onboarded = true, theme = if (dark) "dark" else "light", wakeMinutes = 6 * 60 + 30)
         }
+        seedBrief(c)
         if (c.database.todos().categoryCount() > 0) return
         val day = c.clock.now().let { java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneId.systemDefault()).toLocalDate() }
         fun at(h: Int, m: Int = 0, d: LocalDate = day) = LocalDateTime.of(d, LocalTime.of(h, m)).toEpochMillis()
@@ -125,6 +130,24 @@ object DebugSeed {
                 todo("Home", "Fix the shelf", 1)
                 todo("Errands", "Return the parcel", 0)
             }
+        }
+    }
+
+    /**
+     * Frame 16's cached brief, and for the debug late-night trigger (`--es suggest late-night`) the 7:00 "Run" alarm
+     * that frame 17's suggestion moves.
+     */
+    suspend fun seedBrief(c: AppContainer) {
+        val day = c.clock.now().let { java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneId.systemDefault()).toLocalDate() }
+        val segments = listOf(
+            BriefSegment("Weather · mild, 24°", "Good morning, Maya. It is mild and clear, 24 degrees now, up to 27 later."),
+            BriefSegment("Your day", "Coffee with Jo at eleven. Leave by 10:45, it’s a short walk. Reply to Priya by one."),
+            BriefSegment("Money · ₹11,580 left", "You have ₹11,580 left this month. No rush."),
+            BriefSegment("One thing to read", "A slow start is still a start. Today only needs a few things from you."),
+        )
+        c.assistant.saveBrief(BriefEntity(day.toEpochDay(), BriefCodec.encode(segments), c.clock.now(), 124))
+        if (SuggestDebug.lastUse != null && c.database.alarms().get("seed-run") == null) {
+            c.plan.saveAlarm(AlarmEntity("seed-run", "Run", 7 * 60, 0b1111111, kind = "custom"))
         }
     }
 }

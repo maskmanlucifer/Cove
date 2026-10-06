@@ -208,6 +208,12 @@ class AssistantRepository(private val db: CoveDatabase, private val clock: Clock
 
     suspend fun saveDecision(decision: DecisionEntity) = db.assistant().upsert(decision.copy(updatedAt = clock.now()))
 
+    suspend fun shownDecisions() = db.assistant().shown()
+
+    suspend fun decisionsSince(kind: String, since: Long) = db.assistant().countSince(kind, since)
+
+    suspend fun recentConfirmed(kind: String, limit: Int = 2) = db.assistant().recentConfirmed(kind, limit)
+
     suspend fun isMuted(kind: String) = db.assistant().isMuted(kind) == true
 
     suspend fun mute(kind: String) = db.assistant().setPref(SuggestionPrefEntity(kind, true, clock.now()))
@@ -224,6 +230,9 @@ class AssistantRepository(private val db: CoveDatabase, private val clock: Clock
 
     suspend fun markUndone(id: String) = db.assistant().markUndone(id)
 }
+
+/** Rows waiting to be pushed, so screens can say "will sync" while offline. */
+fun CoveDatabase.pendingIds(table: String): Flow<List<String>> = sync().observePendingIds(table)
 
 /** Today's day number in the habit/journal convention. */
 fun Clock.today(): Long = now().epochDay()
