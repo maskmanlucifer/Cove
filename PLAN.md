@@ -70,126 +70,62 @@ Principles taken from the design doc and encoded as rules:
 
 ## 4. Project file structure
 
-Single Gradle module to start (split later only if build times hurt).
+Single Gradle module (`:app`), manual DI through `AppContainer` (see "Decisions that changed" under §10). Package `app.cove.companion`.
 
 ```
 cove/
-├── app/
-│   ├── build.gradle.kts
-│   └── src/main/
-│       ├── AndroidManifest.xml
-│       ├── kotlin/app/cove/
-│       │   ├── CoveApp.kt                  # Application, DI init, notification channels
-│       │   ├── MainActivity.kt              # single activity, hosts NavHost, enforces lock
-│       │   │
-│       │   ├── core/
-│       │   │   ├── di/                      # Hilt modules (Db, Network, Ai, Voice)
-│       │   │   ├── time/DayPhase.kt         # morning/day/evening
-│       │   │   ├── result/Outcome.kt
-│       │   │   └── util/{Money.kt,Dates.kt} # money stored in paise (Long)
-│       │   │
-│       │   ├── design/                      # from "Style sheet" screen
-│       │   │   ├── Theme.kt                 # Dusk light/dark, System
-│       │   │   ├── Color.kt                 # #F6F3EE bg, #FFFDF9 surface, #6F8F7A sage, dark #161514 …
-│       │   │   ├── Type.kt                  # Fraunces (greeting), Inter, Atkinson Hyperlegible option
-│       │   │   ├── Motion.kt                # 200–300ms cubic-bezier(0.16,1,0.3,1), taps 120ms
-│       │   │   └── components/
-│       │   │       ├── VoiceOrb.kt          # idle / listening(amplitude) / thinking(4s breath)
-│       │   │       ├── CoveCard.kt         # eyebrow, title, detail, ≤3 actions (1 suggested)
-│       │   │       ├── CoveButton.kt       # primary / suggested / secondary / quiet
-│       │   │       ├── MoodChip.kt          # calm happy low tired stressed
-│       │   │       ├── SwipeRow.kt          # swipe right = done, left = delete + undo, long-press drag
-│       │   │       ├── BottomSheet.kt
-│       │   │       └── TabBar.kt            # Today · Plan · Money · Journal · Me
-│       │   │
-│       │   ├── navigation/CoveNavHost.kt
-│       │   │
-│       │   ├── feature/
-│       │   │   ├── lock/                    # biometric gate (§7)
-│       │   │   │   ├── LockScreen.kt
-│       │   │   │   └── BiometricAuthenticator.kt
-│       │   │   ├── onboarding/              # 01 Welcome, 02 Wake-up time
-│       │   │   ├── today/                   # 03/04 Today light/dark, F1 evening wind-down
-│       │   │   │   ├── TodayScreen.kt
-│       │   │   │   ├── TodayViewModel.kt
-│       │   │   │   └── NextThingResolver.kt # picks the single "next" item
-│       │   │   ├── voice/                   # 05 Listening, 06 Result, T5 Voice sorted
-│       │   │   │   ├── VoiceSheet.kt
-│       │   │   │   ├── VoiceViewModel.kt
-│       │   │   │   ├── SpeechRecognizerEngine.kt   # interface + MlKit / Android / Gemini impls
-│       │   │   │   ├── TtsSpeaker.kt
-│       │   │   │   ├── IntentParser.kt             # Nano → Gemini fallback
-│       │   │   │   └── IntentExecutor.kt           # intent → repo calls, builds undo_payload
-│       │   │   ├── decision/                # 07 Decision card, F3 Why this
-│       │   │   │   ├── DecisionCard.kt
-│       │   │   │   ├── WhySheet.kt
-│       │   │   │   └── DecisionEngine.kt    # rules first, LLM only to phrase
-│       │   │   ├── brief/                   # 08 Brief player
-│       │   │   │   ├── BriefPlayer.kt
-│       │   │   │   ├── BriefGenerator.kt    # facts → template script (+ optional cloud line); evening pre-gen may use Nano
-│       │   │   │   └── BriefWorker.kt       # ~15 min before wake; NO Nano here (foreground-only, §6a)
-│       │   │   ├── plan/                    # 09 Plan (All/Alarms/Reminders/Chores)
-│       │   │   │   ├── PlanScreen.kt
-│       │   │   │   ├── alarms/{AlarmScheduler.kt,AlarmReceiver.kt,AlarmRingActivity.kt,BootReceiver.kt}
-│       │   │   │   └── reminders/
-│       │   │   ├── todos/                   # T1–T6
-│       │   │   │   ├── TodosScreen.kt  CategoryScreen.kt  TaskSheet.kt  EditCategoriesSheet.kt
-│       │   │   ├── habits/                  # 10 Habits (missed days roll on)
-│       │   │   ├── money/                   # 11/12 Money
-│       │   │   │   ├── MoneyScreen.kt  BudgetRing.kt  ExpenseSheet.kt
-│       │   │   │   └── SmsExpenseParser.kt  # optional, on-device regex for bank SMS
-│       │   │   ├── journal/                 # 13/14/15
-│       │   │   │   ├── JournalEditor.kt  JournalCalendar.kt  VoiceNoteRecorder.kt  PhotoPicker.kt
-│       │   │   ├── me/                      # 16 Me, F2 Calm settings
-│       │   │   │   ├── MeScreen.kt  CalmSettings.kt  IntegrationsSection.kt
-│       │   │   └── nudge/NudgeScheduler.kt  # bundled notifications
-│       │   │
-│       │   ├── widget/                      # Glance (§8)
-│       │   │   ├── NextThingWidget.kt  VoiceWidget.kt  HabitsWidget.kt  SpendWidget.kt
-│       │   │   └── WidgetUpdater.kt
-│       │   │
-│       │   ├── data/
-│       │   │   ├── local/                   # Room
-│       │   │   │   ├── CoveDatabase.kt  Converters.kt
-│       │   │   │   ├── entity/*.kt          # one per table in §5
-│       │   │   │   └── dao/*.kt
-│       │   │   ├── remote/                  # Supabase client, DTOs
-│       │   │   ├── sync/
-│       │   │   │   ├── SyncEngine.kt  SyncWorker.kt  OutboxDao.kt  ConflictPolicy.kt
-│       │   │   ├── media/MediaSync.kt       # photos / voice notes → Supabase Storage
-│       │   │   ├── ai/
-│       │   │   │   ├── NanoClient.kt        # ML Kit GenAI Prompt API
-│       │   │   │   ├── GeminiProxyClient.kt # calls our Edge Function
-│       │   │   │   └── AiRouter.kt          # chooses Nano vs cloud; journal content is never routed to cloud
-│       │   │   ├── integrations/{OpenMeteoClient.kt,CalendarReader.kt,NotionClient.kt,BooksClient.kt,MoviesClient.kt}
-│       │   │   └── repo/*.kt                # TodoRepo, AlarmRepo, MoneyRepo, …
-│       │   │
-│       │   └── security/{KeystoreManager.kt,DbKeyProvider.kt}
-│       │
-│       └── res/ (fonts, icons, xml/widget_*_info.xml, raw/chime.ogg)
-│
-├── supabase/
-│   ├── migrations/0001_init.sql             # §5 tables + RLS
-│   └── functions/
-│       └── ai-gateway/                      # one entry point, task = intent|brief|stt (§6b)
-│           └── index.ts                     # calls Gemini (Flash-Lite, fallback Flash), validates JSON, retries once
-└── docs/PLAN.md
+├── app/src/main/
+│   ├── AndroidManifest.xml
+│   ├── kotlin/app/cove/companion/
+│   │   ├── CoveApp.kt              # Application: builds AppContainer, starts services off the main thread
+│   │   ├── AppContainer.kt         # manual dependency graph (lazy heavy services)
+│   │   ├── MainActivity.kt         # single activity, lock gate, debug intent hooks (debug builds only)
+│   │   ├── UpdatingSplash.kt       # shown until the encrypted DB is ready
+│   │   ├── DebugStrictMode.kt      # debug-only StrictMode policy
+│   │   ├── core/                   # Clock (freezable), Format (money/time), Notifications, Permissions, ViewModels, net/
+│   │   ├── design/                 # Color, Type (Geist), Shapes, Icons, Theme, components/ (CoveText, Sheet, Dock, Orb, ...)
+│   │   ├── navigation/             # Routes, CoveNavHost, MainScreen (tabs), DebugLaunch
+│   │   ├── security/               # SQLCipher open helper, key (Keystore SecretBox), plaintext migrator
+│   │   ├── data/
+│   │   │   ├── local/              # CoveDatabase (Room, v4, FTS4 journal search), entity/, dao/
+│   │   │   ├── repo/               # repositories; every write goes through ChangeLog.mark (outbox)
+│   │   │   ├── sync/               # SyncEngine/Manager/Worker, Ktor-based Supabase remote, conflict resolver
+│   │   │   ├── auth/               # Supabase session via Google ID token (Credential Manager), encrypted store
+│   │   │   ├── drive/              # Google Drive uploader and monthly backup (drive.file scope)
+│   │   │   ├── media/              # image compression, thumbnails, voice notes, media upload worker
+│   │   │   ├── backup/             # export/import, retention
+│   │   │   ├── ai/                 # AiGateway (Ktor to the ai-gateway Edge Function), OnDeviceLlm
+│   │   │   └── insights/           # journal search/indexer, Nano insights, foreground tracker
+│   │   └── feature/
+│   │       ├── onboarding/ today/ plan/ habits/ money/ journal/ me/ sync/ security/
+│   │       ├── alarms/             # AlarmManager.setAlarmClock, ring service/activity, boot receiver
+│   │       ├── voice/              # speech, intent parser, executor, TTS, quick-listen tile/shortcut
+│   │       ├── brief/              # generator, player, Open-Meteo, calendar, worker, geocoder
+│   │       ├── suggest/            # rule-based decision engine ("Why this?")
+│   │       ├── nudges/             # bundled notifications and reminders
+│   │       └── widgets/            # Glance widgets + updater
+│   └── res/                        # fonts, drawables, xml/ widget infos, shortcuts
+├── app/src/test/kotlin/            # JVM unit tests (pure logic, Ktor MockEngine, fake stores)
+├── supabase/                       # migrations 0001-0003, functions/ai-gateway (Deno), README
+├── docs/                           # CONTRIBUTING, DRIVE_SETUP, SECURITY, RELEASE
+├── design/                         # reference PNGs and HTML frames
+└── tools/                          # run.sh, shot.sh, compare.py
 ```
 
-### Screen → code map (every frame in the design zip)
+### Screen to code map
 
 | Design frame | Feature |
 |---|---|
-| 01 Welcome, 02 Wake-up | `onboarding` |
-| 03/04 Today, F1 Evening | `today` (+ `DayPhase`) |
-| 05 Listening, 06 Voice result, T5 Voice sorted | `voice` |
-| 07 Decision, F3 Why this | `decision` |
-| 08 Brief player | `brief` |
-| 09 Plan, T1–T4, T6 | `plan`, `todos` |
-| 10 Habits | `habits` |
-| 11/12 Money | `money` |
-| 13/14/15 Journal | `journal` |
-| 16 Me, F2 Calm settings | `me` |
+| 01 Welcome, 02 Wake-up | `feature/onboarding` |
+| 03/04 Today, F1 Evening | `feature/today` |
+| 05 Listening, 06 Voice result, T5 Voice sorted | `feature/voice` |
+| 07 Decision, F3 Why this | `feature/suggest` |
+| 08 Brief player | `feature/brief` |
+| 09 Plan, T1-T4, T6 | `feature/plan` |
+| 10 Habits | `feature/habits` |
+| 11/12 Money | `feature/money` |
+| 13/14/15 Journal | `feature/journal` |
+| 16 Me, F2 Calm settings | `feature/me`, `feature/security` |
 
 ---
 
@@ -522,22 +458,31 @@ Fallbacks: Supabase Pro $25/mo if the free plan is outgrown (unlikely at one use
 
 ## 10. Build phases (each ends with something you can run)
 
-| # | Phase | Verify |
-|---|---|---|
-| 0 | Project skeleton, Dusk theme, fonts, `VoiceOrb`, `CoveCard`, `TabBar`; static Today screen with fake data | Side-by-side screenshot vs design frames 03/04 |
-| 1 | Room schema, repos, To-dos + Plan + Habits (no network) | Instrumented DAO tests; swipe/undo works |
-| 2 | **Alarms** (AlarmManager, boot, ring screen) | Alarm fires after reboot and with screen off overnight |
-| 3 | Biometric lock + SQLCipher | Cold start requires biometric; DB unreadable via adb pull |
-| 4 | Voice: STT → Nano intent → executor → TTS → Undo | Say "set an alarm for six thirty and add milk" → both created, Undo reverts |
-| 5 | Money + Journal (text, photo, voice note) | Budget math tests; media saved |
-| 6 | Supabase: migrations, RLS, auth, SyncEngine | Wipe app, sign in, data returns; airplane-mode edits sync later |
-| 7 | `ai-gateway` Edge Function + Gemini fallback, budget alert set | Works on a phone without Nano |
-| 8 | Brief generator/player + Open-Meteo + calendar | 6:15 am brief is ready, ≤3 min |
-| 9 | Decision engine + Why-this + Nudges + calm settings + evening phase | Decision card triggers on rule test with fixed clock |
-| 10 | Glance widgets + QS tile | Widgets update after changes |
-| 11 | Integrations (books/movies/Notion), optional SMS parser, polish | |
+Status as built (all phases are merged; items marked "partial" are described in the notes column).
 
-Suggested order if you want something useful fastest: 0 → 1 → 2 → 4 → 3 → 6.
+| # | Phase | Status | Notes |
+|---|---|---|---|
+| 0 | Skeleton, theme, VoiceOrb, cards, dock, static Today | done | Compared with `design/ref` using `tools/compare.py` |
+| 1 | Room schema, repos, To-dos + Plan + Habits | done | Offline; swipe/undo works |
+| 2 | Alarms (AlarmManager, boot, ring screen) | done | `setAlarmClock`; re-registered after boot/time change |
+| 3 | Biometric lock + SQLCipher | done | DB encrypted with a Keystore-wrapped key; plaintext upgrade runs off the main thread (`docs/SECURITY.md`) |
+| 4 | Voice: STT, intent, executor, TTS, Undo | done | Typed fallback; rule-based parser with Nano/cloud hooks |
+| 5 | Money + Journal (text, photo, voice note) | done | Journal search is FTS4 |
+| 6 | Supabase: migrations, RLS, auth, sync | done | Ktor client, outbox + last-write-wins with a conflict screen |
+| 7 | `ai-gateway` Edge Function + Gemini | done | `supabase/functions/ai-gateway` |
+| 8 | Brief generator/player, Open-Meteo, calendar | done | Calendar needs READ_CALENDAR (asked from Me); city set in Me |
+| 9 | Decision engine, Why-this, nudges, calm settings | done | |
+| 10 | Glance widgets + QS tile | done | Four widgets (Next, Spent, Tasks, Voice) |
+| 11 | Integrations (books/movies/Notion), SMS parser | not built | Optional; out of scope for the first release |
+| R | Release hardening | done | R8 + resource shrinking, signing config, startup off the main thread, lint clean (`docs/RELEASE.md`) |
+
+### Decisions that changed during the build
+- **Manual DI (`AppContainer`) instead of Hilt**: one module, one user; less build time and no annotation processing beyond Room.
+- **Ktor client instead of supabase-kt**: a handful of REST/GoTrue calls; smaller APK, easy to test with `MockEngine`.
+- **FTS4 journal search** (Room `@Fts4`) instead of the embeddings idea; `NoOpEmbedder` keeps the hook.
+- **Widgets via Glance**, not RemoteViews, with `widget_preview_*` layouts only as picker previews.
+- **Google Drive as the media store** (see §6c); Supabase keeps only thumbnails.
+- **Portrait only**: the layouts are designed at 390 dp wide; `MainActivity` is locked to portrait.
 
 ---
 
