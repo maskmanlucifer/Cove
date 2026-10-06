@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="voice_tile_label">Talk to Cove</string>
+    <string name="voice_shortcut_short">Talk to Cove</string>
+    <string name="voice_shortcut_long">Start listening in Cove</string>
+</resources>

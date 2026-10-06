@@ -20,6 +20,7 @@ import app.cove.companion.feature.me.MeScreen
 import app.cove.companion.feature.money.MoneyScreen
 import app.cove.companion.feature.plan.PlanScreen
 import app.cove.companion.feature.today.TodayScreen
+import app.cove.companion.feature.voice.UndoToastHost
 
 /** The five dock destinations. Each tab screen draws its own content and leaves room for the dock. */
 @Composable
@@ -42,5 +43,6 @@ fun MainScreen(nav: Nav) {
         ) {
             CoveDock(tab, onSelect = { tab = it }, onVoice = { nav.go(Routes.Voice) })
         }
+        UndoToastHost(Modifier.align(Alignment.BottomCenter).padding(bottom = 112.dp))
     }
 }

@@ -27,7 +27,7 @@ data class NextItem(
     val windDown: Boolean = false,
 )
 
-data class TodoRow(val id: String, val title: String, val time: LocalDateTime?, val done: Boolean)
+data class TodoRow(val id: String, val title: String, val time: LocalDateTime?, val done: Boolean, val isNew: Boolean = false)
 
 data class TodayState(
     val name: String = "",
@@ -42,6 +42,13 @@ data class TodayState(
     val remainingBeforeNoon: Boolean = false,
 )
 
+private data class Aux(
+    val expenses: List<app.cove.companion.data.local.entity.ExpenseEntity>,
+    val habits: List<app.cove.companion.data.local.entity.HabitEntity>,
+    val logs: List<app.cove.companion.data.local.entity.HabitLogEntity>,
+    val newIds: Set<String>,
+)
+
 /** Builds [TodayState] from settings, events, alarms, to-dos, spending and habits. */
 class TodayViewModel(private val c: AppContainer) : ViewModel() {
     private val today = c.clock.now().toLocalDate()
@@ -53,8 +60,10 @@ class TodayViewModel(private val c: AppContainer) : ViewModel() {
         c.plan.eventsOn(today),
         c.plan.alarms,
         c.todos.todos,
-        combine(c.money.expenses(dayStart, dayEnd), c.habits.habits, c.habits.logs(today, today)) { e, h, l -> Triple(e, h, l) },
-    ) { settings, events, alarms, todos, (expenses, habits, logs) ->
+        combine(c.money.expenses(dayStart, dayEnd), c.habits.habits, c.habits.logs(today, today), c.voice.newTodos.ids) { e, h, l, n ->
+            Aux(e, h, l, n)
+        },
+    ) { settings, events, alarms, todos, (expenses, habits, logs, newIds) ->
         val now = c.clock.now().toLocalDateTime()
         val phase = dayPhase(now.hour)
         val nowMin = now.hour * 60 + now.minute
@@ -79,8 +88,9 @@ class TodayViewModel(private val c: AppContainer) : ViewModel() {
         }
         val rows = todos
             .filter { it.dueAt == null || it.dueAt in dayStart..dayEnd || it.done }
+            .sortedByDescending { it.id in newIds }
             .take(3)
-            .map { TodoRow(it.id, it.title, it.dueAt?.toLocalDateTime(), it.done) }
+            .map { TodoRow(it.id, it.title, it.dueAt?.toLocalDateTime(), it.done, isNew = it.id in newIds) }
         val shown = habits.filter { it.showOnToday }
         TodayState(
             name = settings.displayName,
@@ -97,6 +107,11 @@ class TodayViewModel(private val c: AppContainer) : ViewModel() {
 
     fun toggle(id: String, done: Boolean) {
         viewModelScope.launch { c.todos.setDone(id, done) }
+    }
+
+    /** The "New" tag fades once the user has seen it. */
+    fun markNewSeen() {
+        c.voice.newTodos.markSeen(state.value.todos.filter { it.isNew }.map { it.id })
     }
 
     fun setMood(mood: String) {

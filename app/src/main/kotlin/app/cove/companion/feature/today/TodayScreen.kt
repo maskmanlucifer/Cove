@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -47,6 +48,7 @@ fun TodayScreen(nav: Nav) {
     val state by vm.state.collectAsState()
     val evening = state.phase == DayPhase.Evening
     val c = Cove.colors
+    DisposableEffect(Unit) { onDispose { vm.markNewSeen() } }
 
     Column(
         Modifier
@@ -74,7 +76,8 @@ fun TodayScreen(nav: Nav) {
                         Modifier.weight(1f),
                         color = if (row.done) c.tail else c.ink,
                     )
-                    if (!row.done) row.time?.let { CoveText(shortTime(it), style = CoveType.Meta, color = c.muted) }
+                    if (row.isNew) CoveText("New", style = CoveType.MetaMedium, color = c.saved)
+                    else if (!row.done) row.time?.let { CoveText(shortTime(it), style = CoveType.Meta, color = c.muted) }
                 }
             }
         }
