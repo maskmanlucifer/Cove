@@ -31,7 +31,7 @@ import java.time.temporal.TemporalAdjusters
 
 /** Debug-only sample data matching the design frames, used to compare screens pixel by pixel. */
 object DebugSeed {
-    suspend fun load(c: AppContainer, dark: Boolean, evening: Boolean, plan: String? = null, moneyLogged: Boolean = false, trainingDone: Boolean = false) {
+    suspend fun load(c: AppContainer, dark: Boolean, evening: Boolean, plan: String? = null, moneyLogged: Boolean = false) {
         c.settings.update {
             it.copy(displayName = "Maya", onboarded = true, theme = if (dark) "dark" else "light", wakeMinutes = 6 * 60 + 30, spokenReplies = false)
         }
@@ -67,7 +67,7 @@ object DebugSeed {
 
         seedMoney(c, day, moneyLogged)
         seedPlan(c, day, plan)
-        seedTraining(c, day, trainingDone)
+        seedTraining(c, day)
     }
 
     /**
@@ -88,8 +88,8 @@ object DebugSeed {
         repeat(minOf(n, 60)) { i -> c.plan.saveAlarm(AlarmEntity("bulk-alarm-$i", "Bulk alarm ${i + 1}", (i * 17) % 1440, 0b0011111, enabled = false)) }
     }
 
-    /** Training frames 41 to 48 (see `docs/TRAINING.md`); [todayDone] adds today's finished Push session. */
-    suspend fun seedTraining(c: AppContainer, day: LocalDate, todayDone: Boolean = false) = seedTrainingData(c, day, todayDone)
+    /** A weekly plan with today as Push day and four weeks of history (see `docs/TRAINING.md`). */
+    suspend fun seedTraining(c: AppContainer, day: LocalDate) = seedTrainingData(c, day)
 
     private suspend fun seedMoney(c: AppContainer, day: LocalDate, logged: Boolean) {
         fun at(h: Int, m: Int, d: LocalDate) = LocalDateTime.of(d, LocalTime.of(h, m)).toEpochMillis()

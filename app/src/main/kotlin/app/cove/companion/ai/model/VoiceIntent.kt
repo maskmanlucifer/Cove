@@ -53,16 +53,31 @@ sealed interface VoiceIntent {
     }
 
     /**
-     * Sets of one lift said aloud ("bench, sixty-two and a half for eight, eight and six"). [exercise] is the lift's
-     * name as understood (matched to the user's lifts by the executor); [unit] is `kg` or `lb` only when the user said so.
+     * Sets of one lift said aloud ("bench, sixty-two and a half for eight, eight and six"), logged against today's
+     * workout. [exercise] is the lift's name as understood; [unit] is `kg` or `lb` only when the user said so.
      */
     data class LogSets(val exercise: String, val sets: List<SpokenSet>, val unit: String? = null) : VoiceIntent {
         override val type get() = "log_sets"
     }
 
-    /** Starts today's workout, or the [day] type ("Push", "Pull", "Legs") when given. */
-    data class StartWorkout(val day: String? = null) : VoiceIntent {
-        override val type get() = "start_workout"
+    /**
+     * Plans [exercise] on [date]'s weekday ("plan tomorrow bench press 60 kilos 3 sets of 8"). Missing [weight], [sets]
+     * and [reps] keep what the lift already has there (3 x 8 for a new one).
+     */
+    data class PlanExercise(
+        val date: java.time.LocalDate,
+        val exercise: String,
+        val weight: Double? = null,
+        val sets: Int? = null,
+        val reps: Int? = null,
+        val unit: String? = null,
+    ) : VoiceIntent {
+        override val type get() = "plan_exercise"
+    }
+
+    /** Changes today's planned weight of [exercise] ("change my bench to sixty two and a half"). */
+    data class ChangeWeight(val exercise: String, val weight: Double, val unit: String? = null) : VoiceIntent {
+        override val type get() = "change_weight"
     }
 
     /** A morning weigh-in of [weight] in [unit] (`kg` or `lb`; null means the user's own unit). */
@@ -70,7 +85,7 @@ sealed interface VoiceIntent {
         override val type get() = "log_body_weight"
     }
 
-    /** "What is my next workout?" */
+    /** "What is my workout today?" */
     data object QueryNextWorkout : VoiceIntent {
         override val type get() = "next_workout"
     }
@@ -82,6 +97,13 @@ sealed interface VoiceIntent {
     data object UndoLast : VoiceIntent {
         override val type get() = "undo_last"
     }
+}
+
+/** "Today", "Tomorrow", or the weekday's name ("Thursday") of [date] seen from [today]. */
+fun workoutDayLabel(date: java.time.LocalDate, today: java.time.LocalDate): String = when (date) {
+    today -> "Today"
+    today.plusDays(1) -> "Tomorrow"
+    else -> date.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.ENGLISH)
 }
 
 /** A to-do the user has not saved yet; [category] is a category name or null. */

@@ -56,7 +56,7 @@ object IntentSchema {
     private val TYPES = setOf(
         "set_alarm", "change_alarm", "add_todo", "add_reminder", "log_expense",
         "log_habit", "journal_note", "query_next", "undo_last",
-        "log_sets", "start_workout", "log_body_weight", "next_workout",
+        "log_sets", "plan_exercise", "change_weight", "log_body_weight", "next_workout",
     )
 
     private fun intent(o: JsonObject): VoiceIntent? = when (o.str("type")) {
@@ -91,7 +91,13 @@ object IntentSchema {
         "log_habit" -> o.str("name")?.trim()?.takeIf { it.isNotEmpty() }?.let { VoiceIntent.LogHabit(it) }
         "journal_note" -> o.str("text")?.trim()?.takeIf { it.isNotEmpty() }?.let { VoiceIntent.JournalNote(it) }
         "log_sets" -> logSets(o)
-        "start_workout" -> VoiceIntent.StartWorkout(o.optStr("day")?.takeIf { it.length <= 12 })
+        "plan_exercise" -> planExercise(o)
+        "change_weight" -> {
+            val name = o.str("exercise")?.trim()?.takeIf { it.isNotEmpty() && it.length <= 60 }
+            val w = (o["weight"] as? JsonPrimitive)?.doubleOrNull?.takeIf { it in 0.0..1000.0 }
+            if (o.optStr("unit") != null && unit(o) == null) return null
+            if (name == null || w == null) null else VoiceIntent.ChangeWeight(name, w, unit(o))
+        }
         "log_body_weight" -> {
             val w = (o["weight"] as? JsonPrimitive)?.doubleOrNull
             val unit = unit(o)
@@ -106,6 +112,28 @@ object IntentSchema {
     }
 
     private const val MAX_SETS = 20
+
+    /** `{"type":"plan_exercise","day":"2026-10-07","exercise":"Bench press","weight":60,"sets":3,"reps":8}`; weight, sets, reps and unit are optional. */
+    private fun planExercise(o: JsonObject): VoiceIntent? {
+        val exercise = o.str("exercise")?.trim()?.takeIf { it.isNotEmpty() && it.length <= 60 } ?: return null
+        val date = o.optStr("day")?.let { runCatching { java.time.LocalDate.parse(it) }.getOrNull() } ?: return null
+        fun int(key: String, max: Int): Int? = when (val v = o[key]) {
+            null, JsonNull -> null
+            is JsonPrimitive -> v.doubleOrNull?.takeIf { it % 1.0 == 0.0 && it >= 1 && it <= max }?.toInt() ?: throw IllegalArgumentException()
+            else -> throw IllegalArgumentException()
+        }
+        val weight = when (val v = o["weight"]) {
+            null, JsonNull -> null
+            is JsonPrimitive -> v.doubleOrNull?.takeIf { it in 0.0..1000.0 } ?: return null
+            else -> return null
+        }
+        if (o.optStr("unit") != null && unit(o) == null) return null
+        return try {
+            VoiceIntent.PlanExercise(date, exercise, weight, int("sets", MAX_SETS), int("reps", 100), unit(o))
+        } catch (_: IllegalArgumentException) {
+            null
+        }
+    }
 
     /** `{"type":"log_sets","exercise":"Bench press","unit":"kg","sets":[{"weight":62.5,"reps":8}]}`; weight may be null. */
     private fun logSets(o: JsonObject): VoiceIntent? {

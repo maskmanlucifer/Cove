@@ -1,5 +1,6 @@
 package app.cove.companion.ai
 
+import app.cove.companion.ai.model.AdviceRequest
 import app.cove.companion.ai.model.AiResult
 import app.cove.companion.ai.model.BriefInput
 import app.cove.companion.ai.model.BriefLines
@@ -62,6 +63,12 @@ interface AiService {
      * Suggestions refer to notes by position; nothing is changed by this call.
      */
     suspend fun suggestCategories(notes: List<String>, categories: List<String>): AiResult<List<CategorySuggestion>>
+
+    /**
+     * One-sentence second opinion on today's weight for a lift. Everyday data (lift name and recent sessions), manual use
+     * only (the "Ask Cove" link); rules always answer first in the app, this never changes a weight by itself.
+     */
+    suspend fun adviseWorkout(request: AdviceRequest): AiResult<String>
 
     /** What each capability can use right now and why not, for settings screens. */
     suspend fun status(): AiStatus

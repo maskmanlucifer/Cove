@@ -12,11 +12,7 @@ import app.cove.companion.ai.model.IntentContext
 import app.cove.companion.ai.model.SpeechEvent
 import app.cove.companion.ai.model.SpeechFailure
 import app.cove.companion.ai.model.SpeechSession
-import app.cove.companion.ai.model.SpokenSet
 import app.cove.companion.ai.model.VoiceIntent
-import app.cove.companion.feature.training.TrainingFocus
-import app.cove.companion.feature.training.voice.PreviewSet
-import app.cove.companion.feature.training.voice.SetsPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
@@ -26,8 +22,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-
-private val numberStarts = setOf("one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety", "hundred")
 
 /** Which of the voice frames is showing. */
 enum class Stage { Listening, Result, Partial, Typing, Answer, Trouble }
@@ -56,10 +50,6 @@ data class VoiceState(
     val heardByVoice: Boolean = true,
     val busy: Boolean = false,
     val done: Boolean = false,
-    /** Frame 44: the resolved sets of a spoken workout log. */
-    val setsPreview: SetsPreview? = null,
-    /** Screen to open once saved (a workout that was just started). */
-    val route: String? = null,
 )
 
 /** Drives listening, understanding, confirming and saving a voice command. */
@@ -188,13 +178,7 @@ class VoiceViewModel(private val c: AppContainer) : ViewModel() {
         )
         val categories = ctx.todoCategories
         val expenseCats = c.money.categories.first().filter { it.kind == "spending" }.map { it.name }
-        var outcome = c.ai.parseIntent(text, ctx)
-        // "thirty-seven five for eight" during a workout: the lift on screen is the one meant.
-        TrainingFocus.exercise?.let { focus ->
-            if (outcome is AiResult.Failed || outcome.valueOrNull()?.intents?.none { it is VoiceIntent.LogSets } == true && (text.firstOrNull()?.isDigit() == true || text.split(' ').first().lowercase() in numberStarts)) {
-                (c.ai.parseIntent("$focus $text", ctx) as? AiResult.Ok)?.takeIf { r -> r.value.intents.any { it is VoiceIntent.LogSets } }?.let { outcome = it }
-            }
-        }
+        val outcome = c.ai.parseIntent(text, ctx)
         when (val result = outcome) {
             is AiResult.Ok -> {
                 val only = result.value.intents.singleOrNull()
@@ -207,13 +191,6 @@ class VoiceViewModel(private val c: AppContainer) : ViewModel() {
                         _state.update { it.copy(busy = false, stage = Stage.Answer, answer = r.summary) }
                     }
                     kit.speaker.speak(r.summary)
-                } else if (only is VoiceIntent.LogSets) {
-                    val preview = kit.training.preview(only)
-                    if (preview == null) {
-                        val msg = "Set up Training first, then I can log your sets"
-                        _state.update { it.copy(busy = false, stage = Stage.Answer, answer = msg) }
-                        kit.speaker.speak(msg)
-                    } else _state.update { it.copy(busy = false, stage = Stage.Result, drafts = result.value.intents, setsPreview = preview) }
                 } else {
                     val hint = moneyHint(only)
                     _state.update { it.copy(busy = false, stage = Stage.Result, drafts = result.value.intents, categories = categories, expenseCategories = expenseCats, moneyHint = hint) }
@@ -267,19 +244,6 @@ class VoiceViewModel(private val c: AppContainer) : ViewModel() {
         c.money.teach(e.note, picked.id, all.firstOrNull { it.name.equals(categoryBeforePick, true) }?.id)
     }
 
-    /** Replaces the drafted sets with the edited [sets] (shown in the user's unit) and refreshes the note. */
-    fun editSets(sets: List<PreviewSet>) {
-        val s = _state.value
-        val old = s.drafts.singleOrNull() as? VoiceIntent.LogSets ?: return
-        val unit = s.setsPreview?.unit ?: return
-        val updated = old.copy(
-            sets = sets.map { SpokenSet(if (s.setsPreview.bodyweight) null else Math.round(unit.fromKg(it.weightKg) * 10) / 10.0, it.reps) },
-            unit = unit.key,
-        )
-        _state.update { it.copy(drafts = listOf(updated)) }
-        viewModelScope.launch { kit.training.preview(updated)?.let { p -> _state.update { it.copy(setsPreview = p) } } }
-    }
-
     /** Picks one of the "was it one of these?" guesses as the draft. */
     fun chooseGuess(intent: VoiceIntent) = _state.update { it.copy(stage = Stage.Result, drafts = listOf(intent)) }
 
@@ -293,7 +257,7 @@ class VoiceViewModel(private val c: AppContainer) : ViewModel() {
             teachPickedCategory(s.drafts)
             kit.newTodos.add(r.createdTodos)
             kit.feedback.show(r.summary, r.commandId)
-            _state.update { it.copy(busy = false, done = true, route = r.route) }
+            _state.update { it.copy(busy = false, done = true) }
             kit.speaker.speak(r.summary)
         }
     }

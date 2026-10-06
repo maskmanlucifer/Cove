@@ -47,6 +47,9 @@ interface CloudGateway {
      * @return the raw JSON reply to validate, or null when unsupported, offline or on any error.
      */
     suspend fun suggestCategories(system: String, user: String): String? = null
+
+    /** Runs the workout advice prompt ([system], [user] as built by `AdvicePrompt`); the raw JSON reply, or null. */
+    suspend fun adviseWorkout(system: String, user: String): String? = null
 }
 
 /**

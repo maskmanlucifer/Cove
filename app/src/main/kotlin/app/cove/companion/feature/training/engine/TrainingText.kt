@@ -1,105 +1,48 @@
 package app.cove.companion.feature.training.engine
 
-import kotlin.math.roundToInt
+import java.time.DayOfWeek
+import java.time.format.TextStyle
+import java.util.Locale
 
-/** Wording shared by the training screens (all copy lives here so it can be unit tested). */
+/** Wording shared by the training screens and the Today card (all copy lives here so it can be unit tested). */
 object TrainingText {
-    /** "62.5 kg · 3×8" for a weighted lift, "3×12" for body weight. */
-    fun targetLine(spec: ExerciseSpec, target: Target, unit: WeightUnit): String =
-        if (spec.isBodyweight) "${target.sets}×${target.reps}" else "${WeightFormat.withUnit(target.weightKg, unit)} · ${target.sets}×${target.reps}"
+    /** "Bench press · 60 kg · 3 x 8"; body weight lifts leave the weight out. */
+    fun rowLine(name: String, kg: Double, sets: Int, reps: Int, unit: WeightUnit): String =
+        if (kg <= 0.0) "$name · $sets x $reps" else "$name · ${WeightFormat.withUnit(kg, unit)} · $sets x $reps"
 
-    /** "62.5 → 62.5 kg" parts for the Session done card: (before, after). */
-    fun change(spec: ExerciseSpec, before: Target, after: Target, unit: WeightUnit): Pair<String, String> =
-        if (spec.isBodyweight) "${before.sets}×${before.reps} → " to "${after.sets}×${after.reps}"
-        else WeightFormat.number(before.weightKg, unit) + " → " to WeightFormat.withUnit(after.weightKg, unit)
+    /** "60 kg · 3 x 8", the detail half of [rowLine]. */
+    fun detail(kg: Double, sets: Int, reps: Int, unit: WeightUnit): String =
+        if (kg <= 0.0) "$sets x $reps" else "${WeightFormat.withUnit(kg, unit)} · $sets x $reps"
 
-    /**
-     * The sentence under the sets of a voice draft (frame 44): what the logged sets mean for next time.
-     *
-     * @param next the suggestion computed with the drafted sets appended to the history.
-     */
-    fun draftNote(next: Suggestion, working: List<LoggedSet>, goal: Int, unit: WeightUnit): String {
-        val kg = WeightFormat.withUnit(next.target.weightKg, unit)
-        return when (next.move) {
-            Move.Hold -> when {
-                working.isEmpty() -> "Logged."
-                working.last().reps < goal -> "The last set came up short, so next time stays at $kg."
-                working.any { it.reps < goal } -> "A set came up short, so next time stays at $kg."
-                else -> "That is fewer sets than planned, so next time stays at $kg."
-            }
-            Move.Increase -> "Every set landed, so next time goes up to $kg."
-            Move.Reps -> "Every set landed. Next time aim for ${next.target.reps} reps."
-            Move.Deload -> "Two tough sessions in a row, so next time eases back to $kg."
-            Move.Start -> "Logged. Cove will plan from here."
+    /** "Bench press, 60 kilograms, 3 sets of 8" for screen readers. */
+    fun spoken(name: String, kg: Double, sets: Int, reps: Int, unit: WeightUnit): String {
+        val weight = if (kg <= 0.0) "" else ", " + WeightFormat.number(kg, unit) + if (unit == WeightUnit.Kg) " kilograms" else " pounds"
+        return "$name$weight, $sets sets of $reps"
+    }
+
+    /** "No exercises", "1 exercise", "3 exercises". */
+    fun exerciseCount(n: Int): String = when (n) {
+        0 -> "Rest"
+        1 -> "1 exercise"
+        else -> "$n exercises"
+    }
+
+    /** "Monday" for an ISO weekday 1..7. */
+    fun weekdayName(isoDay: Int): String = DayOfWeek.of(isoDay).getDisplayName(TextStyle.FULL, Locale.ENGLISH)
+
+    /** "Mon" for an ISO weekday 1..7. */
+    fun weekdayShort(isoDay: Int): String = DayOfWeek.of(isoDay).getDisplayName(TextStyle.SHORT, Locale.ENGLISH)
+
+    /** "62.5 kg" or "20 lb" gap as words: "up 5 kg", "down 2.5 kg", "no change". */
+    fun change(deltaKg: Double, unit: WeightUnit): String {
+        val shown = Math.round(unit.fromKg(deltaKg) * 10) / 10.0
+        return when {
+            shown > 0 -> "up ${WeightFormat.trim(shown)} ${unit.label}"
+            shown < 0 -> "down ${WeightFormat.trim(-shown)} ${unit.label}"
+            else -> "no change"
         }
     }
 
-    /** "3 sets" / "one set" style count for headings. */
-    fun setsHeadline(n: Int): String = when (n) {
-        1 -> "One set."
-        else -> countWord(n).replaceFirstChar { it.uppercase() } + " sets."
-    }
-
-    private val words = listOf("zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten")
-
-    /** "three" for counts up to ten, digits above. */
-    fun countWord(n: Int): String = words.getOrNull(n) ?: n.toString()
-
-    /** "about 45 min" estimate for a session: [sets] sets with [restSeconds] between them plus a few minutes per lift, rounded to 5. */
-    fun estimateMinutes(sets: Int, exercises: Int, restSeconds: Int): Int {
-        if (sets <= 0) return 0
-        val seconds = sets * (restSeconds + SET_WORK_SECONDS) + exercises * EXERCISE_SETUP_SECONDS
-        return maxOf(5, (seconds / 60.0 / 5).roundToInt() * 5)
-    }
-
-    private const val SET_WORK_SECONDS = 45
-    private const val EXERCISE_SETUP_SECONDS = 180
-
-    private val small = listOf(
-        "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen",
-        "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen",
-    )
-    private val tens = listOf("", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety")
-
-    /** English words for 0..999 ("thirty-seven", "one hundred and five"). */
-    fun spokenNumber(n: Int): String = when {
-        n < 20 -> small[n.coerceAtLeast(0)]
-        n < 100 -> tens[n / 10] + if (n % 10 == 0) "" else "-" + small[n % 10]
-        else -> small[(n / 100).coerceAtMost(9)] + " hundred" + if (n % 100 == 0) "" else " and " + spokenNumber(n % 100)
-    }
-
-    /** The hint under the steppers: `Or say “thirty-seven five for eight”` (kilograms or pounds as shown). */
-    fun sayHint(display: Double, reps: Int, bodyweight: Boolean): String {
-        if (bodyweight) return "Or say “${spokenNumber(reps)} reps”"
-        val tenths = Math.round(display * 10).toInt()
-        val whole = spokenNumber(tenths / 10)
-        val frac = tenths % 10
-        val w = if (frac == 0) whole else "$whole ${spokenNumber(frac)}"
-        return "Or say “$w for ${spokenNumber(reps)}”"
-    }
-
-    /** "7 pm" or "7:30 pm" for [minutes] since midnight. */
-    fun timeLabel(minutes: Int): String {
-        val h24 = (minutes / 60) % 24
-        val m = minutes % 60
-        val h12 = if (h24 % 12 == 0) 12 else h24 % 12
-        return (if (m == 0) "$h12" else "$h12:${m.toString().padStart(2, '0')}") + if (h24 < 12) " am" else " pm"
-    }
-
-    /** "1:24" for [seconds] (never negative). */
-    fun clock(seconds: Int): String {
-        val s = maxOf(0, seconds)
-        return "${s / 60}:${(s % 60).toString().padStart(2, '0')}"
-    }
-
-    /** "1 minute 24 seconds" for screen readers. */
-    fun spokenClock(seconds: Int): String {
-        val s = maxOf(0, seconds)
-        val m = s / 60
-        val r = s % 60
-        return buildList {
-            if (m > 0) add("$m minute${if (m == 1) "" else "s"}")
-            if (r > 0 || m == 0) add("$r second${if (r == 1) "" else "s"}")
-        }.joinToString(" ")
-    }
+    /** "8, 8, 6" for the reps of the sets. */
+    fun repsList(reps: List<Int>): String = reps.joinToString(", ")
 }

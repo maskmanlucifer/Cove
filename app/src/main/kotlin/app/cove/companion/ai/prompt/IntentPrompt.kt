@@ -18,7 +18,8 @@ object IntentPrompt {
         {"type":"query_next"}
         {"type":"undo_last"}
         {"type":"log_sets","exercise":"Bench press","unit":null,"sets":[{"weight":62.5,"reps":8}]}   one entry per set; weight null if not said; unit kg or lb only if said${if (exercises.isEmpty()) "" else "; exercise: one of ${exercises.take(24).joinToString()}"}
-        {"type":"start_workout","day":null}   day: Push, Pull, Legs or null
+        {"type":"plan_exercise","day":"2026-10-07","exercise":"Bench press","weight":60,"sets":3,"reps":8,"unit":null}   plans a lift on a day (ISO date from the current time); weight, sets, reps, unit may be null; one entry per lift
+        {"type":"change_weight","exercise":"Bench press","weight":62.5,"unit":null}   changes today's planned weight
         {"type":"log_body_weight","weight":68.4,"unit":null}
         {"type":"next_workout"}
         The current local time is $now. Use 24-hour times. If the command is unclear, reply {"intents":[]}.

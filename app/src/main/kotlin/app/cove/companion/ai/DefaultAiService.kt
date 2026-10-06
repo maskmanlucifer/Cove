@@ -6,6 +6,7 @@ import app.cove.companion.ai.model.BriefInput
 import app.cove.companion.ai.model.BriefLines
 import app.cove.companion.ai.model.BriefRequest
 import app.cove.companion.ai.model.Capability
+import app.cove.companion.ai.model.AdviceRequest
 import app.cove.companion.ai.model.CategoryRequest
 import app.cove.companion.ai.model.CategorySuggestion
 import app.cove.companion.ai.model.CloudCheck
@@ -91,6 +92,11 @@ class DefaultAiService(
         if (notes.size > CategoryRequest.MAX_BATCH) return AiResult.Failed(AiError.Unavailable("Too many at once"))
         val request = CategoryRequest(notes, categories)
         return router.route(Capability.Category, Sensitivity.Everyday, providers.category) { it.suggest(request) }
+    }
+
+    override suspend fun adviseWorkout(request: AdviceRequest): AiResult<String> {
+        if (request.sessions.isEmpty()) return AiResult.Failed(AiError.Unavailable("No sessions yet"))
+        return router.route(Capability.Advice, Sensitivity.Everyday, providers.advice) { it.advise(request) }
     }
 
     override suspend fun status(): AiStatus = router.status()

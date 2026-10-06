@@ -29,12 +29,13 @@ Every result is `AiResult.Ok(value, source: ProviderRef)` or `AiResult.Failed(er
 | Capability (facade) | Provider order | Privacy class |
 |---|---|---|
 | Intent `parseIntent` | rules, Gemini Nano (foreground), Gemini cloud, legacy Edge Function | Everyday. Cloud only for transcripts up to 160 chars; journal notes from the cloud are dropped |
-| Intent kinds | `set_alarm`, `change_alarm`, `add_todo`, `add_reminder`, `log_expense`, `log_habit`, `journal_note`, `query_next`, `undo_last`, and for Training `log_sets`, `start_workout`, `log_body_weight`, `next_workout` (workout text is ordinary data) | as Intent |
+| Intent kinds | `set_alarm`, `change_alarm`, `add_todo`, `add_reminder`, `log_expense`, `log_habit`, `journal_note`, `query_next`, `undo_last`, and for Training `plan_exercise`, `change_weight`, `log_sets`, `log_body_weight`, `next_workout` (workout text is ordinary data) | as Intent |
 | Brief `composeBriefLines` | Gemini Nano (foreground), Gemini cloud, legacy Edge Function | Everyday, non-journal facts only (keys containing "journal" are removed) |
 | Speech `openSpeech` / `openTyped` | ML Kit on-device, Android on-device recognizer, Android system recognizer, typed (see Speech sessions) | Everyday. The Android recognizer counts as Cloud when the phone has no on-device model |
 | Caption `captionImage` | Gemini Nano (foreground) | Journal: on-device only |
 | Summary `summarize` (sentence, tags, mood) | Gemini Nano (foreground) | Journal: on-device only |
 | Category `suggestCategories` | Gemini Nano (foreground), Gemini cloud | Everyday, manual and bulk only (Review screen, batches of at most 40, never in the background). Sends only note text with amounts scrubbed and the category names; notes are identified by position. Reply `{"a":[index or -1,...]}`, validated by `CategorySchema` |
+| Advice `adviseWorkout` | Gemini Nano (foreground), Gemini cloud | Everyday: lift name, today's planned weight and the last six sessions only. Manual ("Ask Cove" on a weight suggestion, shown only when Nano or a Gemini key is available); one sentence `{"s":"..."}` validated by `AdviceSchema`; never changes a weight |
 | Embedding `embed` | none yet (`UnbundledEmbeddingProvider`; EmbeddingGemma planned, PLAN 6a) | Journal: on-device only |
 
 The legacy Edge Function is used only when no Gemini key is set. Cloud speech (Gemini audio) is deliberately not built: it needs raw audio capture and upload for little gain; it would be a new `SpeechProvider` with `Location.Cloud`.

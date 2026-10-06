@@ -5,12 +5,11 @@ import app.cove.companion.core.Clock
 import app.cove.companion.core.newId
 import app.cove.companion.data.local.CoveDatabase
 import app.cove.companion.data.local.entity.BodyWeightEntity
-import app.cove.companion.data.local.entity.ExerciseEntity
-import app.cove.companion.data.local.entity.PlanDayEntity
-import app.cove.companion.data.local.entity.SetLogEntity
+import app.cove.companion.data.local.entity.DayOverrideEntity
+import app.cove.companion.data.local.entity.ExerciseLogEntity
+import app.cove.companion.data.local.entity.PlanExerciseEntity
 import app.cove.companion.data.local.entity.TrainingSettingsEntity
-import app.cove.companion.data.local.entity.WorkoutPlanEntity
-import app.cove.companion.data.local.entity.WorkoutSessionEntity
+import app.cove.companion.feature.training.engine.WeekPlan
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -20,185 +19,176 @@ import kotlinx.coroutines.sync.withLock
 /** Everything training reads in one value, so screens recompute from a single flow. */
 data class TrainingTables(
     val settings: TrainingSettingsEntity?,
-    val exercises: List<ExerciseEntity>,
-    val planDays: List<PlanDayEntity>,
-    val sessions: List<WorkoutSessionEntity>,
-    val sets: List<SetLogEntity>,
+    val plan: List<PlanExerciseEntity>,
+    val overrides: List<DayOverrideEntity>,
+    val logs: List<ExerciseLogEntity>,
     val bodyWeights: List<BodyWeightEntity>,
 )
 
-/** Splits the comma-separated id lists stored on plan days and sessions. */
-fun String.idList(): List<String> = split(',').map { it.trim() }.filter { it.isNotEmpty() }
-
-/** Training data: programme, sessions, sets, body weight. Every write goes through [ChangeLog.mark] so sync sees it. */
+/**
+ * Training data: the weekday plan, per-date weight changes, what was done each day, and body weight.
+ * Every write goes through [ChangeLog.mark] so sync sees it.
+ */
 class TrainingRepository(private val db: CoveDatabase, private val clock: Clock, private val log: ChangeLog) {
     private val dao get() = db.training()
 
-    /** Serialises writes that read before they write (starting a session, numbering a set). */
+    /** Serialises writes that read before they write (numbering a new exercise). */
     private val writeLock = Mutex()
 
     /** All training tables as one flow; emits again when any of them changes. */
     val tables: Flow<TrainingTables> = combine(
-        combine(dao.observeSettings(), dao.observeExercises(), dao.observePlanDays()) { a, b, c -> Triple(a, b, c) },
-        combine(dao.observeSessions(), dao.observeSets(), dao.observeBodyWeights()) { a, b, c -> Triple(a, b, c) },
-    ) { (settings, exercises, days), (sessions, sets, weights) -> TrainingTables(settings, exercises, days, sessions, sets, weights) }
+        dao.observeSettings(), dao.observePlan(), dao.observeOverrides(0), dao.observeLogs(), dao.observeBodyWeights(),
+    ) { settings, plan, overrides, logs, weights -> TrainingTables(settings, plan, overrides, logs, weights) }
 
     /** Settings, or the defaults while nothing is stored. */
     val settings: Flow<TrainingSettingsEntity> = dao.observeSettings().map { it ?: TrainingSettingsEntity() }
 
-    /** True once a programme exists. */
-    suspend fun hasPlan(): Boolean = dao.plan() != null
-
     suspend fun settingsNow(): TrainingSettingsEntity = dao.settings() ?: TrainingSettingsEntity()
 
-    suspend fun saveSettings(change: (TrainingSettingsEntity) -> TrainingSettingsEntity) {
-        val saved = change(settingsNow()).copy(updatedAt = clock.now())
+    /** Sets the display unit (`kg` or `lb`). */
+    suspend fun saveUnit(unit: String) {
+        val saved = settingsNow().copy(unit = unit, updatedAt = clock.now())
         dao.upsertSettings(saved)
         log.mark("training_settings", saved.id)
     }
 
-    suspend fun exercises(): List<ExerciseEntity> = dao.exercises()
+    // ---- weekday plan ---------------------------------------------------------------------------
 
-    suspend fun exercise(id: String): ExerciseEntity? = dao.exercise(id)?.takeIf { it.deletedAt == null }
+    suspend fun plan(): List<PlanExerciseEntity> = dao.plan()
 
-    suspend fun saveExercise(exercise: ExerciseEntity): ExerciseEntity {
-        val saved = exercise.copy(updatedAt = clock.now())
-        dao.upsertExercise(saved)
-        log.mark("exercises", saved.id)
+    suspend fun planExercise(id: String): PlanExerciseEntity? = dao.planExercise(id)?.takeIf { it.deletedAt == null }
+
+    private suspend fun write(row: PlanExerciseEntity): PlanExerciseEntity {
+        val saved = row.copy(updatedAt = clock.now())
+        dao.upsertPlanExercise(saved)
+        log.mark("plan_exercises", saved.id)
         return saved
     }
 
-    suspend fun planDays(): List<PlanDayEntity> = dao.planDays()
+    /** Adds an exercise at the end of [weekday] (ISO 1..7). */
+    suspend fun addExercise(weekday: Int, name: String, weightKg: Double, sets: Int, reps: Int, incrementKg: Double = WeekPlan.defaultIncrement(name)): PlanExerciseEntity =
+        writeLock.withLock {
+            val sort = (dao.plan().filter { it.weekday == weekday }.maxOfOrNull { it.sort } ?: -1) + 1
+            write(PlanExerciseEntity(newId(), weekday, name.trim(), weightKg, sets, reps, incrementKg, sort))
+        }
 
-    suspend fun savePlanDay(day: PlanDayEntity) {
-        dao.upsertPlanDay(day.copy(updatedAt = clock.now()))
-        log.mark("plan_days", day.id)
+    /** Saves changes to an exercise of the weekday template. */
+    suspend fun updateExercise(row: PlanExerciseEntity): PlanExerciseEntity = write(row)
+
+    /** Removes an exercise from its weekday (soft delete); [restoreExercise] brings it back. */
+    suspend fun deleteExercise(id: String) {
+        dao.planExercise(id)?.let { write(it.copy(deletedAt = clock.now())) }
     }
 
-    /** Creates the programme: settings, the plan, its days and the lifts, in one transaction. */
-    suspend fun createProgramme(settings: TrainingSettingsEntity, plan: WorkoutPlanEntity, days: List<PlanDayEntity>, exercises: List<ExerciseEntity>) {
+    suspend fun restoreExercise(id: String) {
+        dao.planExercise(id)?.let { write(it.copy(deletedAt = null)) }
+    }
+
+    /** Moves an exercise one place up ([dir] -1) or down (+1) within its weekday. */
+    suspend fun move(id: String, dir: Int) = writeLock.withLock {
+        val row = dao.planExercise(id) ?: return@withLock
+        val day = dao.plan().filter { it.weekday == row.weekday }.sortedWith(compareBy({ it.sort }, { it.name }))
+        val i = day.indexOfFirst { it.id == id }
+        val j = i + dir
+        if (i < 0 || j !in day.indices) return@withLock
+        val reordered = day.toMutableList().also { it.add(j, it.removeAt(i)) }
+        db.withTransaction { reordered.forEachIndexed { k, r -> if (r.sort != k) write(r.copy(sort = k)) } }
+    }
+
+    /**
+     * Copies the exercises of [from] onto each of [to] (a lift already there by name is left alone).
+     * @return the ids of the new rows, to pass to [deleteExercises] for Undo.
+     */
+    suspend fun copyDay(from: Int, to: Set<Int>): List<String> = writeLock.withLock {
+        val all = dao.plan()
+        val source = all.filter { it.weekday == from }.sortedBy { it.sort }
+        val created = ArrayList<String>()
         db.withTransaction {
-            val now = clock.now()
-            dao.upsertSettings(settings.copy(updatedAt = now))
-            log.mark("training_settings", settings.id)
-            dao.upsertPlan(plan.copy(updatedAt = now))
-            log.mark("workout_plans", plan.id)
-            exercises.forEach { dao.upsertExercise(it.copy(updatedAt = now)); log.mark("exercises", it.id) }
-            days.forEach { dao.upsertPlanDay(it.copy(updatedAt = now)); log.mark("plan_days", it.id) }
+            for (day in to.filter { it != from }) {
+                val have = all.filter { it.weekday == day }
+                var sort = (have.maxOfOrNull { it.sort } ?: -1) + 1
+                for (s in source) {
+                    if (have.any { WeekPlan.nameKey(it.name) == WeekPlan.nameKey(s.name) }) continue
+                    created += write(s.copy(id = newId(), weekday = day, sort = sort++, deletedAt = null)).id
+                }
+            }
         }
+        created
     }
 
-    suspend fun plan(): WorkoutPlanEntity? = dao.plan()
+    /** Soft-deletes [ids] (Undo of an add or copy). */
+    suspend fun deleteExercises(ids: List<String>) = ids.forEach { deleteExercise(it) }
 
-    /** Soft-deletes a lift and takes it out of every plan day; returns the days it was in, to hand to [restoreExercise]. */
-    suspend fun deleteExercise(id: String): List<PlanDayEntity> {
-        val touched = dao.planDays().filter { id in it.exerciseIds.idList() }
-        touched.forEach { savePlanDay(it.copy(exerciseIds = it.exerciseIds.idList().filter { e -> e != id }.joinToString(","))) }
-        dao.exercise(id)?.let { saveExercise(it.copy(deletedAt = clock.now())) }
-        return touched
-    }
-
-    /** Brings back a lift removed with [deleteExercise] and puts it back into [days] as they were. */
-    suspend fun restoreExercise(id: String, days: List<PlanDayEntity>) {
-        dao.exercise(id)?.let { saveExercise(it.copy(deletedAt = null)) }
-        days.forEach { d -> dao.planDays().firstOrNull { it.id == d.id }?.let { savePlanDay(it.copy(exerciseIds = d.exerciseIds)) } }
-    }
-
-    // ---- sessions -------------------------------------------------------------------------------
-
-    suspend fun activeSession(): WorkoutSessionEntity? = dao.activeSession()
-
-    suspend fun session(id: String): WorkoutSessionEntity? = dao.session(id)?.takeIf { it.deletedAt == null }
-
-    suspend fun saveSession(session: WorkoutSessionEntity): WorkoutSessionEntity {
-        val saved = session.copy(updatedAt = clock.now())
-        dao.upsertSession(saved)
-        log.mark("workout_sessions", saved.id)
-        return saved
-    }
-
-    /** Starts a session now for [dayType] with [exerciseIds]; an unfinished session is returned instead of starting a second. */
-    suspend fun startSession(dayType: String, exerciseIds: List<String>, plannedAt: Long = clock.now()): WorkoutSessionEntity = writeLock.withLock {
-        dao.activeSession()?.let { return@withLock it }
-        val now = clock.now()
-        saveSession(WorkoutSessionEntity(newId(), dayType, plannedAt, startedAt = now, exerciseIds = exerciseIds.joinToString(",")))
-    }
-
-    /** Starts the [planned] session (or a new one) now. Returns the running session. */
-    suspend fun begin(dayType: String, exerciseIds: List<String>, planned: WorkoutSessionEntity?): WorkoutSessionEntity = writeLock.withLock {
-        dao.activeSession()?.let { return@withLock it }
-        val now = clock.now()
-        if (planned != null && dao.session(planned.id)?.deletedAt == null) saveSession(planned.copy(startedAt = now))
-        else saveSession(WorkoutSessionEntity(newId(), dayType, now, startedAt = now, exerciseIds = exerciseIds.joinToString(",")))
-    }
-
-    /** Adds [exerciseId] to the end of the session's lifts (an accessory such as Dips). */
-    suspend fun addToSession(sessionId: String, exerciseId: String) {
-        val s = dao.session(sessionId) ?: return
-        val ids = s.exerciseIds.idList()
-        if (exerciseId in ids) return
-        saveSession(s.copy(exerciseIds = (ids + exerciseId).joinToString(","), skippedIds = s.skippedIds.idList().filter { it != exerciseId }.joinToString(",")))
-    }
-
-    /** Marks [exerciseId] as left out of the session. */
-    suspend fun skipExercise(sessionId: String, exerciseId: String) {
-        val s = dao.session(sessionId) ?: return
-        saveSession(s.copy(skippedIds = (s.skippedIds.idList() + exerciseId).distinct().joinToString(",")))
-    }
-
-    /** Ends the session; one with no sets is thrown away instead. @return true when it was kept. */
-    suspend fun finishSession(id: String): Boolean {
-        val s = dao.session(id) ?: return false
-        if (dao.setsOf(id).isEmpty()) {
-            saveSession(s.copy(deletedAt = clock.now()))
-            return false
+    /**
+     * Plans [name] on [weekday]: changes the existing lift of that name, or adds it.
+     * @return the row and what it was before (null when new), for Undo.
+     */
+    suspend fun planExercise(weekday: Int, name: String, weightKg: Double?, sets: Int?, reps: Int?): Pair<PlanExerciseEntity, PlanExerciseEntity?> {
+        val existing = dao.plan().firstOrNull { it.weekday == weekday && WeekPlan.nameKey(it.name) == WeekPlan.nameKey(name) }
+        if (existing != null) {
+            val saved = write(existing.copy(weightKg = weightKg ?: existing.weightKg, sets = sets ?: existing.sets, reps = reps ?: existing.reps))
+            return saved to existing
         }
-        if (s.endedAt == null) saveSession(s.copy(endedAt = clock.now()))
-        return true
+        return addExercise(weekday, name, weightKg ?: lastWeight(name) ?: 0.0, sets ?: 3, reps ?: 8) to null
     }
 
-    /** Throws the session and its sets away (soft delete). */
-    suspend fun discardSession(id: String) {
-        dao.setsOf(id).forEach { saveSet(it.copy(deletedAt = clock.now())) }
-        dao.session(id)?.let { saveSession(it.copy(deletedAt = clock.now())) }
+    /** The weight last logged for [name], if any. */
+    private suspend fun lastWeight(name: String): Double? =
+        dao.logs().lastOrNull { WeekPlan.nameKey(it.name) == WeekPlan.nameKey(name) }?.weightKg?.takeIf { it > 0 }
+
+    /** Every exercise name used so far, plan and history, for the name suggestions. */
+    suspend fun knownNames(): List<String> =
+        (dao.plan().map { it.name } + dao.logs().map { it.name }).distinctBy { WeekPlan.nameKey(it) }
+
+    // ---- date overrides -------------------------------------------------------------------------
+
+    suspend fun override(day: Long, planExerciseId: String): DayOverrideEntity? =
+        dao.override(WeekPlan.overrideId(day, planExerciseId))?.takeIf { it.deletedAt == null }
+
+    private suspend fun writeOverride(row: DayOverrideEntity) {
+        val saved = row.copy(updatedAt = clock.now())
+        dao.upsertOverride(saved)
+        log.mark("day_overrides", saved.id)
     }
 
-    // ---- sets -----------------------------------------------------------------------------------
-
-    suspend fun setsOf(sessionId: String): List<SetLogEntity> = dao.setsOf(sessionId)
-
-    suspend fun saveSet(set: SetLogEntity): SetLogEntity {
-        val saved = set.copy(updatedAt = clock.now())
-        dao.upsertSet(saved)
-        log.mark("set_logs", saved.id)
-        return saved
+    /** Changes the planned weight of [planExerciseId] for [day] only. @return the previous override, for Undo. */
+    suspend fun setDayWeight(day: Long, planExerciseId: String, kg: Double): DayOverrideEntity? {
+        val before = override(day, planExerciseId)
+        writeOverride((before ?: DayOverrideEntity(WeekPlan.overrideId(day, planExerciseId), day, planExerciseId)).copy(weightKg = kg, deletedAt = null))
+        return before
     }
 
-    /** Logs the next set of [exerciseId] in [sessionId]. */
-    suspend fun logSet(sessionId: String, exerciseId: String, weightKg: Double, reps: Int, source: String = "manual"): SetLogEntity = writeLock.withLock {
-        val n = dao.setsOf(sessionId).count { it.exerciseId == exerciseId }
-        saveSet(SetLogEntity(newId(), sessionId, exerciseId, n + 1, weightKg, reps, clock.now(), source))
+    /** Hides the weight suggestion of [planExerciseId] for [day]. */
+    suspend fun dismissAdvice(day: Long, planExerciseId: String) {
+        val before = override(day, planExerciseId)
+        writeOverride((before ?: DayOverrideEntity(WeekPlan.overrideId(day, planExerciseId), day, planExerciseId)).copy(dismissed = true, deletedAt = null))
     }
 
-    suspend fun set(id: String): SetLogEntity? = dao.set(id)
-
-    /** Soft-deletes a set and renumbers the later sets of that lift. */
-    suspend fun deleteSet(id: String) {
-        val s = dao.set(id) ?: return
-        saveSet(s.copy(deletedAt = clock.now()))
-        renumber(s.sessionId, s.exerciseId)
+    /** Puts an override back as it was ([before] null removes it). */
+    suspend fun restoreOverride(day: Long, planExerciseId: String, before: DayOverrideEntity?) {
+        val id = WeekPlan.overrideId(day, planExerciseId)
+        if (before != null) writeOverride(before) else dao.override(id)?.let { writeOverride(it.copy(deletedAt = clock.now())) }
     }
 
-    /** Brings back a deleted set and renumbers by logging order. */
-    suspend fun restoreSet(id: String) {
-        val s = dao.set(id) ?: return
-        saveSet(s.copy(deletedAt = null))
-        renumber(s.sessionId, s.exerciseId)
+    // ---- logs -----------------------------------------------------------------------------------
+
+    suspend fun logOf(day: Long, name: String): ExerciseLogEntity? = dao.log(WeekPlan.logId(day, name))?.takeIf { it.deletedAt == null }
+
+    /** Records what was done for [name] on [day] (one record per lift and day). @return the previous record, for Undo. */
+    suspend fun logExercise(day: Long, name: String, weightKg: Double, targetSets: Int, targetReps: Int, reps: List<Int>): ExerciseLogEntity? {
+        val before = logOf(day, name)
+        val saved = ExerciseLogEntity(WeekPlan.logId(day, name), day, name.trim(), weightKg, targetSets, targetReps, reps.joinToString(","), clock.now())
+        dao.upsertLog(saved)
+        log.mark("exercise_logs", saved.id)
+        return before
     }
 
-    private suspend fun renumber(sessionId: String, exerciseId: String) {
-        dao.setsOf(sessionId).filter { it.exerciseId == exerciseId }.sortedBy { it.loggedAt }
-            .forEachIndexed { i, set -> if (set.setNo != i + 1) saveSet(set.copy(setNo = i + 1)) }
+    /** Puts a log back as it was ([before] null removes it). */
+    suspend fun restoreLog(day: Long, name: String, before: ExerciseLogEntity?) {
+        val id = WeekPlan.logId(day, name)
+        val saved = (before ?: dao.log(id)?.copy(deletedAt = clock.now()) ?: return).copy(updatedAt = clock.now())
+        dao.upsertLog(saved)
+        log.mark("exercise_logs", id)
     }
 
     // ---- body weight ----------------------------------------------------------------------------
