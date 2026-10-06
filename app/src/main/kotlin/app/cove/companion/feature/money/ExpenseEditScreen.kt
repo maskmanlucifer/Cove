@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.WindowInsets
@@ -129,6 +130,7 @@ fun ExpenseEditScreen(id: String, nav: Nav) {
             ) {
                 AmountBlock(s, vm::setNote, focus = { noteFocused = it }, onDone = { focus.clearFocus() })
                 CategoryChips(s, vm::setCategory, onNew = { nav.go(Routes.moneyCategory()) })
+                s.payee?.let { PayeeBlock(it, vm::forgetPayee, Modifier.padding(horizontal = 28.dp).offset(y = (-8).dp)) }
                 RowsCard(Modifier.padding(horizontal = 24.dp), vertical = 0.dp) {
                     PickRow("When", MoneyMath.whenText(s.whenMillis, today), { pickDateTime(context, s.whenMillis, vm::setWhen) }, divider = false)
                     PickRow("Paid with", s.paidWith, { methodSheet = true })

@@ -3,6 +3,8 @@ package app.cove.companion.feature.money
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.cove.companion.AppContainer
+import app.cove.companion.core.Undo
+import app.cove.companion.data.categorize.PastProposal
 import app.cove.companion.data.categorize.ReviewLogic
 import app.cove.companion.data.categorize.ReviewState
 import app.cove.companion.data.categorize.suggestInBatches
@@ -31,6 +33,10 @@ data class ReviewUiState(
     val message: String? = null,
     val provenance: String? = null,
     val undoCount: Int = 0,
+    /** Payees Cove could remember from how past payments were filed ("Learn from my past payments"). */
+    val proposals: List<PastProposal> = emptyList(),
+    /** The explanation card for [proposals] is open. */
+    val explaining: Boolean = false,
 )
 
 /** Lists unfiled expenses with offline suggestions, and runs the manual, bulk AI checks. Nothing changes until the user taps. */
@@ -46,9 +52,13 @@ class ReviewViewModel(private val c: AppContainer) : ViewModel() {
         val cats = c.money.categories.first()
         val now = c.clock.now()
         val unfiled = ReviewLogic.unfiled(c.money.spentSince(now - ReviewLogic.UNFILED_DAYS * DAY_MS), cats, now)
-        val rows = ReviewLogic.rows(unfiled, cats, c.money.memory.first())
+        val rows = ReviewLogic.rows(unfiled, cats, c.money.memory.first(), c.money.payeeMemory.first())
+        val proposals = c.money.pastPayeeProposals(cats)
         _state.update {
-            it.copy(loaded = true, mode = ReviewMode.Unfiled, review = ReviewState(rows), categories = cats.filter { c -> c.kind == "spending" }, message = null, undoCount = 0)
+            it.copy(
+                loaded = true, mode = ReviewMode.Unfiled, review = ReviewState(rows), categories = cats.filter { c -> c.kind == "spending" },
+                message = null, undoCount = 0, proposals = proposals, explaining = false,
+            )
         }
     }
 
@@ -81,6 +91,24 @@ class ReviewViewModel(private val c: AppContainer) : ViewModel() {
         viewModelScope.launch {
             c.money.undoCategories(undo)
             _state.update { it.copy(review = it.review.undone(), undoCount = 0) }
+        }
+    }
+
+    /** Opens or closes the explanation of "Learn from my past payments". */
+    fun toggleLearn() = _state.update { it.copy(explaining = !it.explaining) }
+
+    /** Creates payee memory for the proposals in one tap and offers Undo; nothing else changes. */
+    fun learnFromPast() {
+        val proposals = _state.value.proposals
+        if (proposals.isEmpty()) return
+        viewModelScope.launch {
+            val snapshots = c.money.rememberPayees(proposals)
+            val n = snapshots.size
+            Undo.center.post(MONEY_UNDO, "Remembered $n payee${if (n == 1) "" else "s"}") {
+                snapshots.asReversed().forEach { c.money.restorePayee(it) }
+                loadUnfiled()
+            }
+            loadUnfiled()
         }
     }
 

@@ -6,7 +6,9 @@ import app.cove.companion.core.newId
 import app.cove.companion.data.local.CoveDatabase
 import app.cove.companion.data.local.entity.ExpenseEntity
 import app.cove.companion.data.local.entity.SmsImportLogEntity
+import app.cove.companion.data.categorize.PayeeLearning
 import app.cove.companion.data.repo.MoneyRepository
+import app.cove.companion.data.repo.PayeeSnapshot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -41,10 +43,28 @@ data class ImportDecision(
     /** Category the user picked by hand: taught to the memory and forgotten again by undo. */
     val taughtFrom: String? = null,
     val picked: Boolean = false,
-)
+    /** Note to save (the user's label or the remembered one); null saves the generated merchant name. */
+    val note: String? = null,
+    /** The user typed or changed the label in this review: an explicit action that teaches the payee. */
+    val labelEdited: Boolean = false,
+) {
+    /** Only explicit edits teach: a category pick or a typed label on a spent row, never an unreviewed bulk import. */
+    val teaches: Boolean get() = include && kind == "spent" && categoryId != null && (picked || labelEdited)
+}
 
-/** What an import did, kept for the summary and for Undo. */
-data class ImportSummary(val batchId: String, val expenseIds: List<String>, val added: Int, val skipped: Int, val taught: List<Pair<String, String>>)
+/**
+ * What an import did, kept for the summary and for Undo. [payeeSnapshots] put payee memory back; [payeePicks] (payee key to
+ * category and label) feed the retro-tag offer for earlier payments.
+ */
+data class ImportSummary(
+    val batchId: String,
+    val expenseIds: List<String>,
+    val added: Int,
+    val skipped: Int,
+    val taught: List<Pair<String, String>>,
+    val payeeSnapshots: List<PayeeSnapshot> = emptyList(),
+    val payeePicks: Map<String, Pair<String, String?>> = emptyMap(),
+)
 
 /**
  * Orchestrates "Import from messages": scanning a [SmsSource] into reviewable transactions, writing the chosen ones
@@ -163,22 +183,31 @@ class SmsImportRepository(
         val now = clock.now()
         val ids = ArrayList<String>()
         val taught = ArrayList<Pair<String, String>>()
+        val snapshots = ArrayList<PayeeSnapshot>()
+        val picks = LinkedHashMap<String, Pair<String, String?>>()
         var skipped = 0
         db.withTransaction {
             val logs = ArrayList<SmsImportLogEntity>()
             for (d in decisions) {
                 val c = d.item.candidate
                 if (d.include) {
-                    val note = noteFor(c.tx, d.kind)
+                    val generated = noteFor(c.tx, d.kind)
+                    val note = d.note?.trim()?.takeIf { it.isNotEmpty() } ?: generated
                     val e = ExpenseEntity(
                         id = newId(), amountPaise = c.tx.amountPaise, kind = d.kind, categoryId = d.categoryId.takeIf { d.kind == "spent" },
                         note = note, paidWith = c.tx.paidWith, spentAt = c.tx.at, source = "sms", externalRef = c.tx.ref ?: c.messages.first().key,
+                        payeeKey = c.tx.payeeKey,
                     )
                     money.save(e)
                     ids += e.id
-                    if (d.picked && d.categoryId != null && d.kind == "spent") {
+                    if (d.teaches && d.categoryId != null) {
                         money.teach(note, d.categoryId, d.taughtFrom)
                         taught += note to d.categoryId
+                        c.tx.payeeKey?.let { key ->
+                            val label = PayeeLearning.labelFor(note, generated)
+                            snapshots += money.teachPayee(key, d.categoryId, label, generated)
+                            picks[key] = d.categoryId to label
+                        }
                     }
                     logs += logRows(c, SmsImportOutcome.IMPORTED, e.id, batch, now)
                 } else {
@@ -189,7 +218,7 @@ class SmsImportRepository(
             }
             dao.upsertAll(logs)
         }
-        ImportSummary(batch, ids, ids.size, skipped, taught)
+        ImportSummary(batch, ids, ids.size, skipped, taught, snapshots, picks)
     }
 
     /** Reverses [summary]: soft-deletes its expenses, removes its log rows (so a later scan finds them again) and forgets what was taught. */
@@ -198,6 +227,7 @@ class SmsImportRepository(
             summary.expenseIds.forEach { money.delete(it) }
             dao.deleteBatch(summary.batchId)
             summary.taught.forEach { (note, cat) -> money.forget(note, cat) }
+            summary.payeeSnapshots.asReversed().forEach { money.restorePayee(it) }
         }
     }
 

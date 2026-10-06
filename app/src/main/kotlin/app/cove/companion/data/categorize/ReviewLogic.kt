@@ -8,6 +8,7 @@ import app.cove.companion.ai.model.Location
 import app.cove.companion.data.local.entity.CategoryMemoryEntity
 import app.cove.companion.data.local.entity.ExpenseCategoryEntity
 import app.cove.companion.data.local.entity.ExpenseEntity
+import app.cove.companion.data.local.entity.PayeeMemoryEntity
 import app.cove.companion.data.repo.CategoryChange
 
 private const val DAY_MS = 24L * 60 * 60 * 1000
@@ -42,10 +43,15 @@ object ReviewLogic {
     /** "5 in Other · Review", or null when fewer than [SHOW_MIN] are unfiled. */
     fun bannerText(count: Int): String? = if (count >= SHOW_MIN) "$count in Other · Review" else null
 
-    /** Rows for [unfiled] expenses, each with the offline categorizer's suggestion (never "Other"). */
-    fun rows(unfiled: List<ExpenseEntity>, categories: List<ExpenseCategoryEntity>, memory: Map<String, CategoryMemoryEntity>): List<ReviewRow> =
+    /** Rows for [unfiled] expenses, each with the offline categorizer's suggestion (never "Other"); a known payee in [payees] wins. */
+    fun rows(
+        unfiled: List<ExpenseEntity>,
+        categories: List<ExpenseCategoryEntity>,
+        memory: Map<String, CategoryMemoryEntity>,
+        payees: Map<String, PayeeMemoryEntity> = emptyMap(),
+    ): List<ReviewRow> =
         unfiled.map { e ->
-            val s = ExpenseCategorizer.suggest(e.note, categories, memory)
+            val s = ExpenseCategorizer.suggest(e.note, categories, memory, e.payeeKey?.let(payees::get))
             ReviewRow(e, s)
         }
 

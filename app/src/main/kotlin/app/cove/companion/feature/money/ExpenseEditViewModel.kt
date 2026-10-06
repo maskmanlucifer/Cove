@@ -8,6 +8,8 @@ import app.cove.companion.core.Undo
 import app.cove.companion.core.newId
 import app.cove.companion.core.toLocalDate
 import app.cove.companion.data.categorize.ExpenseCategorizer
+import app.cove.companion.data.categorize.PayeeLearning
+import app.cove.companion.data.sms.PayeeKey
 import app.cove.companion.data.local.entity.CategoryMemoryEntity
 import app.cove.companion.data.local.entity.ExpenseCategoryEntity
 import app.cove.companion.data.local.entity.ExpenseEntity
@@ -25,6 +27,9 @@ import kotlinx.coroutines.launch
 /** Ways of paying offered in the "Paid with" sheet. */
 val PaymentMethods = listOf("UPI", "Card", "Cash", "Bank transfer")
 
+/** The payee of an imported expense as the edit screen shows it; [remembered] is "Gym · Health" when Cove has learned it. */
+data class PayeeInfo(val name: String, val handle: String?, val remembered: String?)
+
 data class ExpenseEditState(
     val isNew: Boolean = true,
     val received: Boolean = false,
@@ -38,6 +43,8 @@ data class ExpenseEditState(
     val categories: List<ExpenseCategoryEntity> = emptyList(),
     /** Shown for a moment when a digit was refused because the amount is at its largest. */
     val limitHint: String? = null,
+    /** Set for expenses imported from messages that carry a payee identity. */
+    val payee: PayeeInfo? = null,
 ) {
     val paise: Long get() = AmountInput.toPaise(amount)
 }
@@ -64,6 +71,18 @@ class ExpenseEditViewModel(private val c: AppContainer, private val id: String, 
 
     private val existingId = id.takeUnless { it == "new" || it.startsWith("new@") }
     private var existing: ExpenseEntity? = null
+    private val loaded = MutableStateFlow<ExpenseEntity?>(null)
+
+    private val payeeInfo: StateFlow<PayeeInfo?> = combine(loaded, c.money.payeeMemory, c.money.categories) { e, memory, cats ->
+        val key = e?.payeeKey ?: return@combine null
+        val m = memory[key]
+        val cat = m?.let { mem -> cats.firstOrNull { it.id == mem.categoryId }?.name }
+        PayeeInfo(
+            name = m?.displayName?.ifBlank { null } ?: e.note,
+            handle = PayeeKey.handleOf(key),
+            remembered = if (m != null && cat != null) "${m.label ?: m.displayName.ifBlank { e.note }} · $cat" else null,
+        )
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
     private val form = MutableStateFlow(
         if (existingId == null && saved.contains(SAVED_AMOUNT)) {
             Form(
@@ -84,7 +103,7 @@ class ExpenseEditViewModel(private val c: AppContainer, private val id: String, 
         },
     )
 
-    val state: StateFlow<ExpenseEditState> = combine(form, c.money.categories, c.money.memory, limitHint) { f, all, memory, limit ->
+    val state: StateFlow<ExpenseEditState> = combine(form, c.money.categories, c.money.memory, limitHint, payeeInfo) { f, all, memory, limit, payee ->
         val wanted = if (f.received) "income" else "spending"
         val cats = all.filter { it.kind == wanted }
         ExpenseEditState(
@@ -97,6 +116,7 @@ class ExpenseEditViewModel(private val c: AppContainer, private val id: String, 
             paidWith = f.paidWith,
             categories = cats,
             limitHint = if (limit) AmountInput.LIMIT_HINT else null,
+            payee = payee,
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, ExpenseEditState(whenMillis = form.value.whenMillis))
 
@@ -125,6 +145,7 @@ class ExpenseEditViewModel(private val c: AppContainer, private val id: String, 
             viewModelScope.launch {
                 c.money.expense(eid)?.let { e ->
                     existing = e
+                    loaded.value = e
                     form.value = Form(
                         received = e.kind == "received",
                         amount = AmountInput.fromPaise(e.amountPaise),
@@ -187,7 +208,30 @@ class ExpenseEditViewModel(private val c: AppContainer, private val id: String, 
         c.money.save(entity)
         val picked = if (existing == null) form.value.categoryTouched else s.categoryId != existing?.categoryId
         if (picked && !s.received && s.categoryId != null) c.money.teach(entity.note, s.categoryId, existing?.categoryId)
+        teachPayee(entity)
         return alert
+    }
+
+    /**
+     * Editing the category or note of an expense that has a payee is an explicit choice: remember it for the payee and
+     * offer to tag the earlier payments to the same payee. A note left as the generated name stores no label.
+     */
+    private suspend fun teachPayee(e: ExpenseEntity) {
+        val before = existing ?: return
+        val key = before.payeeKey ?: return
+        val category = e.categoryId ?: return
+        if (e.kind != "spent" || (category == before.categoryId && e.note == before.note)) return
+        val generated = c.money.payee(key)?.displayName?.ifBlank { null } ?: before.note
+        val label = PayeeLearning.labelFor(e.note, generated)
+        c.money.teachPayee(key, category, label, generated)
+        val changes = c.money.retroChanges(mapOf(key to (category to label)), setOf(e.id))
+        if (changes.isNotEmpty()) RetroTag.post(RetroOffer(changes, 1))
+    }
+
+    /** "Forget" on the remembered line: Cove stops pre-tagging this payee; the expense itself is not touched. */
+    fun forgetPayee() {
+        val key = existing?.payeeKey ?: return
+        viewModelScope.launch { c.money.forgetPayee(key) }
     }
 
     private suspend fun alertFor(e: ExpenseEntity): String? {

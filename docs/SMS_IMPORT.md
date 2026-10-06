@@ -4,7 +4,7 @@ Money > "Import from messages" finds payments in the bank, card and UPI texts on
 
 ## Privacy (the rules)
 - Message text is read and parsed **on the phone only**. It is never sent to any AI or service, never logged, never synced, never put in a backup (`allowBackup=false`; `sms_import_log` is not in `SyncTables`).
-- Nothing keeps the text: the parser returns parsed fields (amount, direction, merchant, time, last four digits, reference, bank), the screens hold those, and the log stores a **hash** of (sender, normalised body) plus parsed fields. Only the expenses the user chose are written, and only they sync.
+- Nothing keeps the text: the parser returns parsed fields (amount, direction, merchant, time, last four digits, reference, bank), the screens hold those, and the log stores a **hash** of (sender, normalised body) plus parsed fields. Only the expenses the user chose are written, and only they sync (with the payee key and, once the user tags a payee, the payee memory: UPI handle or merchant name, category and label).
 - The AI category cross-check still sends only note text without amounts (`docs/AI.md`). An imported expense's note is the cleaned merchant name, so the same rule applies.
 - `READ_SMS` is a sensitive permission. Cove is sideloaded, so Play policy does not apply. On Android 13+ a sideloaded app may be blocked by "Restricted setting"; the denial guide tells the user to open App info > three dots > "Allow restricted settings", then "Open settings".
 - Without the permission, **Paste a message** parses what the user pastes (one or many messages) with the same parser and dedupe.
@@ -38,6 +38,17 @@ Limitations: English only; banks change wording, so an unseen format may be skip
 3. Run `./gradlew :app:testDebugUnitTest --tests '*SmsTransactionParserTest*'`. If the merchant is missing, add a pattern to `debitTargets` or `creditTargets` (they are tried in order); if the direction or amount is wrong, adjust `debitWord`, `creditWord` or `amountRegex`. If it is wrongly rejected, check which rule fires with the `Rejection` in the failure message.
 4. Add a rejected sample for the bank's OTP or promo text to `rejected`.
 5. Bump `SmsTransactionParser.VERSION` when a change should re-judge messages that were earlier ignored.
+
+## Payee identity (`PayeeKey`, pure, tested in `PayeeKeyTest`)
+Every accepted message gets `ParsedSms.payeeKey`, copied to `ExpenseEntity.payeeKey` (indexed) on import. It identifies the other side of the payment, never the user's account (the last four digits are never used).
+- **UPI handle**: `vpa:` plus the whole handle, lowercased and trimmed (`vpa:zomato@okaxis`, `vpa:bharatpe.9000123456@fbpe`, `vpa:gpay-1123@okaxis`, `vpa:merchant.name@ybl`). QR merchant handles are stable per shop. The user's own handle ("your VPA", "linked to VPA") is skipped. Handles may contain a phone number; they sync like other expense data.
+- **One documented exception**: `paytmqr<8 or more digits><suffix>` drops the per-QR suffix (`paytmqr2810050501abcd@paytm` and `...wxyz@paytm` are one shop, `vpa:paytmqr2810050501@paytm`), because the digits are the merchant and the suffix only tells printed QR codes apart. No other pattern is guessed at: merging two shops would be worse than missing one.
+- **Name** (card, NEFT, IMPS, UPI texts with a name only): `name:<TYPE>:<NAME>` with TYPE `UPI`, `CARD` or `BANK` and the name uppercased, without store numbers and ids (tokens with 3+ digits), a trailing city, "PVT LTD", "INDIA", "STORE" and similar (`name:CARD:STARBUCKS COFFEE`).
+- **No key**: generic fallbacks ("Payment", "Money received", "UPI"), ATM cash and empty names.
+When the handle is opaque (`paytmqr...`, `bharatpe.9000...`, `gpay-1123`) the merchant is null, the note is "Payment" and the review row shows the handle small under it; the user's first label ("Gym") is what gets remembered.
+
+## Payee memory in the review
+Import review rows are pre-tagged from payee memory (category and label, hint "Learned from your earlier payment") and stay editable: category pill, a "Rename" field for the label. Only a category pick or a typed label teaches (see `docs/CATEGORIZATION.md`); undoing the import restores payee memory. After the import, a top prompt offers to tag earlier payments to the same payees. "Forget what Cove learned about payees" is in Me > Forget imported-message history; it clears payee memory only. Expenses imported before version 10 have no payee key (the message text is not kept), so they cannot be re-tagged this way.
 
 ## Dedupe (rigorous, idempotent, explainable; `SmsDedupe`, tested by tables in `SmsDedupeTest`)
 1. **Message level.** `sms_import_log` (local Room table, DB version 9, migration 8 to 9) is keyed by `msg:` + SHA-256 of (upper-cased sender, lower-cased whitespace-normalised body) and also by the SMS provider id. A message already imported, duplicated or skipped is never parsed again, so re-scanning imports nothing twice. Messages judged "not a transaction" are logged as `ignored` with the parser version and are re-read only when the parser version rises. The log holds: key, provider id, outcome (imported, duplicate, ignored, skipped), parsed fields, reference, expense id, batch id, times. No text.

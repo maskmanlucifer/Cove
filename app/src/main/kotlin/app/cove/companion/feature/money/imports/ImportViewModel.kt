@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import app.cove.companion.AppContainer
 import app.cove.companion.core.Undo
 import app.cove.companion.data.categorize.ExpenseCategorizer
+import app.cove.companion.data.categorize.Reason
 import app.cove.companion.data.local.entity.ExpenseCategoryEntity
 import app.cove.companion.data.sms.Direction
 import app.cove.companion.data.sms.ImportDecision
@@ -15,6 +16,8 @@ import app.cove.companion.data.sms.ReviewItem
 import app.cove.companion.data.sms.ScanProgress
 import app.cove.companion.data.sms.SmsReadException
 import app.cove.companion.data.sms.SmsSource
+import app.cove.companion.feature.money.RetroOffer
+import app.cove.companion.feature.money.RetroTag
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,9 +42,46 @@ data class ImportRow(
     val reason: String?,
     /** The user chose [categoryId] by hand. */
     val picked: Boolean = false,
+    /** Note to save instead of the generated name: remembered for this payee or typed here; null keeps the generated name. */
+    val label: String? = null,
+    /** The user typed the [label] in this review. */
+    val labelEdited: Boolean = false,
+    /** [categoryId] (and maybe [label]) came from what the user taught about this payee. */
+    val recalled: Boolean = false,
 ) {
     val id: String get() = item.id
+
+    /** The cleaned merchant name, or a plain fallback when the message has none. */
+    val generated: String get() = generatedNote(item.candidate.tx, kind)
+
+    /** The note shown now and saved on import. */
+    val note: String get() = label ?: generated
     val isDuplicate: Boolean get() = item.match != null
+}
+
+/** Merchant name of [tx], or the plain fallback for a payment of [kind] with no readable name. */
+internal fun generatedNote(tx: app.cove.companion.data.sms.ParsedSms, kind: String): String = tx.merchant ?: if (kind == "received") "Money received" else "Payment"
+
+/**
+ * The review row for [item]: category and label from the payee's memory when [payees] knows it (it wins over word
+ * [memory] and built-ins), otherwise the categorizer's suggestion on the cleaned merchant name.
+ */
+internal fun rowFor(
+    item: ReviewItem,
+    cats: List<ExpenseCategoryEntity>,
+    memory: Map<String, app.cove.companion.data.local.entity.CategoryMemoryEntity>,
+    payees: Map<String, app.cove.companion.data.local.entity.PayeeMemoryEntity>,
+): ImportRow {
+    val tx = item.candidate.tx
+    val kind = if (tx.direction == Direction.Credit) "received" else "spent"
+    val payee = if (kind == "spent") tx.payeeKey?.let(payees::get) else null
+    val s = if (kind == "spent") ExpenseCategorizer.suggest(generatedNote(tx, kind), cats, memory, payee) else null
+    val id = s?.categoryId ?: if (kind == "spent") ExpenseCategorizer.fallback(cats)?.id else null
+    val recalled = s?.reason == Reason.Payee
+    return ImportRow(
+        item, checked = item.match == null, kind = kind, categoryId = id, suggestedId = id, reason = s?.reason?.label,
+        label = payee?.label?.takeIf { recalled }, recalled = recalled,
+    )
 }
 
 /** Everything the Import screens draw. */
@@ -139,13 +179,8 @@ class ImportViewModel(private val c: AppContainer) : ViewModel() {
                 val result = c.smsImport.scan(source, from) { p -> _state.update { s -> s.copy(progress = p) } }
                 val cats = c.money.categories.first().filter { it.kind == "spending" && it.deletedAt == null }
                 val memory = c.money.memory.first()
-                val rows = result.items.map { item ->
-                    val tx = item.candidate.tx
-                    val kind = if (tx.direction == Direction.Credit) "received" else "spent"
-                    val s = if (kind == "spent") ExpenseCategorizer.suggest(c.smsImport.noteFor(tx, kind), cats, memory) else null
-                    val id = s?.categoryId ?: if (kind == "spent") ExpenseCategorizer.fallback(cats)?.id else null
-                    ImportRow(item, checked = item.match == null, kind = kind, categoryId = id, suggestedId = id, reason = s?.reason?.label)
-                }
+                val payees = c.money.payees(result.items.mapNotNull { it.candidate.tx.payeeKey })
+                val rows = result.items.map { rowFor(it, cats, memory, payees) }
                 _state.update { it.copy(stage = ImportStage.Review, rows = rows, categories = cats, scanned = result.scanned, duplicatesDropped = result.duplicatesDropped) }
             } catch (e: CancellationException) {
                 throw e
@@ -182,6 +217,9 @@ class ImportViewModel(private val c: AppContainer) : ViewModel() {
 
     fun pickCategory(id: String, categoryId: String) = updateRow(id) { it.copy(categoryId = categoryId, picked = true) }
 
+    /** The user typed a label for the row; blank goes back to the generated name. Counts as an explicit edit. */
+    fun setLabel(id: String, text: String) = updateRow(id) { it.copy(label = text.takeIf { t -> t.isNotBlank() }, labelEdited = true) }
+
     private fun updateRow(id: String, f: (ImportRow) -> ImportRow) = _state.update { s -> s.copy(rows = s.rows.map { if (it.id == id) f(it) else it }) }
 
     /** Imports the checked rows exactly once, then offers Undo for the whole batch. */
@@ -191,13 +229,14 @@ class ImportViewModel(private val c: AppContainer) : ViewModel() {
         _state.update { it.copy(stage = ImportStage.Importing) }
         viewModelScope.launch {
             try {
-                val decisions = rows.map { ImportDecision(it.item, it.checked, it.kind, it.categoryId, it.suggestedId, it.picked) }
+                val decisions = rows.map { ImportDecision(it.item, it.checked, it.kind, it.categoryId, it.suggestedId, it.picked, it.label, it.labelEdited) }
                 val summary = c.smsImport.import(decisions)
                 val dups = rows.count { !it.checked && it.isDuplicate }
                 val left = rows.count { !it.checked && !it.isDuplicate }
                 val text = summaryText(summary.added, dups, left)
                 _state.update { it.copy(stage = ImportStage.Done, summaryText = text, added = summary.added, undone = false) }
                 if (summary.added > 0) offerUndo(summary, text)
+                offerRetroTag(summary)
             } catch (e: CancellationException) {
                 importing.set(false)
                 throw e
@@ -208,8 +247,16 @@ class ImportViewModel(private val c: AppContainer) : ViewModel() {
         }
     }
 
+    /** After tagging payees, offers to tag the user's earlier payments to the same payees too (see [RetroTag]). */
+    private suspend fun offerRetroTag(summary: ImportSummary) {
+        val ids = summary.expenseIds.toSet()
+        val per = summary.payeePicks.mapValues { (key, pick) -> c.money.retroChanges(mapOf(key to pick), ids) }.filterValues { it.isNotEmpty() }
+        if (per.isNotEmpty()) RetroTag.post(RetroOffer(per.values.flatten(), per.size))
+    }
+
     private fun offerUndo(summary: ImportSummary, text: String) {
         Undo.center.post("money", text) {
+            RetroTag.dismiss()
             c.smsImport.undo(summary)
             _state.update { it.copy(undone = true, added = 0, summaryText = "Undone. Nothing was added.") }
         }

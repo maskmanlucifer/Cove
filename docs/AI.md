@@ -79,4 +79,4 @@ Per-expense categorisation does not use AI at all; see `docs/CATEGORIZATION.md`.
 
 `AiService.status()` returns, per capability, each provider's availability and which one would answer now. Me > Connect services > Gemini shows "On this phone" and "Cloud" lines from it.
 
-SMS text is never an AI input: `docs/SMS_IMPORT.md` parsing is rules-only and on the phone. Imported expenses carry only the cleaned merchant as note, so the category cross-check above still sends note text without amounts.
+SMS text is never an AI input: `docs/SMS_IMPORT.md` parsing is rules-only and on the phone. Imported expenses carry only the cleaned merchant as note, so the category cross-check above still sends note text without amounts. Payee keys and UPI handles are never sent to AI; a label the user typed is note text like any other.

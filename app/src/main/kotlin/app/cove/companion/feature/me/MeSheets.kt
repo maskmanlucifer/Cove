@@ -99,6 +99,8 @@ fun MeSheets(sheet: MeSheet?, s: SettingsEntity, vm: MeViewModel, briefPlay: () 
             SheetHeading("Forget imported-message history")
             SheetCaption("Cove will no longer remember which messages it has already looked at. Your expenses stay exactly as they are. Next time, Cove checks for repeats against your expenses.")
             PillButton("Forget history", { vm.forgetImportedMessages(); close() }, Modifier.fillMaxWidth(), height = 52.dp)
+            SheetCaption("Cove also remembers how you tagged payees, so the next payment to the same shop or QR is tagged like last time. You can forget that on its own: your expenses and their tags stay as they are.")
+            PillButton("Forget what Cove learned about payees", { vm.forgetPayees(); close() }, Modifier.fillMaxWidth(), kind = ButtonKind.Secondary, height = 52.dp)
             PillButton("Cancel", close, Modifier.fillMaxWidth(), kind = ButtonKind.Secondary, height = 52.dp)
         }
         MeSheet.ClearData -> app.cove.companion.feature.datacontrols.ClearDataSheet(onDismiss)

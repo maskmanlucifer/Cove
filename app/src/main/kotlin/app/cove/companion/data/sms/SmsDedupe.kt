@@ -125,7 +125,7 @@ object SmsDedupe {
         val w = win.tx
         val l = lose.tx
         val tx = w.copy(
-            merchant = w.merchant ?: l.merchant, last4 = w.last4 ?: l.last4, ref = w.ref ?: l.ref, bank = w.bank ?: l.bank,
+            merchant = w.merchant ?: l.merchant, last4 = w.last4 ?: l.last4, ref = w.ref ?: l.ref, bank = w.bank ?: l.bank, payeeKey = w.payeeKey ?: l.payeeKey,
             confidence = maxOf(w.confidence, l.confidence),
         )
         return Candidate(tx, (win.messages + lose.messages).distinctBy { it.key })

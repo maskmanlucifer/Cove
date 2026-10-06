@@ -34,6 +34,11 @@ class MeViewModel(private val c: AppContainer) : ViewModel() {
         viewModelScope.launch { c.smsImport.forgetHistory() }
     }
 
+    /** Clears what Cove learned about payees (`payee_memory`); expenses and word memory stay. */
+    fun forgetPayees() {
+        viewModelScope.launch { c.money.forgetAllPayees() }
+    }
+
     /** Enabled alarms, earliest first. */
     val alarms: StateFlow<List<AlarmEntity>> = c.plan.alarms
         .map { list -> list.filter { it.deletedAt == null && it.enabled }.sortedBy { it.minutes } }

@@ -151,8 +151,24 @@ data class CategoryMemoryEntity(
     val deletedAt: Long? = null,
 )
 
+/**
+ * What the user taught Cove about one payee ([payeeKey], see `PayeeKey`): the [categoryId] it is filed under, the
+ * [label] (note) to show instead of [displayName] (null: keep the cleaned merchant name), and how many times that
+ * was confirmed. Soft-deleted at zero or when forgotten.
+ */
+@Entity(tableName = "payee_memory")
+data class PayeeMemoryEntity(
+    @PrimaryKey val payeeKey: String,
+    val categoryId: String,
+    val label: String? = null,
+    val displayName: String = "",
+    val count: Int = 1,
+    val updatedAt: Long = 0,
+    val deletedAt: Long? = null,
+)
+
 /** `kind` is spent|received; `source` is manual|voice|sms; `externalRef` is set for sms imports. */
-@Entity(tableName = "expenses", indices = [Index("spentAt"), Index("categoryId")])
+@Entity(tableName = "expenses", indices = [Index("spentAt"), Index("categoryId"), Index("payeeKey")])
 data class ExpenseEntity(
     @PrimaryKey val id: String,
     val amountPaise: Long,
@@ -166,6 +182,8 @@ data class ExpenseEntity(
     val deletedAt: Long? = null,
     /** Bank or UPI reference (or a `msg:` hash) of an expense imported from messages; used to dedupe re-imports. */
     val externalRef: String? = null,
+    /** Stable identity of the payee of an imported payment (`PayeeKey`); links the expense to its [PayeeMemoryEntity]. */
+    val payeeKey: String? = null,
 )
 
 /** Journal entry; `mood` is the user's own pick (calm|good|tired|low|…). */
