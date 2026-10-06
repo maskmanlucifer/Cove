@@ -1,41 +1,33 @@
 package app.cove.companion.feature.journal
 
-import android.graphics.BitmapFactory
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cove.companion.ai.model.Summary
-import app.cove.companion.container
 import app.cove.companion.core.shortTime
 import app.cove.companion.core.toLocalDateTime
 import app.cove.companion.data.local.entity.JournalMediaEntity
@@ -53,70 +45,65 @@ import app.cove.companion.design.components.PillButton
 import app.cove.companion.design.components.SheetHandle
 import app.cove.companion.design.components.pressable
 import app.cove.companion.feature.plan.OptionList
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
-/** Thumbnails of the entry's photos, each with a small remove button. */
-@Composable
-fun PhotoStrip(photos: List<JournalMediaEntity>, onRemove: (JournalMediaEntity) -> Unit) {
-    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        photos.forEach { photo ->
-            Box(Modifier.size(96.dp).clip(RoundedCornerShape(16.dp)).background(Cove.colors.well)) {
-                rememberThumb(photo)?.let {
-                    Image(it, null, Modifier.size(96.dp), contentScale = ContentScale.Crop)
-                }
-                Box(
-                    Modifier.align(Alignment.TopEnd).padding(6.dp).size(24.dp)
-                        .background(Cove.colors.scrim, CoveShapes.Circle).pressable({ onRemove(photo) }, role = Role.Button).semantics { contentDescription = "Remove photo" },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Box(Modifier.size(24.dp).background(Cove.colors.scrim, CoveShapes.Circle), contentAlignment = Alignment.Center) {
-                        CoveIcon(CoveIcons.Close, Color.White, size = 12.dp)
-                    }
-                }
-            }
-        }
-    }
-}
-
-/** Decodes the photo's thumbnail, fetching it first when this device does not have it; null shows the empty well. */
-@Composable
-private fun rememberThumb(photo: JournalMediaEntity): ImageBitmap? {
-    val fetcher = LocalContext.current.container.driveKit.fetcher
-    return produceState<ImageBitmap?>(null, photo.id, photo.thumbPath, photo.localPath) {
-        value = withContext(Dispatchers.IO) {
-            try {
-                (fetcher.thumb(photo) ?: fetcher.file(photo))?.let { BitmapFactory.decodeFile(it.path)?.asImageBitmap() }
-            } catch (e: Exception) {
-                null
-            } catch (e: OutOfMemoryError) {
-                null
-            }
-        }
-    }.value
-}
-
-/** A voice note row: play/pause, "Voice note" (or a [hint] such as "Loading…"), its length ("0:42") and a remove button. */
+/**
+ * A voice note on one row that never wraps: play/pause circle, a slim progress bar taking the remaining width, a
+ * fixed-width duration ("0:42") and a 48 dp remove button. A [hint] ("Loading…") replaces the bar. At large font
+ * scales the duration moves under the bar.
+ */
 @Composable
 fun VoiceRow(note: JournalMediaEntity, playback: PlaybackState, onToggle: () -> Unit, onRemove: () -> Unit, hint: String? = null) {
     val c = Cove.colors
     val playing = playback.id == note.id
+    val total = note.durationMs ?: 0
+    val progress = if (playing && total > 0) (playback.positionMs.toFloat() / total).coerceIn(0f, 1f) else 0f
+    val duration = formatDuration(if (playing) playback.positionMs else total)
+    val stacked = LocalDensity.current.fontScale >= STACK_FONT_SCALE
+    val taken = if (note.updatedAt > 0) "recorded at " + shortTime(note.updatedAt.toLocalDateTime()) else ""
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 56.dp).background(c.well, CoveShapes.Pill).padding(start = 10.dp, end = 4.dp),
+        Modifier.fillMaxWidth().heightIn(min = 56.dp).background(c.well, CoveShapes.Pill).padding(start = 10.dp, end = 4.dp)
+            .semantics { contentDescription = "Voice note $taken, ${formatDuration(total)}" },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Box(Modifier.size(36.dp).background(c.ink, CoveShapes.Circle).pressable(onToggle, role = Role.Button).semantics { contentDescription = if (playing) "Pause voice note" else "Play voice note" }, contentAlignment = Alignment.Center) {
+        Box(Modifier.size(40.dp).background(c.ink, CoveShapes.Circle).pressable(onToggle, role = Role.Button).semantics { contentDescription = if (playing) "Pause voice note" else "Play voice note" }, contentAlignment = Alignment.Center) {
             CoveIcon(if (playing) CoveIcons.Pause else CoveIcons.Play, c.onInk, size = 16.dp)
         }
-        val label = if (note.updatedAt > 0) "Voice note · " + shortTime(note.updatedAt.toLocalDateTime()) else "Voice note"
-        CoveText(hint ?: label, Modifier.weight(1f), style = CoveType.Body.copy(fontSize = 16.sp), color = if (hint != null) c.muted else c.ink)
-        CoveText(formatDuration(if (playing) playback.positionMs else note.durationMs ?: 0), style = CoveType.Meta, color = c.muted)
+        if (stacked) {
+            Column(Modifier.weight(1f).padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                VoiceProgress(progress, hint)
+                if (hint == null) VoiceDuration(duration)
+            }
+        } else {
+            Box(Modifier.weight(1f)) { VoiceProgress(progress, hint) }
+            if (hint == null) VoiceDuration(duration)
+        }
         Box(Modifier.size(48.dp).pressable(onRemove, role = Role.Button).semantics { contentDescription = "Remove voice note" }, contentAlignment = Alignment.Center) {
             CoveIcon(CoveIcons.Close, c.tail, size = 14.dp)
         }
     }
 }
+
+/** Font scale from which the voice row's duration sits under the bar instead of beside it. */
+private const val STACK_FONT_SCALE = 1.6f
+
+/** The slim bar (track and filled part), or the one-line [hint] in its place. */
+@Composable
+private fun VoiceProgress(progress: Float, hint: String?) {
+    val c = Cove.colors
+    if (hint != null) {
+        CoveText(hint, style = CoveType.Meta, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        return
+    }
+    Box(Modifier.fillMaxWidth().height(4.dp).background(if (c.isDark) c.wellStrong else Color(0xFFE0E0DD), CoveShapes.Pill)) {
+        Box(Modifier.fillMaxWidth(progress).fillMaxHeight().background(c.ink, CoveShapes.Pill))
+    }
+}
+
+/** "0:42", single line, wide enough for "00:00" so the bar does not shift while playing. */
+@Composable
+private fun VoiceDuration(text: String) =
+    CoveText(text, Modifier.widthIn(min = 40.dp), style = CoveType.Meta, color = Cove.colors.muted, textAlign = TextAlign.End, maxLines = 1, overflow = TextOverflow.Clip)
 
 /** Shown in place of the chips while recording: live time and a Stop button. */
 @Composable
