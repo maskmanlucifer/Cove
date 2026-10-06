@@ -32,6 +32,9 @@ data class WipePlan(val alsoCloud: Boolean = false) {
     /** Database file names (in the databases folder) that belong to Cove. */
     fun isDatabaseFile(name: String): Boolean = name == DB_NAME || name.startsWith("$DB_NAME-")
 
+    /** True when a file in `no_backup` must be removed; WorkManager's job database lives there and holds no user data. */
+    fun removesNoBackup(fileName: String): Boolean = !fileName.startsWith(WORK_DB)
+
     /** True when a preferences file must be removed; only WorkManager's own bookkeeping survives. */
     fun removesPrefs(fileName: String): Boolean = KEEP_PREFS.none { fileName.startsWith(it) }
 
@@ -41,6 +44,7 @@ data class WipePlan(val alsoCloud: Boolean = false) {
     companion object {
         /** File name of the Room database. */
         const val DB_NAME = "cove.db"
+        private const val WORK_DB = "androidx.work.workdb"
         private val KEEP_PREFS = listOf("androidx.work")
     }
 }

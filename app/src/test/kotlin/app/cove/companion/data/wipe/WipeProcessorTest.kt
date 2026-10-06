@@ -21,7 +21,7 @@ class WipeProcessorTest {
             cache = File(root, "cache"), prefs = File(root, "shared_prefs"), root = root,
         )
         listOf("databases/cove.db", "databases/cove.db-wal", "databases/androidx.work.workdb", "files/journal/p.webp", "files/datastore/brief.preferences_pb",
-            "no_backup/cove.key", "no_backup/cove-credentials.bin", "no_backup/crash-notes.txt", "cache/restore.json.gz",
+            "no_backup/cove.key", "no_backup/cove-credentials.bin", "no_backup/crash-notes.txt", "no_backup/androidx.work.workdb", "cache/restore.json.gz",
             "shared_prefs/cove_session.xml", "shared_prefs/cove_drive.xml", "shared_prefs/androidx.work.util.preferences.xml",
         ).forEach { File(root, it).apply { parentFile!!.mkdirs() }.writeText("x") }
     }
@@ -54,6 +54,7 @@ class WipeProcessorTest {
         processor().processIfPending()
         assertTrue(File(root, "databases/androidx.work.workdb").exists())
         assertTrue(File(root, "shared_prefs/androidx.work.util.preferences.xml").exists())
+        assertTrue(File(root, "no_backup/androidx.work.workdb").exists())
     }
 
     @Test fun noticeIsWrittenForTheNextLaunch() {

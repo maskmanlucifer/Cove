@@ -58,7 +58,7 @@ class WipeProcessor(
         }
         step(WipeArea.Database) { dirs.databases.listFiles().orEmpty().filter { plan.isDatabaseFile(it.name) }.all(::delete) }
         step(WipeArea.Files) { emptied(dirs.files) }
-        step(WipeArea.NoBackup) { emptied(dirs.noBackup) }
+        step(WipeArea.NoBackup) { dirs.noBackup.listFiles().orEmpty().filter { plan.removesNoBackup(it.name) }.all(::delete) }
         step(WipeArea.Cache) { emptied(dirs.cache) }
         step(WipeArea.Preferences) { dirs.prefs.listFiles().orEmpty().filter { plan.removesPrefs(it.name) }.all(::delete) }
         step(WipeArea.Keystore) { runCatching { keys.eraseAll() }.isSuccess }

@@ -70,6 +70,7 @@ Release builds ignore all of these. Debug builds also log StrictMode violations 
 - `docs/TRAINING.md`: workout tracking, progression rules, voice phrases.
 - `docs/SECURITY.md`: database encryption and app lock.
 - `docs/RESILIENCE.md`: what happens when the database, key or app fails, and what the user sees.
+- `docs/DATA_CONTROLS.md`: Me > Clear all data (what it deletes, optional cloud deletion), and how updates keep your connections.
 - `docs/SETUP.md`: connect your own Supabase, Google, Drive and Gemini (15 minutes); `tools/make-setup-code.py` builds a one-paste setup code.
 - `docs/DRIVE_SETUP.md`: pointer to the Drive part of the setup guide.
 - `docs/RELEASE.md`: signing, release builds, R8 rules, lint notes.

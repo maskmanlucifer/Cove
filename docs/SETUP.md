@@ -47,6 +47,15 @@ The phone calls Gemini directly with your key. Only short, non-journal text is s
 ## What works with nothing configured
 Everything local: alarms, nudges, to-dos, habits, money, journal with photos and voice notes, widgets, the rule-based voice assistant (and Gemini Nano on a Pixel 10), the app lock, and the brief from templates. Not available: sync between devices, Drive upload and backup (photos stay pending on the phone), and Gemini's cloud understanding.
 
+## Moving to a new phone / reinstalling
+
+Updating Cove over the installed app (debug over debug, release over release, same signing key) keeps your connections: they live in the app's private storage and the Android Keystore, which survive updates. Android deletes both when the app is uninstalled, installed with a different signing key (debug and release builds differ), or moved to a new phone. After that:
+
+1. On the old phone (before uninstalling) open Me > Connect services > **My setup code** and tap **Copy my setup code** or **Save setup code to a file**. The code contains your keys: keep it private. The clipboard copy is hidden from previews and cleared after one minute.
+2. On the new install open Connect services > **Paste setup code** (or **Import setup code from a file**). Every connection is filled in at once; sign in with Google again and your data returns on the next sync, or restore from a Drive backup.
+
+**Clear all data** also removes your connections: save your setup code first (the clear sheet offers it).
+
 ## Security
 Pasted values are encrypted with a non-exportable Android Keystore key and stored in the app's `no_backup` folder (`cove-credentials.bin`). They are not part of Android backups and cannot be read off the phone. Test results and logs never contain keys. If you lose the phone, rotate the Gemini key and the Supabase anon key and sign the device out in Google account security. Details of database protection: `docs/SECURITY.md`.
 
