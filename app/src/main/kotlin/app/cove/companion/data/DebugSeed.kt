@@ -50,8 +50,10 @@ object DebugSeed {
             c.todos.add("Water the plants", home.id),
             c.todos.add("Call mum", personal.id, at(18)),
         )
-        c.todos.add("Dish soap", shopping.id)
-        c.todos.add("Birthday card for Ana", shopping.id)
+        if (!evening) { // evening Today (frame 10) lists only the three done items
+            c.todos.add("Dish soap", shopping.id)
+            c.todos.add("Birthday card for Ana", shopping.id)
+        }
         if (evening) open.forEach { c.todos.setDone(it.id, true) }
 
         c.plan.saveEvent(EventEntity(newId(), "Coffee with Jo", at(11), at(11, 45), "Café Ivy", "bring her book back"))
