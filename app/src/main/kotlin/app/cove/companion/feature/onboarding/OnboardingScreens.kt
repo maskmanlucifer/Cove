@@ -48,6 +48,8 @@ import app.cove.companion.design.components.BalancedText
 import app.cove.companion.design.components.CoveScreen
 import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.Hairline
+import app.cove.companion.design.components.IllustrationFill
+import app.cove.companion.design.illustrations.Scene
 import app.cove.companion.design.components.PillButton
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.navigation.Nav
@@ -146,7 +148,7 @@ fun MicPermissionScreen(nav: Nav) {
                 }
             }
         }
-        Box(Modifier.weight(1f))
+        IllustrationFill(Scene.Voice)
         HelperText("Android will ask next. Choose “While using the app”.")
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             BigButton("Allow microphone", {
@@ -202,7 +204,7 @@ fun AlarmPermissionScreen(nav: Nav) {
                 center = false,
             )
         }
-        Box(Modifier.weight(1f))
+        IllustrationFill(Scene.Alarms)
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             BigButton("Finish", finish, enabled = exactAllowed)
             TextAction("Use reminders only", finish)

@@ -35,6 +35,8 @@ import app.cove.companion.design.components.BalancedText
 import app.cove.companion.design.components.CoveScreen
 import app.cove.companion.design.components.CoveSheet
 import app.cove.companion.design.components.CoveText
+import app.cove.companion.design.illustrations.Illustration
+import app.cove.companion.design.illustrations.Scene
 import app.cove.companion.design.components.SheetHandle
 import app.cove.companion.design.components.pressable
 import app.cove.companion.navigation.Nav
@@ -49,6 +51,7 @@ fun SyncConflictScreen(nav: Nav) {
         val open = state as? ConflictState.Open ?: return@CoveScreen
         val ui = open.ui
         var keepOther by remember(ui.entity.rowId) { mutableStateOf(false) }
+        Illustration(Scene.Synced, Modifier.align(Alignment.TopCenter).padding(top = 120.dp).height(180.dp))
         CoveSheet(visible = true, onDismiss = nav.back) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { SheetHandle() }

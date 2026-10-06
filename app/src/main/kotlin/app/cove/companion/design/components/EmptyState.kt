@@ -1,7 +1,9 @@
 package app.cove.companion.design.components
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -12,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.cove.companion.design.Cove
 import app.cove.companion.design.CoveType
@@ -67,5 +70,16 @@ fun EmptyState(
                 secondary?.let { AccentButton(it.label, it.onClick) }
             }
         }
+    }
+}
+
+/**
+ * Takes the remaining height of a column and centres a [scene] in it, at most [maxHeight] tall; draws nothing when
+ * less than [minHeight] is left (small phones, large text) so it never squeezes the controls.
+ */
+@Composable
+fun ColumnScope.IllustrationFill(scene: Scene, maxHeight: Dp = 180.dp, minHeight: Dp = 96.dp) {
+    BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+        if (this.maxHeight >= minHeight) Illustration(scene, Modifier.height(minOf(this.maxHeight, maxHeight)))
     }
 }

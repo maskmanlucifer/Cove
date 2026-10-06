@@ -74,6 +74,12 @@ fun TodosTab(groups: List<CategoryGroup>, now: Long, drag: TodoDragState, action
     }
 
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        if (groups.isEmpty()) {
+            app.cove.companion.design.components.EmptyState(
+                Scene.Todos, "Nothing to do.", "Say what you need, or make a category to start.", Modifier.padding(top = 16.dp),
+                primary = app.cove.companion.design.components.EmptyAction("Say it", actions.voice),
+            )
+        }
         groups.forEach { group ->
             val id = group.category.id
             if (id == expanded) {

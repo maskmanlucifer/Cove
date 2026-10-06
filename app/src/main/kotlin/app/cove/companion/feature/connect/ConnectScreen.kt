@@ -38,6 +38,9 @@ import app.cove.companion.design.components.ButtonKind
 import app.cove.companion.design.components.CoveScreen
 import app.cove.companion.design.components.PillButton
 import app.cove.companion.design.components.CoveText
+import androidx.compose.foundation.layout.height
+import app.cove.companion.design.illustrations.Illustration
+import app.cove.companion.design.illustrations.Scene
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.design.components.pressable
 import app.cove.companion.feature.me.RowDivider
@@ -71,6 +74,9 @@ fun ConnectScreen(nav: Nav, onboarding: Boolean = false) {
                             "Everything you paste is stored encrypted on this phone only.",
                         style = CoveType.Meta.copy(lineHeight = 21.sp), color = Cove.colors.muted,
                     )
+                }
+                if (ServiceId.entries.none { ui.status(it) == ServiceStatus.Connected }) {
+                    Illustration(Scene.Synced, Modifier.align(Alignment.CenterHorizontally).height(120.dp))
                 }
                 SettingsGroup("Quick start") {
                     SettingsRow("Paste setup code", value = "Fills everything", onClick = { sheet = ConnectSheet.Code })

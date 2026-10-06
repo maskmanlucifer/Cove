@@ -51,6 +51,9 @@ import app.cove.companion.core.toLocalDateTime
 import app.cove.companion.design.components.EmptyAction
 import app.cove.companion.design.components.EmptyState
 import app.cove.companion.design.illustrations.BannerMode
+import app.cove.companion.design.illustrations.Illustration
+import app.cove.companion.design.illustrations.Scene
+import androidx.compose.foundation.layout.height
 import app.cove.companion.design.illustrations.SceneBanner
 import app.cove.companion.design.illustrations.sceneForHour
 import app.cove.companion.design.illustrations.todayBannerMode
@@ -172,6 +175,7 @@ fun TodayScreen(nav: Nav) {
                 "Voice, alarms and your journal work offline. Only weather and the brief’s one thing to read wait for a connection.",
                 style = CoveType.Meta.copy(lineHeight = 21.sp), color = c.muted,
             )
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { Illustration(Scene.Offline, Modifier.height(150.dp)) }
         } else if (state.askMood) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 CoveText("How was today?", style = CoveType.Meta, color = c.muted)
