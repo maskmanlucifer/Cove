@@ -45,7 +45,7 @@ import app.cove.companion.data.local.entity.VoiceCommandEntity
         SuggestionPrefEntity::class, VoiceCommandEntity::class, BriefEntity::class,
         SearchIndexEntity::class, OutboxEntity::class, SyncStateEntity::class, SyncConflictEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 abstract class CoveDatabase : RoomDatabase() {
@@ -80,9 +80,16 @@ abstract class CoveDatabase : RoomDatabase() {
             }
         }
 
+        /** Adds the `oneThingUntil` setting. */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `settings` ADD COLUMN `oneThingUntil` INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         fun create(context: Context, factory: SupportSQLiteOpenHelper.Factory? = null): CoveDatabase =
             Room.databaseBuilder(context, CoveDatabase::class.java, "cove.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .apply { if (factory != null) openHelperFactory(factory) }
                 .build()
     }

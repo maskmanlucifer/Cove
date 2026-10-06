@@ -33,12 +33,12 @@ private val NowLabel = CoveType.Label.copy(fontWeight = FontWeight.SemiBold, let
 
 /** The "Schedule" segment: today's events, alarms and dated to-dos around the now line. */
 @Composable
-fun ScheduleTab(rows: List<TimelineRow>, onOpenTodo: (String) -> Unit) {
+fun ScheduleTab(rows: List<TimelineRow>, onOpenTodo: (String) -> Unit, onOpenEvent: (String) -> Unit) {
     Column(Modifier.fillMaxWidth()) {
         rows.forEach { row ->
             when (row) {
                 is TimelineRow.Now -> NowLine(row.minutes)
-                is TimelineRow.Entry -> if (row.card) EventCard(row) else EntryRow(row, onOpenTodo)
+                is TimelineRow.Entry -> if (row.card) EventCard(row, onOpenEvent) else EntryRow(row, onOpenTodo, onOpenEvent)
             }
         }
     }
@@ -56,15 +56,16 @@ private fun TimeLabel(minutes: Int, modifier: Modifier = Modifier, strong: Boole
 }
 
 @Composable
-private fun EntryRow(row: TimelineRow.Entry, onOpenTodo: (String) -> Unit) {
+private fun EntryRow(row: TimelineRow.Entry, onOpenTodo: (String) -> Unit, onOpenEvent: (String) -> Unit) {
     val c = Cove.colors
     val item = row.item
-    val open = item.todoId
+    val open = item.todoId ?: item.eventId
+    val onOpen = if (item.eventId != null) onOpenEvent else onOpenTodo
     Row(
         Modifier
             .fillMaxWidth()
             .heightIn(min = 56.dp)
-            .let { if (open != null) it.pressable({ onOpenTodo(open) }) else it },
+            .let { if (open != null) it.pressable({ onOpen(open) }) else it },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         TimeLabel(item.minutes, Modifier.width(TimeColumn))
@@ -86,9 +87,10 @@ private fun NowLine(minutes: Int) {
 }
 
 @Composable
-private fun EventCard(row: TimelineRow.Entry) {
+private fun EventCard(row: TimelineRow.Entry, onOpen: (String) -> Unit) {
     val c = Cove.colors
-    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+    val id = row.item.eventId
+    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp).let { if (id != null) it.pressable({ onOpen(id) }) else it }) {
         TimeLabel(row.item.minutes, Modifier.width(TimeColumn).padding(top = 20.dp), strong = true)
         Column(
             Modifier

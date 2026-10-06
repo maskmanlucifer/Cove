@@ -9,6 +9,15 @@ import app.cove.companion.core.toLocalDate
 import app.cove.companion.core.toLocalDateTime
 import app.cove.companion.core.startOfDayMillis
 import app.cove.companion.data.local.entity.EventEntity
+import app.cove.companion.core.clockText
+import app.cove.companion.feature.alarms.nextFireMillis
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -48,9 +57,16 @@ private data class Aux(
     val habits: List<app.cove.companion.data.local.entity.HabitEntity>,
     val logs: List<app.cove.companion.data.local.entity.HabitLogEntity>,
     val newIds: Set<String>,
+    val hiddenUntil: Long,
 )
 
+/** Process-wide memory of when the Next card comes back after "Later" or "Start now" (epoch millis; 0 = visible). */
+object NextCardMemory {
+    val hiddenUntil = MutableStateFlow(0L)
+}
+
 /** Builds [TodayState] from settings, events, alarms, to-dos, spending and habits. */
+@OptIn(ExperimentalCoroutinesApi::class)
 class TodayViewModel(private val c: AppContainer) : ViewModel() {
     private val today = c.clock.now().toLocalDate()
     private val dayStart = today.startOfDayMillis()
@@ -61,17 +77,17 @@ class TodayViewModel(private val c: AppContainer) : ViewModel() {
         c.plan.eventsOn(today),
         c.plan.alarms,
         c.todos.todos,
-        combine(c.money.expenses(dayStart, dayEnd), c.habits.habits, c.habits.logs(today, today), c.voice.newTodos.ids) { e, h, l, n ->
-            Aux(e, h, l, n)
+        combine(c.money.expenses(dayStart, dayEnd), c.habits.habits, c.habits.logs(today, today), c.voice.newTodos.ids, hiddenFlow()) { e, h, l, n, hidden ->
+            Aux(e, h, l, n, hidden)
         },
-    ) { settings, events, alarms, todos, (expenses, habits, logs, newIds) ->
+    ) { settings, events, alarms, todos, (expenses, habits, logs, newIds, hiddenUntil) ->
         val now = c.clock.now().toLocalDateTime()
         val phase = dayPhase(now.hour)
         val nowMin = now.hour * 60 + now.minute
         val upcoming = events.firstOrNull { it.startAt.toLocalDateTime() >= now }
         val bedtime = alarms.firstOrNull { it.kind == "bedtime" && it.enabled }
         val wake = alarms.firstOrNull { it.kind == "wake" && it.enabled }
-        val next = when {
+        val next = if (cardHidden(c.clock.now(), hiddenUntil)) null else when {
             phase == DayPhase.Evening && bedtime != null -> NextItem(
                 bedtime.minutes, "Wind down",
                 wake?.let { "Screen dims · alarm ${app.cove.companion.core.clockText(it.minutes).digits}" },
@@ -95,7 +111,7 @@ class TodayViewModel(private val c: AppContainer) : ViewModel() {
         val shown = habits.filter { it.showOnToday }
         TodayState(
             name = settings.displayName,
-            oneThingMode = settings.oneThingMode,
+            oneThingMode = oneThingActive(settings, c.clock.now()),
             phase = phase,
             date = today,
             next = next,
@@ -106,6 +122,60 @@ class TodayViewModel(private val c: AppContainer) : ViewModel() {
             doneCount = todos.count { it.done },
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TodayState())
+
+    /** Emits the hide deadline, then 0 once it has passed so the card reappears without a refresh. */
+    private fun hiddenFlow() = NextCardMemory.hiddenUntil.flatMapLatest { until ->
+        flow {
+            emit(until)
+            val wait = until - c.clock.now()
+            if (wait > 0) {
+                delay(wait)
+                emit(0L)
+            }
+        }
+    }
+
+    init {
+        viewModelScope.launch {
+            c.settings.settings.collectLatest { s ->
+                if (s.oneThingMode && s.oneThingUntil > 0) {
+                    delay((s.oneThingUntil - c.clock.now()).coerceAtLeast(0))
+                    c.settings.update { it.copy(oneThingMode = false, oneThingUntil = 0) }
+                }
+            }
+        }
+    }
+
+    /** "Later": hides the Next card for [CARD_SNOOZE_MINUTES] minutes. */
+    fun snoozeCard() {
+        NextCardMemory.hiddenUntil.value = snoozeUntil(c.clock.now())
+    }
+
+    /**
+     * Wind-down "Start now": hides the card for tonight and turns One-thing mode on until the wake alarm.
+     * Returns the wake alarm's time text for the spoken line, or null when there is none.
+     */
+    suspend fun startWindDown(): String? {
+        val now = c.clock.now()
+        val wake = c.plan.alarms.first().firstOrNull { it.kind == "wake" && it.enabled && it.deletedAt == null }
+        NextCardMemory.hiddenUntil.value = tonightEnd(now)
+        val until = wake?.let { nextFireMillis(it.minutes, it.daysMask, now) } ?: 0L
+        c.settings.update { it.copy(oneThingMode = true, oneThingUntil = until) }
+        return wake?.let { clockText(it.minutes).let { t -> t.digits + t.suffix } }
+    }
+
+    fun saveEvent(event: EventEntity) {
+        viewModelScope.launch { c.plan.saveEvent(event) }
+    }
+
+    /** Soft-deletes [event]; [restoreEvent] brings it back (Undo). */
+    fun deleteEvent(event: EventEntity) {
+        viewModelScope.launch { c.plan.saveEvent(event.copy(deletedAt = c.clock.now())) }
+    }
+
+    fun restoreEvent(event: EventEntity) {
+        viewModelScope.launch { c.plan.saveEvent(event.copy(deletedAt = null)) }
+    }
 
     fun toggle(id: String, done: Boolean) {
         viewModelScope.launch { c.todos.setDone(id, done) }

@@ -11,7 +11,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.DisposableEffect
+import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableIntStateOf
@@ -45,6 +48,9 @@ class MainActivity : ComponentActivity() {
     /** Bumped whenever something asks to open straight into listening (tile, shortcut, debug). */
     private val voiceRequest = mutableIntStateOf(0)
 
+    /** Bumped when the brief-ready notification asks to open the brief player. */
+    private val briefRequest = mutableIntStateOf(0)
+
     /** Shows Google's Drive consent screen when the uploader needs it and hands the result back. */
     private val driveConsent = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
         container.driveKit.onConsentResult(it.data)
@@ -65,6 +71,7 @@ class MainActivity : ComponentActivity() {
         }
         if (BuildConfig.DEBUG) handleDebugIntent()
         if (intent.action == ACTION_LISTEN) voiceRequest.intValue++
+        if (intent.action == ACTION_BRIEF) briefRequest.intValue++
         setContent {
             val settings by container.settings.settings.collectAsState(initial = null)
             val s = settings ?: return@setContent
@@ -73,11 +80,18 @@ class MainActivity : ComponentActivity() {
                 "light" -> false
                 else -> isSystemInDarkTheme()
             }
+            DisposableEffect(dark) {
+                // System bar icons follow the app theme (not the OS one): light icons on the dark canvas.
+                val bars = SystemBarStyle.auto(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT) { dark }
+                enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
+                onDispose {}
+            }
             val animationsOff = remember { Settings.Global.getFloat(contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f }
             CoveTheme(dark, textScale = s.textScale, reduceMotion = resolveReduceMotion(s.reduceMotion, animationsOff)) {
                 CoveNavHost(
                     start = debugRoute ?: DebugLaunch.route ?: if (s.onboarded) Routes.Main else Routes.Welcome,
                     voiceRequest = voiceRequest.intValue,
+                    briefRequest = briefRequest.intValue,
                 )
             }
         }
@@ -88,6 +102,7 @@ class MainActivity : ComponentActivity() {
         setIntent(intent)
         if (BuildConfig.DEBUG) handleDebugIntent()
         if (intent.action == ACTION_LISTEN) voiceRequest.intValue++
+        if (intent.action == ACTION_BRIEF) briefRequest.intValue++
     }
 
     /**
@@ -143,5 +158,8 @@ class MainActivity : ComponentActivity() {
     companion object {
         /** Opens the app straight into listening; sent by the Quick Settings tile and the shortcut. */
         const val ACTION_LISTEN = "app.cove.companion.action.LISTEN"
+
+        /** Opens the morning brief player; sent by the brief-ready notification. */
+        const val ACTION_BRIEF = "app.cove.companion.action.BRIEF"
     }
 }

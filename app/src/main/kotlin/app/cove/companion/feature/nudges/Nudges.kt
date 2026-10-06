@@ -27,6 +27,7 @@ object Nudges {
             .setContentTitle("Your morning brief is ready")
             .setContentText("A minute to catch up on the day.")
             .setCategory(NotificationCompat.CATEGORY_RECOMMENDATION)
+            .setContentIntent(briefIntent(app))
             .build()
         notify(app, Notifications.ID_BRIEF_READY, notification)
     }
@@ -93,6 +94,14 @@ object Nudges {
 
     private fun openIntent(context: Context): PendingIntent =
         PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+
+    /** Opens the app on the brief player. */
+    private fun briefIntent(context: Context): PendingIntent = PendingIntent.getActivity(
+        context, 2,
+        Intent(context, MainActivity::class.java).setAction(MainActivity.ACTION_BRIEF)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+    )
 
     /** Opens the app straight into listening. Android has no microphone on the lock screen, so this needs an unlock. */
     private fun askIntent(context: Context): PendingIntent =

@@ -20,6 +20,7 @@ data class ScheduleItem(
     val notes: String? = null,
     val done: Boolean = false,
     val todoId: String? = null,
+    val eventId: String? = null,
 )
 
 /** A row of the schedule list. */
@@ -65,7 +66,7 @@ fun scheduleItems(
         val s = e.startAt.toLocalDateTime()
         val len = e.endAt?.let { ((it - e.startAt) / 60_000).toInt() }
         val startMin = s.hour * 60 + s.minute
-        ScheduleItem(ItemKind.Event, startMin, len?.let { startMin + it }, e.title, e.notes ?: e.place)
+        ScheduleItem(ItemKind.Event, startMin, len?.let { startMin + it }, e.title, e.notes ?: e.place, eventId = e.id)
     }
     val fromAlarms = alarms.filter { alarmRingsOn(it, day) }.map {
         ScheduleItem(ItemKind.Alarm, it.minutes, null, if (it.kind == "bedtime") "Wind down" else it.label)

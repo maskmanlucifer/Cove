@@ -55,6 +55,9 @@ data class AddDefaults(val event: Boolean, val title: String = "", val autofocus
 /**
  * Sheet for adding a to-do or an event from the Plan tab. Events take a day, time range, repeat,
  * reminder and place; to-dos take a category, optional due time and reminder.
+ *
+ * With [editing] set it becomes the event editor (see [EventEditSheet]): fields start from that event,
+ * the To-do/Event switch is hidden and the buttons are Save and Delete.
  */
 @Composable
 fun AddToPlanSheet(
@@ -64,18 +67,21 @@ fun AddToPlanSheet(
     onAddTodo: (title: String, categoryId: String?, dueAt: Long?, remind: Boolean) -> Unit,
     onAddEvent: (EventEntity) -> Unit,
     onDismiss: () -> Unit,
+    editing: EventEntity? = null,
+    onDeleteEvent: (EventEntity) -> Unit = {},
 ) {
     val nowTime = now.toLocalDateTime()
     val startDefault = ((nowTime.hour * 60 + nowTime.minute) / 60 + 1).coerceAtMost(22) * 60
-    var isEvent by remember { mutableStateOf(defaults.event) }
-    var title by remember { mutableStateOf(defaults.title) }
+    val from = remember(editing?.id) { editing?.let(::EventForm) }
+    var isEvent by remember { mutableStateOf(defaults.event || editing != null) }
+    var title by remember { mutableStateOf(editing?.title ?: defaults.title) }
     var page by remember { mutableStateOf(AddPage.Main) }
-    var day by remember { mutableStateOf(now.toLocalDate()) }
-    var start by remember { mutableIntStateOf(startDefault) }
-    var end by remember { mutableIntStateOf(startDefault + 45) }
-    var repeat by remember { mutableStateOf("none") }
-    var remindBefore by remember { mutableStateOf<Int?>(30) }
-    var place by remember { mutableStateOf("") }
+    var day by remember { mutableStateOf(from?.day ?: now.toLocalDate()) }
+    var start by remember { mutableIntStateOf(from?.start ?: startDefault) }
+    var end by remember { mutableIntStateOf(from?.end ?: (startDefault + 45)) }
+    var repeat by remember { mutableStateOf(editing?.repeat ?: "none") }
+    var remindBefore by remember { mutableStateOf(if (editing != null) editing.remindBeforeMin else 30) }
+    var place by remember { mutableStateOf(editing?.place.orEmpty()) }
     var categoryId by remember { mutableStateOf(categories.firstOrNull()?.id) }
     var dueAt by remember { mutableStateOf<Long?>(null) }
     var remind by remember { mutableStateOf(false) }
@@ -90,7 +96,7 @@ fun AddToPlanSheet(
             AddPage.Category -> CategoryPage(categories, categoryId, { categoryId = it; back() }, back)
             AddPage.When -> WhenPage(dueAt, now, { dueAt = it; back() }, back)
             AddPage.Main -> {
-                Segmented(
+                if (editing == null) Segmented(
                     listOf("To-do", "Event"), if (isEvent) 1 else 0, { isEvent = it == 1 },
                     Modifier.fillMaxWidth(), height = 40.dp, fillWidth = true,
                 )
@@ -117,15 +123,18 @@ fun AddToPlanSheet(
                 val ready = title.isNotBlank()
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     PillButton(
-                        "Add",
+                        if (editing != null) "Save" else "Add",
                         {
                             if (!ready) return@PillButton
-                            if (isEvent) onAddEvent(buildEvent(title.trim(), day, start, end, repeat, remindBefore, place.trim())) else onAddTodo(title, categoryId, dueAt, remind)
+                            if (isEvent) onAddEvent(buildEvent(editing, title.trim(), day, start, end, repeat, remindBefore, place.trim())) else onAddTodo(title, categoryId, dueAt, remind)
                             close()
                         },
                         Modifier.weight(1f).alpha(if (ready) 1f else 0.4f), height = 56.dp, textStyle = text,
                     )
-                    PillButton(
+                    if (editing != null) PillButton(
+                        "Delete", { onDeleteEvent(editing); close() }, Modifier.width(104.dp),
+                        kind = ButtonKind.Destructive, height = 56.dp, textStyle = text,
+                    ) else PillButton(
                         "Cancel", close, Modifier.width(104.dp), kind = ButtonKind.Secondary,
                         container = Cove.colors.canvas, height = 56.dp, textStyle = text.copy(fontWeight = FontWeight.Medium),
                     )
@@ -141,9 +150,16 @@ private fun rangeText(start: Int, end: Int): String {
     return if (s.suffix == e.suffix) "${s.digits} – ${e.digits}${e.suffix}" else "${s.digits}${s.suffix} – ${e.digits}${e.suffix}"
 }
 
-private fun buildEvent(title: String, day: LocalDate, start: Int, end: Int, repeat: String, remind: Int?, place: String) =
-    EventEntity(
-        id = newId(),
+/** An event's day and start/end minutes, split out so the sheet can edit them separately. */
+private class EventForm(e: EventEntity) {
+    private val s = e.startAt.toLocalDateTime()
+    val day: LocalDate = s.toLocalDate()
+    val start: Int = s.hour * 60 + s.minute
+    val end: Int = e.endAt?.toLocalDateTime()?.let { it.hour * 60 + it.minute } ?: (start + 45)
+}
+
+private fun buildEvent(base: EventEntity?, title: String, day: LocalDate, start: Int, end: Int, repeat: String, remind: Int?, place: String) =
+    (base ?: EventEntity(newId(), title, 0, null)).copy(
         title = title,
         startAt = LocalDateTime.of(day, LocalTime.of(start / 60, start % 60)).toEpochMillis(),
         endAt = LocalDateTime.of(day, LocalTime.of(end / 60, end % 60)).toEpochMillis(),

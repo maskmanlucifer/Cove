@@ -14,6 +14,7 @@ import app.cove.companion.core.toLocalDate
 import app.cove.companion.core.toLocalDateTime
 import app.cove.companion.design.CoveTheme
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 /**
  * Full-screen ring UI shown over the lock screen, always in the dark theme so a 6 am alarm is
@@ -42,12 +43,17 @@ class AlarmRingActivity : ComponentActivity() {
                     .minOrNull()
                 value = ringMessage(ring.minutes / 60, first)
             }
+            val briefOn by produceState(false) { value = container.settings.settings.first().briefOn }
             CoveTheme(dark = true) {
                 RingScreen(
                     ring = ring,
                     message = message,
                     onStop = { if (preview) finish() else AlarmRingService.stop(this) },
                     onSnooze = { if (preview) finish() else AlarmRingService.snooze(this) },
+                    onPlayBrief = if (briefOn && !preview) ({
+                        AlarmRingService.stop(this)
+                        container.appScope.launch { container.briefPlayer.playToday() }
+                    }) else null,
                 )
             }
         }

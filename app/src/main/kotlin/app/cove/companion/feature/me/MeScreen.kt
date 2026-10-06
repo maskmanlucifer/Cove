@@ -65,7 +65,7 @@ fun MeScreen(nav: Nav) {
         SettingsGroup("Day") {
             SettingsRow("Wake-up time", value = clockLabel(settings.wakeMinutes), onClick = { sheet = MeSheet.Wake })
             RowDivider()
-            SettingsRow("Morning brief", checked = settings.briefOn, onCheck = { v -> vm.update { it.copy(briefOn = v) } })
+            SettingsRow("Morning brief", checked = settings.briefOn, onCheck = { v -> vm.update { it.copy(briefOn = v) } }, onClick = { nav.go(Routes.Brief) })
             RowDivider()
             SettingsRow("Nudges", value = nudgeLabel(settings.nudgeMode), onClick = { sheet = MeSheet.Nudges })
         }

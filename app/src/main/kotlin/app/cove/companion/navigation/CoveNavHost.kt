@@ -41,7 +41,7 @@ import app.cove.companion.feature.voice.VoiceScreen
 
 /** App-wide navigation graph. Screens receive [Nav] and route ids, never the controller. */
 @Composable
-fun CoveNavHost(start: String, voiceRequest: Int = 0) {
+fun CoveNavHost(start: String, voiceRequest: Int = 0, briefRequest: Int = 0) {
     val reduce = LocalReduceMotion.current
     val fadeIn = fadeIn(tween(if (reduce) ReducedMotionMillis else 250))
     val fadeOut = fadeOut(tween(if (reduce) ReducedMotionMillis else 200))
@@ -97,5 +97,6 @@ fun CoveNavHost(start: String, voiceRequest: Int = 0) {
         if (BuildConfig.DEBUG) composable("debug/money-logged") { MoneyLoggedDebugScreen() }
     }
     LaunchedEffect(voiceRequest) { if (voiceRequest > 0 && start == Routes.Main) nav.go(Routes.Voice) }
+    LaunchedEffect(briefRequest) { if (briefRequest > 0 && start == Routes.Main) nav.go(Routes.Brief) }
 }
 
