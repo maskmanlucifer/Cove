@@ -11,6 +11,7 @@ class CoveApp : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        container.foreground.attach(this)
     }
 }
 

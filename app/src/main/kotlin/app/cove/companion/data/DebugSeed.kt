@@ -8,6 +8,7 @@ import app.cove.companion.data.local.entity.EventEntity
 import app.cove.companion.data.local.entity.ExpenseCategoryEntity
 import app.cove.companion.data.local.entity.ExpenseEntity
 import app.cove.companion.data.local.entity.HabitEntity
+import app.cove.companion.data.local.entity.JournalEntryEntity
 import app.cove.companion.data.local.entity.TodoCategoryEntity
 import app.cove.companion.data.local.entity.TodoEntity
 import kotlinx.coroutines.flow.first
@@ -45,9 +46,8 @@ object DebugSeed {
         c.plan.saveAlarm(AlarmEntity(newId(), "Wake up", 6 * 60 + 30, 0b0011111))
         c.plan.saveAlarm(AlarmEntity(newId(), "Bedtime", 22 * 60 + 30, 0b1111111, kind = "bedtime"))
 
-        val habits = listOf("Read 10 pages", "Walk", "Stretch").mapIndexed { i, n -> HabitEntity(newId(), n, sort = i) }
-        habits.forEach { c.habits.save(it) }
-        if (!evening) habits.take(2).forEach { c.habits.toggle(it.id, day) }
+        seedHabits(c, day, evening)
+        seedJournal(c, day)
 
         seedMoney(c, day, moneyLogged)
         seedPlan(c, day, plan)
@@ -125,6 +125,39 @@ object DebugSeed {
                 todo("Home", "Fix the shelf", 1)
                 todo("Errands", "Return the parcel", 0)
             }
+        }
+    }
+
+    /** Frame 24: Read, Walk, Vitamins (not on Today), Stretch with the last six days of history; today as on the Today frame. */
+    private suspend fun seedHabits(c: AppContainer, day: LocalDate, evening: Boolean) {
+        val past = listOf(
+            "Read 10 pages" to "111101", "Walk" to "101011", "Vitamins" to "111111", "Stretch" to "010001",
+        )
+        val habits = past.mapIndexed { i, (n, _) -> HabitEntity(newId(), n, sort = i, showOnToday = n != "Vitamins") }
+        habits.forEach { c.habits.save(it) }
+        habits.forEachIndexed { i, h -> past[i].second.forEachIndexed { d, ch -> if (ch == '1') c.habits.toggle(h.id, day.minusDays(6L - d)) } }
+        if (!evening) habits.filter { it.name == "Read 10 pages" || it.name == "Walk" }.forEach { c.habits.toggle(it.id, day) }
+    }
+
+    /** Frames 08 and 26: 14 September entries (27th "Walk in the park", 25th "Finally finished the book") and "A slow Sunday" on 4 October. Entries after [day] are skipped. */
+    private suspend fun seedJournal(c: AppContainer, day: LocalDate) {
+        val sept = listOf(2, 4, 5, 7, 9, 10, 12, 14, 15, 18, 20, 23, 25, 27)
+        val titles = mapOf(27 to ("Walk in the park" to "calm"), 25 to ("Finally finished the book" to "good"))
+        fun save(date: LocalDate, title: String, mood: String, body: String) = JournalEntryEntity(
+            "seed-journal-$date", date.toEpochDay(), title, body, mood, createdAt = LocalDateTime.of(date, LocalTime.of(21, 0)).toEpochMillis(),
+        )
+        sept.map { LocalDate.of(2026, 9, it) }.filter { it <= day }.forEach {
+            val (t, m) = titles[it.dayOfMonth] ?: ("A quiet day" to "calm")
+            c.journal.save(save(it, t, m, "Notes from the ${it.dayOfMonth}th."))
+        }
+        val sunday = LocalDate.of(2026, 10, 4)
+        if (sunday <= day) {
+            c.journal.save(
+                save(
+                    sunday, "A slow Sunday", "calm",
+                    "Slept in without the alarm. Made coffee and sat by the window for a while before doing anything at all.\nWalked to the market later. Bought too many tomatoes",
+                ),
+            )
         }
     }
 }

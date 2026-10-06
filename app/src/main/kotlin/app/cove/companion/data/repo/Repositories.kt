@@ -126,7 +126,13 @@ class HabitRepository(private val db: CoveDatabase, private val clock: Clock, pr
         log.mark("habits", habit.id)
     }
 
-    /** Toggles today's tick for [habitId]. */
+    suspend fun get(id: String) = db.habits().get(id)
+
+    suspend fun delete(id: String) {
+        db.habits().get(id)?.let { save(it.copy(deletedAt = clock.now())) }
+    }
+
+    /** Toggles the tick for [habitId] on [day] (callers pass the day from the app clock). */
     suspend fun toggle(habitId: String, day: LocalDate = LocalDate.now()) {
         val existing = db.habits().log(habitId, day.toEpochDay())
         val entry = existing?.copy(deletedAt = if (existing.deletedAt == null) clock.now() else null)
@@ -191,6 +197,13 @@ class JournalRepository(private val db: CoveDatabase, private val clock: Clock, 
     suspend fun saveMedia(media: JournalMediaEntity) {
         db.journal().upsertMedia(media.copy(updatedAt = clock.now()))
         log.mark("journal_media", media.id)
+    }
+
+    suspend fun get(id: String) = db.journal().get(id)
+
+    /** Soft-deletes the entry. */
+    suspend fun delete(id: String) {
+        db.journal().get(id)?.let { save(it.copy(deletedAt = clock.now())) }
     }
 
     suspend fun newEntry(day: LocalDate = LocalDate.now()) = JournalEntryEntity(

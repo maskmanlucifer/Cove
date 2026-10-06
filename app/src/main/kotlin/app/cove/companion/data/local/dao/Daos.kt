@@ -99,6 +99,9 @@ interface HabitDao {
     @Query("SELECT * FROM habit_logs WHERE deletedAt IS NULL AND day BETWEEN :from AND :to")
     fun observeLogs(from: Long, to: Long): Flow<List<HabitLogEntity>>
 
+    @Query("SELECT * FROM habits WHERE id = :id")
+    suspend fun get(id: String): HabitEntity?
+
     @Query("SELECT * FROM habit_logs WHERE habitId = :habitId AND day = :day")
     suspend fun log(habitId: String, day: Long): HabitLogEntity?
 
@@ -161,6 +164,12 @@ interface JournalDao {
 
     @Query("SELECT * FROM search_index")
     suspend fun allIndex(): List<SearchIndexEntity>
+
+    @Query("SELECT * FROM search_index WHERE entryId = :entryId")
+    suspend fun index(entryId: String): SearchIndexEntity?
+
+    @Query("SELECT * FROM journal_media WHERE deletedAt IS NULL AND entryId = :entryId")
+    suspend fun mediaOf(entryId: String): List<JournalMediaEntity>
 }
 
 @Dao
