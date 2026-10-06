@@ -1,5 +1,6 @@
 package app.cove.companion.ai.provider.rules
 
+import app.cove.companion.ai.model.ExerciseNames
 import app.cove.companion.ai.model.SpokenSet
 
 /** Sets read out of a transcript: the lift ([exercise], null when none was named), the sets and a unit when one was said. */

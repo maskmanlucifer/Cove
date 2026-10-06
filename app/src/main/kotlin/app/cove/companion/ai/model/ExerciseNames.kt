@@ -1,4 +1,4 @@
-package app.cove.companion.ai.provider.rules
+package app.cove.companion.ai.model
 
 /** A lift found in a transcript: its [name] and where the words sit in the searched text. */
 data class ExerciseMatch(val name: String, val range: IntRange)

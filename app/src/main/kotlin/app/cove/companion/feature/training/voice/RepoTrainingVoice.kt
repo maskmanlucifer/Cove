@@ -2,7 +2,7 @@ package app.cove.companion.feature.training.voice
 
 import app.cove.companion.AppContainer
 import app.cove.companion.ai.model.VoiceIntent
-import app.cove.companion.ai.provider.rules.ExerciseNames
+import app.cove.companion.ai.model.ExerciseNames
 import app.cove.companion.core.newId
 import app.cove.companion.core.toLocalDate
 import app.cove.companion.data.local.entity.ExerciseEntity
