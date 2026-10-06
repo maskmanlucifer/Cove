@@ -18,7 +18,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.GenericShape
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.Intent
+import android.provider.Settings
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,6 +37,11 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -56,7 +66,10 @@ fun BriefScreen(nav: Nav) {
     val s by vm.player.state.collectAsState()
     val offline = rememberIsOffline()
     var textMode by rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
     val c = Cove.colors
+    // Nothing can be spoken on this phone: show the script as text so the brief is still useful.
+    LaunchedEffect(s.problem) { if (s.problem != null) textMode = true }
     CoveScreen {
         Column(
             Modifier.fillMaxSize().coveTopInset().padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 40.dp),
@@ -64,6 +77,9 @@ fun BriefScreen(nav: Nav) {
         ) {
             Header(s, offline, nav)
             NowReading(s)
+            s.problem?.let { problem ->
+                ReadAloudNotice(problem, onText = { textMode = true }, onSettings = { openVoiceSettings(context) }, onRetry = vm.player::play)
+            }
             if (textMode) {
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     s.segments.forEachIndexed { i, seg ->
@@ -82,6 +98,50 @@ fun BriefScreen(nav: Nav) {
             }
             Scrubber(s)
             Controls(s, vm.player, textMode) { textMode = !textMode }
+        }
+    }
+}
+
+/** Calm explanation for a phone that cannot read aloud, with the text view as the way forward. */
+@Composable
+private fun ReadAloudNotice(problem: TtsProblem, onText: () -> Unit, onSettings: () -> Unit, onRetry: () -> Unit) {
+    val c = Cove.colors
+    val message = when (problem) {
+        TtsProblem.LanguageMissing -> "This phone has no English voice installed. You can read the brief here instead."
+        TtsProblem.Timeout -> "The voice is taking too long to start. You can read the brief here instead."
+        else -> "Can’t read aloud on this phone. You can read the brief here instead."
+    }
+    Column(
+        Modifier.fillMaxWidth().background(c.card, RoundedCornerShape(20.dp)).padding(16.dp).semantics { liveRegion = LiveRegionMode.Polite },
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        CoveText(message, style = CoveType.Meta, color = c.muted)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            NoticeAction("Read as text", onText)
+            NoticeAction("Voice settings", onSettings)
+            NoticeAction("Try again", onRetry)
+        }
+    }
+}
+
+@Composable
+private fun NoticeAction(label: String, onClick: () -> Unit) {
+    Box(Modifier.heightIn(min = 48.dp).pressable(onClick).padding(horizontal = 6.dp), contentAlignment = Alignment.Center) {
+        CoveText(label, style = CoveType.Meta.copy(fontWeight = FontWeight.Medium))
+    }
+}
+
+/** Opens the system's text-to-speech page, falling back to Settings when this phone has none. */
+private fun openVoiceSettings(context: Context) {
+    val intents = listOf(Intent("com.android.settings.TTS_SETTINGS"), Intent(Settings.ACTION_SETTINGS))
+    for (intent in intents) {
+        try {
+            context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            return
+        } catch (e: ActivityNotFoundException) {
+            continue
+        } catch (e: SecurityException) {
+            continue
         }
     }
 }
@@ -134,7 +194,13 @@ private fun ChipRow(i: Int, title: String, current: Int, onClick: () -> Unit) {
 @Composable
 private fun Scrubber(s: PlayerState) {
     val c = Cove.colors
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(
+        Modifier.semantics(mergeDescendants = true) {
+            contentDescription = "Brief progress"
+            stateDescription = "${BriefTiming.clock(s.elapsedSeconds)} of ${BriefTiming.clock(s.totalSeconds)}"
+        },
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         val track = if (c.isDark) c.wellStrong else Color(0xFFE4E4E1)
         Box(Modifier.fillMaxWidth().height(4.dp).background(track, RoundedCornerShape(2.dp))) {
             Box(Modifier.fillMaxWidth(s.progress.coerceIn(0f, 1f)).fillMaxHeight().background(c.ink, RoundedCornerShape(2.dp)))
@@ -154,14 +220,14 @@ private fun Controls(s: PlayerState, player: BriefPlayer, textMode: Boolean, onT
     val speed = if (s.speed == 1f) "1×" else "${s.speed}×"
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
         Cell(player::cycleSpeed, label = "Speed $speed") { CoveText(speed, style = CoveType.Meta, color = c.muted) }
-        Cell(player::previous, label = "Previous") { CoveIcon(CoveIcons.Previous, c.ink) }
+        Cell(player::previous, label = "Previous section") { CoveIcon(CoveIcons.Previous, c.ink) }
         Box(
             Modifier.size(61.5.dp, 76.dp).clip(oval).background(c.ink).pressable(player::toggle, role = Role.Button)
                 .semantics { contentDescription = if (s.playing) "Pause" else "Play" },
             contentAlignment = Alignment.Center,
         ) { CoveIcon(if (s.playing) CoveIcons.Pause else CoveIcons.Play, c.onInk) }
-        Cell(player::next, label = "Next") { CoveIcon(CoveIcons.Next, c.ink) }
-        Cell(onText) { CoveText("Text", style = CoveType.Meta, color = if (textMode) c.ink else c.muted) }
+        Cell(player::next, label = "Next section") { CoveIcon(CoveIcons.Next, c.ink) }
+        Cell(onText, label = if (textMode) "Text view, on" else "Text view, off") { CoveText("Text", style = CoveType.Meta, color = if (textMode) c.ink else c.muted) }
     }
 }
 

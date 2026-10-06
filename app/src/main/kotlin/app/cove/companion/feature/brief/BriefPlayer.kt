@@ -17,6 +17,8 @@ data class PlayerState(
     val finished: Boolean = false,
     /** Debug only: fixed (elapsed, total) seconds shown instead of the estimate. */
     val fixed: Pair<Int, Int>? = null,
+    /** Set when this phone cannot read aloud; the screen explains and offers the text view. */
+    val problem: TtsProblem? = null,
 ) {
     val current: BriefSegment? get() = segments.getOrNull(index)
     val chunks: List<SpeechChunk> get() = current?.let { BriefTiming.chunks(it.text) }.orEmpty()
@@ -63,8 +65,13 @@ class BriefPlayer(private val speech: () -> SpeechOut, private val today: suspen
     fun play() {
         val s = _state.value
         if (s.segments.isEmpty()) return
+        if (s.problem != null) {
+            // Try again with a fresh engine: the user may have installed or enabled one since.
+            out?.shutdown()
+            out = null
+        }
         val from = if (s.finished) PlayerState(s.segments, speed = s.speed) else s
-        _state.value = from.copy(playing = true, finished = false)
+        _state.value = from.copy(playing = true, finished = false, problem = null)
         speakFrom(from.index, from.chunk)
     }
 
@@ -125,6 +132,11 @@ class BriefPlayer(private val speech: () -> SpeechOut, private val today: suspen
     private fun parse(id: String): Triple<Int, Int, Int>? {
         val p = id.split(":").mapNotNull { it.toIntOrNull() }
         return if (p.size == 3 && p[0] == run) Triple(p[0], p[1], p[2]) else null
+    }
+
+    override fun onProblem(problem: TtsProblem) {
+        run++
+        _state.update { it.copy(playing = false, problem = problem) }
     }
 
     override fun onStart(id: String) {

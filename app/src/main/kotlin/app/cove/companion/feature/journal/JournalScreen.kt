@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -26,12 +29,16 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cove.companion.core.appViewModel
+import app.cove.companion.core.longLabel
 import app.cove.companion.design.Cove
 import app.cove.companion.design.CoveShapes
 import app.cove.companion.design.CoveType
@@ -39,6 +46,7 @@ import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.DockClearance
 import app.cove.companion.design.components.Hairline
 import app.cove.companion.design.components.PillButton
+import app.cove.companion.design.components.UndoHost
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.design.components.pressable
 import app.cove.companion.navigation.Nav
@@ -55,33 +63,59 @@ private val WeekdayStyle = CoveType.Label.copy(fontSize = 12.sp, fontWeight = Fo
 fun JournalScreen(nav: Nav) {
     val vm = appViewModel { JournalViewModel(it) }
     val s by vm.state.collectAsState()
-    LazyColumn(
-        Modifier.fillMaxSize().coveTopInset(),
-        contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 20.dp, bottom = DockClearance),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
-    ) {
-        item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                CoveText("Journal", style = CoveType.Title)
-                PillButton("Write", { nav.go(Routes.journalEdit()) })
-            }
-        }
-        item { MonthCard(s, onShift = vm::shift) { date -> vm.routeFor(date)?.let(nav.go) } }
-        if (s.empty) {
-            item { CoveText("Nothing here yet. Write a few lines whenever you like.", style = CoveType.Meta, color = Cove.colors.muted) }
-        } else {
-            itemsIndexed(s.recent, key = { _, e -> e.id }) { i, e ->
-                Column {
-                    if (i > 0) Hairline()
-                    Column(
-                        Modifier.fillMaxWidth().heightIn(min = 72.dp).pressable({ nav.go(Routes.journalEdit(e.id)) }, role = Role.Button).semantics(mergeDescendants = true) {},
-                        verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
-                    ) {
-                        CoveText(e.meta, style = CoveType.Meta, color = Cove.colors.muted)
-                        CoveText(e.title, style = CoveType.BodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
+    Box(Modifier.fillMaxSize()) {
+        LazyColumn(
+            Modifier.fillMaxSize().coveTopInset(),
+            contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 20.dp, bottom = DockClearance),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+        ) {
+            item {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    CoveText("Journal", style = CoveType.Title)
+                    PillButton("Write", { nav.go(Routes.journalEdit()) })
                 }
             }
+            item { MonthCard(s, onShift = vm::shift) { date -> vm.tapDay(date)?.let(nav.go) } }
+            val selected = s.selected
+            when {
+                s.empty -> item { CoveText("Nothing here yet. Write a few lines whenever you like.", style = CoveType.Meta, color = Cove.colors.muted) }
+                selected != null -> dayEntries(selected, s.selectedEntries, nav)
+                else -> entryRows(s.recent, nav)
+            }
+        }
+        UndoHost("journal", Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = 112.dp))
+    }
+}
+
+/** Entry rows separated by hairlines; each row opens its entry. */
+private fun LazyListScope.entryRows(entries: List<RecentEntry>, nav: Nav) {
+    itemsIndexed(entries, key = { _, e -> e.id }) { i, e ->
+        Column {
+            if (i > 0) Hairline()
+            Column(
+                Modifier.fillMaxWidth().heightIn(min = 72.dp)
+                    .pressable({ nav.go(Routes.journalEdit(e.id)) }, role = Role.Button).semantics(mergeDescendants = true) {}
+                    .padding(vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
+            ) {
+                CoveText(e.meta, style = CoveType.Meta, color = Cove.colors.muted)
+                CoveText(e.title, style = CoveType.BodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+
+/** Every entry of a day that has several, plus a way to add one more. */
+private fun LazyListScope.dayEntries(day: LocalDate, entries: List<RecentEntry>, nav: Nav) {
+    item { CoveText(day.longLabel() + " · " + entriesText(entries.size), Modifier.padding(bottom = 4.dp), style = CoveType.Meta, color = Cove.colors.muted) }
+    entryRows(entries, nav)
+    item {
+        Column {
+            Hairline()
+            Box(
+                Modifier.fillMaxWidth().heightIn(min = 56.dp).pressable({ nav.go(journalNewRoute(day)) }, role = Role.Button),
+                contentAlignment = Alignment.CenterStart,
+            ) { CoveText("Write another", style = CoveType.BodyMedium, color = Cove.colors.muted) }
         }
     }
 }
@@ -117,11 +151,12 @@ private fun MonthCard(s: JournalMonthState, onShift: (Long) -> Unit, onDay: (Loc
             }
             val slots = s.grid.leading + s.grid.cells.size
             repeat((slots + 6) / 7) { week ->
-                Row(Modifier.fillMaxWidth()) {
+                // Rows keep the design's 40 dp but grow with the font size so large text never touches the next row.
+                Row(Modifier.fillMaxWidth().height(IntrinsicSize.Max)) {
                     repeat(7) { col ->
                         val cell = s.grid.cells.getOrNull(week * 7 + col - s.grid.leading)
-                        Box(Modifier.weight(1f).height(40.dp)) {
-                            if (cell != null) DayCell(cell, cell.date == s.today) { onDay(cell.date) }
+                        Box(Modifier.weight(1f).fillMaxHeight().defaultMinSize(minHeight = 40.dp)) {
+                            if (cell != null) DayCell(cell, cell.date == s.today || cell.date == s.selected) { onDay(cell.date) }
                         }
                     }
                 }
@@ -138,7 +173,11 @@ private fun DayCell(cell: MonthCell, selected: Boolean, onClick: () -> Unit) {
         Modifier
             .fillMaxSize()
             .background(if (selected) c.ink else Color.Transparent, RoundedCornerShape(12.dp))
-            .pressable(onClick),
+            .pressable(onClick)
+            .semantics(mergeDescendants = true) {
+                contentDescription = cell.date.longLabel() + if (cell.hasEntry) ", has an entry" else ""
+                role = Role.Button
+            },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterVertically),
     ) {

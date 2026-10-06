@@ -27,6 +27,35 @@ object MoneyMath {
     /** Rounds to whole rupees for display, e.g. 1157950 -> "₹11,580". */
     fun wholeRupees(paise: Long): String = rupees((paise + 50) / 100 * 100)
 
+    /** One crore in paise; amounts from here up are abbreviated where space is tight. */
+    const val CRORE_PAISE = 1_00_00_000L * 100
+
+    /** Amount for a screen reader: "9,99,999 rupees" (with the word, since the symbol is read inconsistently). */
+    fun spokenRupees(paise: Long): String {
+        val r = rupees(paise).removePrefix("₹")
+        return "$r rupees"
+    }
+
+    /** "₹20 Cr" style amount for totals that would not fit; below a crore this is [wholeRupees]. */
+    fun compactRupees(paise: Long): String {
+        if (paise < CRORE_PAISE) return wholeRupees(paise)
+        val tenths = (paise / (CRORE_PAISE / 10.0)).roundToLong()
+        val whole = rupees((tenths / 10) * 100).removePrefix("₹")
+        return "₹" + whole + (if (tenths % 10 == 0L) "" else ".${tenths % 10}") + " Cr"
+    }
+
+    /**
+     * Keeps the [limit] biggest rows and folds the rest into one "Other" row, so the rows always add up to the total.
+     * A single leftover row is kept as it is.
+     */
+    fun collapseRows(rows: List<MoneyRow>, limit: Int = 4): List<MoneyRow> {
+        val sorted = rows.sortedByDescending { it.spent }
+        if (sorted.size <= limit) return sorted
+        val rest = sorted.drop(limit)
+        val tail = rest.singleOrNull() ?: MoneyRow(null, "Other", rest.sumOf { it.spent }, 0)
+        return sorted.take(limit) + tail
+    }
+
     fun spentOf(expenses: List<ExpenseEntity>): Long = expenses.filter { it.kind == "spent" }.sumOf { it.amountPaise }
 
     /** Days left in the month after [today]. */

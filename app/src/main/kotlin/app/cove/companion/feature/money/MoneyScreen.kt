@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,9 +19,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import app.cove.companion.core.rupeesSpoken
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import app.cove.companion.core.appViewModel
 import app.cove.companion.core.rupees
@@ -30,6 +31,7 @@ import app.cove.companion.design.CoveIcons
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.DockClearance
+import app.cove.companion.design.components.FitText
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.design.components.pressable
 import app.cove.companion.navigation.Nav
@@ -53,16 +55,19 @@ fun MoneyScreen(nav: Nav) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                 CoveText("Money", style = CoveType.Title)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Box(Modifier.height(44.dp).pressable({ nav.go(Routes.MoneyCategories) }).padding(horizontal = 4.dp), contentAlignment = Alignment.Center) {
+                    Box(Modifier.height(44.dp).requiredHeight(48.dp).pressable({ nav.go(Routes.MoneyCategories) }).padding(horizontal = 4.dp), contentAlignment = Alignment.Center) {
                         CoveText("Categories", style = CoveType.Meta, color = c.muted)
                     }
-                    RoundIconButton(CoveIcons.Plus, { nav.go(Routes.expenseEdit()) })
+                    RoundIconButton(CoveIcons.Plus, { nav.go(Routes.expenseEdit()) }, "Add expense")
                 }
             }
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 CoveText("Spent so far · ${s.month}", style = CoveType.Meta, color = c.muted)
                 val figure = rupees(s.spent, decimals = true)
-                CoveText(figure.substringBefore('.'), "." + figure.substringAfter('.'), Modifier.semantics { contentDescription = rupeesSpoken(s.spent) }, style = CoveType.Figure)
+                FitText(
+                    figure.substringBefore('.'), Modifier.fillMaxWidth().semantics { contentDescription = MoneyMath.spokenRupees(s.spent) },
+                    style = CoveType.Figure, secondary = "." + figure.substringAfter('.'),
+                )
                 CoveText(summaryLine(s), style = MoneyType.Sub, color = c.muted)
             }
             DailyBars(s.bars)
@@ -101,23 +106,40 @@ private fun DailyBars(bars: List<DayBar>) {
 
 @Composable
 private fun CategoryCard(rows: List<MoneyRow>, nav: Nav) {
+    val stacked = LocalDensity.current.fontScale > 1.3f
     RowsCard {
         rows.forEachIndexed { i, row ->
             if (i > 0) RowDivider()
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 52.dp)
-                    .pressable({ row.id?.let { nav.go(Routes.moneyCategoryDetail(it)) } }, enabled = row.id != null),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                CoveText(row.name, style = MoneyType.Row)
-                Row(verticalAlignment = Alignment.Bottom) {
-                    CoveText(MoneyMath.wholeRupees(row.spent), style = MoneyType.Row)
-                    MoneyMath.overInline(row.spent, row.budget)?.let { CoveText(it, style = MoneyType.Small, color = Cove.colors.tail) }
+            val open = { nav.go(row.id?.let { Routes.moneyCategoryDetail(it) } ?: Routes.MoneyCategories) }
+            val spoken = "${row.name}, ${MoneyMath.spokenRupees(row.spent)}" + (MoneyMath.overInline(row.spent, row.budget)?.let { ", " + it.removePrefix(" · ") } ?: "")
+            val rowModifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).pressable(open).semantics(mergeDescendants = true) { contentDescription = spoken }
+            if (stacked) {
+                Column(rowModifier.padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    CoveText(row.name, style = MoneyType.Row)
+                    CategoryValue(row, stacked = true)
+                }
+            } else {
+                Row(rowModifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                    CoveText(row.name, Modifier.weight(1f, fill = false), style = MoneyType.Row, maxLines = 1)
+                    CategoryValue(row)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun CategoryValue(row: MoneyRow, stacked: Boolean = false) {
+    val over = MoneyMath.overInline(row.spent, row.budget)
+    if (stacked) {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            CoveText(MoneyMath.wholeRupees(row.spent), style = MoneyType.Row)
+            over?.let { CoveText(it.removePrefix(" · "), style = MoneyType.Small, color = Cove.colors.tail) }
+        }
+    } else {
+        Row(verticalAlignment = Alignment.Bottom) {
+            CoveText(MoneyMath.wholeRupees(row.spent), style = MoneyType.Row)
+            over?.let { CoveText(it, style = MoneyType.Small, color = Cove.colors.tail) }
         }
     }
 }

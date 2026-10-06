@@ -33,10 +33,20 @@ fun reminderWhen(at: Long, today: LocalDate): String {
     return day + shortTime(t)
 }
 
-/** One-line description of a draft, as listed in the result and partial cards. */
-fun describe(intent: VoiceIntent, today: LocalDate): String = when (intent) {
+/** " today" or " tomorrow" for a one-off alarm at [minutes] given the clock's [nowMinutes]; empty for repeating alarms or when unknown. */
+fun alarmDay(minutes: Int, daysMask: Int, nowMinutes: Int?): String = when {
+    nowMinutes == null || daysMask != 0 -> ""
+    minutes > nowMinutes -> " today"
+    else -> " tomorrow"
+}
+
+/**
+ * One-line description of a draft, as listed in the result and partial cards. [nowMinutes] (minutes since midnight)
+ * lets a one-off alarm say whether it rings today or tomorrow.
+ */
+fun describe(intent: VoiceIntent, today: LocalDate, nowMinutes: Int? = null): String = when (intent) {
     is VoiceIntent.SetAlarm ->
-        "Alarm for ${time(intent.minutes)}" + (intent.label.takeIf { it != "Alarm" }?.let { " · $it" } ?: "") + repeatText(intent.daysMask)
+        "Alarm for ${time(intent.minutes)}" + alarmDay(intent.minutes, intent.daysMask, nowMinutes) + (intent.label.takeIf { it != "Alarm" }?.let { " · $it" } ?: "") + repeatText(intent.daysMask)
     is VoiceIntent.ChangeAlarm -> "Move alarm to ${time(intent.minutes)}"
     is VoiceIntent.AddReminder -> {
         val whenText = intent.at?.let { reminderWhen(it, today) }
@@ -46,6 +56,7 @@ fun describe(intent: VoiceIntent, today: LocalDate): String = when (intent) {
     is VoiceIntent.LogExpense ->
         (if (intent.received) "Received " else "Spent ") + rupees(intent.amountPaise) + (intent.note.takeIf { it.isNotEmpty() }?.let { " · $it" } ?: "")
     is VoiceIntent.LogHabit -> "Tick ${intent.name}"
+    is VoiceIntent.AddHabit -> "Add a habit called ${intent.name}"
     is VoiceIntent.JournalNote -> "Journal: " + intent.text.take(40) + if (intent.text.length > 40) "…" else ""
     is VoiceIntent.AddTodos -> intent.items.joinToString { it.title }
     VoiceIntent.QueryNext -> "What's next"
@@ -53,14 +64,16 @@ fun describe(intent: VoiceIntent, today: LocalDate): String = when (intent) {
 }
 
 /** Headline pair (primary, muted tail) for the result screen. */
-fun resultHeadline(intents: List<VoiceIntent>, today: LocalDate): Pair<String, String> {
+fun resultHeadline(intents: List<VoiceIntent>, today: LocalDate, nowMinutes: Int? = null): Pair<String, String> {
     val todos = intents.filterIsInstance<VoiceIntent.AddTodos>().sumOf { it.items.size }
     val single = intents.singleOrNull()
     return when {
         todos > 0 && intents.size == 1 -> (if (todos == 1) "One to-do." else "${countWord(todos)} to-dos.") to " Sorted for you."
-        single is VoiceIntent.SetAlarm -> "Alarm for ${time(single.minutes)}." to " Check the time."
+        single is VoiceIntent.SetAlarm -> "Alarm for ${time(single.minutes)}." to
+            (alarmDay(single.minutes, single.daysMask, nowMinutes).trim().replaceFirstChar { it.uppercase() }.let { if (it.isEmpty()) " Check the time." else " $it. Check the time." })
         single is VoiceIntent.ChangeAlarm -> "Move it to ${time(single.minutes)}." to " Check the time."
         single is VoiceIntent.AddReminder -> "A reminder." to (single.at?.let { " ${reminderWhen(it, today).replaceFirstChar { c -> c.uppercase() }}." } ?: " No time set.")
+        single is VoiceIntent.AddHabit -> "A new habit." to " Called ${single.name}."
         single is VoiceIntent.LogHabit -> "Tick ${single.name}." to " Just one tap."
         single is VoiceIntent.JournalNote -> "A journal note." to " Kept on this phone."
         else -> "${countWord(intents.size)} things." to " Check them over."

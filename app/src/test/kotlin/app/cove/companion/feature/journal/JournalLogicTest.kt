@@ -30,4 +30,16 @@ class JournalLogicTest {
         assertNull(newEntryDay("new"))
         assertNull(newEntryDay("3f2a-uuid"))
     }
+
+    @Test fun recentMetaAddsTheMonthOnlyOutsideThisMonth() {
+        val today = LocalDate.of(2026, 10, 6)
+        assertEquals("Sun 4 · calm", recentMeta(LocalDate.of(2026, 10, 4), "calm", today))
+        assertEquals("Sun 27 Sep", recentMeta(LocalDate.of(2026, 9, 27), null, today))
+    }
+
+    @Test fun moodOnlyEntriesAreNeverUntitled() {
+        val e = app.cove.companion.data.local.entity.JournalEntryEntity("a", 0, mood = "calm", createdAt = 0)
+        assertEquals("Feeling calm", e.displayTitle())
+        assertEquals("Untitled", e.copy(mood = null).displayTitle())
+    }
 }

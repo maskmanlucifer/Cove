@@ -23,6 +23,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cove.companion.container
@@ -34,7 +37,7 @@ import app.cove.companion.design.components.pressable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-private const val VISIBLE_MS = 7000L
+private const val VISIBLE_MS = 9000L
 
 /** Frame 20: the dark "Saved 3 to-dos / Undo" chip floating above the dock; Undo really reverts the command. */
 @Composable
@@ -63,6 +66,7 @@ fun UndoToastHost(modifier: Modifier = Modifier) {
                     .height(56.dp)
                     .shadow(32.dp, CoveShapes.Pill, ambientColor = Color(0x33141420), spotColor = Color(0x33141420))
                     .background(c.ink, CoveShapes.Pill)
+                    .semantics { liveRegion = LiveRegionMode.Polite }
                     .padding(start = 20.dp, end = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {

@@ -59,7 +59,7 @@ fun VoiceScreen(nav: Nav) {
         when (state.stage) {
             Stage.Listening -> ListeningView(state, nav.back, vm::typeInstead, vm::finish)
             Stage.Result -> ResultView(state, nowMillis, vm)
-            Stage.Partial -> PartialView(state, nowMillis, vm)
+            Stage.Partial -> PartialView(state, nowMillis, vm, nav.back)
             Stage.Answer -> AnswerView(state) { nav.back() }
             Stage.Typing -> TypingView(
                 state, nav.back, vm::onTyped, vm::submitTyped, vm::listen,

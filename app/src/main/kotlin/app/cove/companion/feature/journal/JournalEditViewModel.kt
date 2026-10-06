@@ -7,6 +7,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.cove.companion.AppContainer
+import app.cove.companion.core.Undo
 import app.cove.companion.core.newId
 import app.cove.companion.core.toLocalDate
 import app.cove.companion.data.local.entity.JournalEntryEntity
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -39,7 +41,12 @@ data class JournalEditState(
     val playback: PlaybackState = PlaybackState(),
     /** Short status per voice note id while it downloads from Drive ("Loading…") or when it cannot be fetched. */
     val voiceHints: Map<String, String> = emptyMap(),
+    /** A short calm note about something that did not work ("Couldn't use that photo"); clears itself. */
+    val notice: String? = null,
 )
+
+/** Area name of the journal's Undo offers. */
+internal const val JOURNAL_UNDO = "journal"
 
 /** Edits one journal entry: debounced autosave, attachments, voice recording and playback. */
 class JournalEditViewModel(private val c: AppContainer, private val routeId: String) : ViewModel() {
@@ -52,6 +59,10 @@ class JournalEditViewModel(private val c: AppContainer, private val routeId: Str
     private lateinit var entry: JournalEntryEntity
     private var persisted = false
     private var loading = true
+
+    /** Set once the entry is deleted, so neither autosave nor leaving the screen can bring it back. */
+    private var deleted = false
+    private var noticeJob: Job? = null
     private var recordJob: Job? = null
     private var playJob: Job? = null
     private var recordingId: String? = null
@@ -85,7 +96,7 @@ class JournalEditViewModel(private val c: AppContainer, private val routeId: Str
 
     /** Writes the draft now. A blank entry with no attachments is not stored. */
     suspend fun save() {
-        if (loading) return
+        if (loading || deleted) return
         val s = _state.value
         val blank = title.text.isBlank() && body.text.isBlank() && s.media.isEmpty()
         if (blank && !persisted) return
@@ -96,29 +107,88 @@ class JournalEditViewModel(private val c: AppContainer, private val routeId: Str
         c.searchIndexer.indexText(entry)
     }
 
-    /** Saves and, while the app is on screen, lets the on-device model add its insights. */
-    suspend fun finish() {
+    /**
+     * Saves and, while the app is on screen, lets the on-device model add its insights. A recording in progress is
+     * kept as a voice note. A mood picked with nothing written joins the day's entry (or becomes "Feeling calm"),
+     * never an untitled one.
+     *
+     * @return true when a recording was stopped and attached.
+     */
+    suspend fun finish(): Boolean {
+        if (deleted) return false
+        val keptRecording = stopRecordingNow()
         save()
+        if (!persisted) saveMoodOnly() else nameMediaOnlyEntry()
         if (persisted) c.appScope.launch { c.searchIndexer.enrich(entry) }
+        return keptRecording
     }
 
-    /** Soft-deletes the entry and its attachments. */
+    /** An entry that holds only a voice note or photos gets that as its title, never "Untitled". */
+    private suspend fun nameMediaOnlyEntry() {
+        if (title.text.isNotBlank() || body.text.isNotBlank()) return
+        val first = _state.value.media.firstOrNull() ?: return
+        entry = entry.copy(title = if (first.kind == "voice") "Voice note" else "Photo")
+        c.journal.save(entry)
+    }
+
+    private suspend fun saveMoodOnly() {
+        val mood = _state.value.mood ?: return
+        if (title.text.isNotBlank() || body.text.isNotBlank()) return
+        val sameDay = c.journal.entries.first().firstOrNull { it.day == entry.day }
+        if (sameDay != null) {
+            c.journal.save(sameDay.copy(mood = mood))
+        } else {
+            entry = entry.copy(title = "Feeling $mood", mood = mood)
+            c.journal.save(entry)
+            persisted = true
+        }
+    }
+
+    /** Soft-deletes the entry and its attachments and offers "Entry deleted · Undo" where the user lands. */
     suspend fun delete() {
+        if (deleted) return
+        deleted = true
+        loading = true
         if (!persisted) return
-        _state.value.media.forEach { c.journalMedia.remove(it) }
-        c.journal.delete(entry.id)
-        c.journalSearch.remove(entry.id)
+        val snapshot = entry.copy(title = title.text.toString(), body = body.text.toString(), mood = _state.value.mood)
+        val media = _state.value.media
+        media.forEach { c.journalMedia.softRemove(it) }
+        c.journal.delete(snapshot.id)
+        c.journalSearch.remove(snapshot.id)
         persisted = false
+        Undo.center.post(JOURNAL_UNDO, "Entry deleted", onExpire = { media.forEach { c.journalMedia.deleteFiles(it) } }) {
+            c.journal.save(snapshot)
+            media.forEach { c.journalMedia.restore(it) }
+            c.searchIndexer.indexText(snapshot)
+        }
+    }
+
+    private fun notice(text: String) {
+        _state.update { it.copy(notice = text) }
+        noticeJob?.cancel()
+        noticeJob = viewModelScope.launch {
+            delay(NOTICE_MS)
+            _state.update { it.copy(notice = null) }
+        }
     }
 
     fun addPhoto(uri: Uri) {
         viewModelScope.launch {
+            if (deleted) return@launch
             ensurePersisted()
-            c.journalMedia.addPhoto(entry.id, uri)
+            val added = c.journalMedia.addPhoto(entry.id, uri)
             cameraTarget?.first?.delete()
             cameraTarget = null
+            if (added == null) notice("Couldn’t use that photo")
             save()
         }
+    }
+
+    /** Called when this phone has no camera app to take the picture. */
+    fun cameraUnavailable() {
+        cameraTarget?.first?.delete()
+        cameraTarget = null
+        notice("No camera app found. Try choosing a photo from your library.")
     }
 
     fun newCameraUri(): Uri = c.journalFiles.newCameraTarget().also { cameraTarget = it }.second
@@ -126,15 +196,20 @@ class JournalEditViewModel(private val c: AppContainer, private val routeId: Str
     fun removeMedia(media: JournalMediaEntity) {
         if (player.state.value.id == media.id) player.stop()
         viewModelScope.launch {
-            c.journalMedia.remove(media)
+            c.journalMedia.softRemove(media)
             save()
+            val what = if (media.kind == "photo") "Photo removed" else "Voice note removed"
+            Undo.center.post(JOURNAL_UNDO, what, onExpire = { c.journalMedia.deleteFiles(media) }) { c.journalMedia.restore(media) }
         }
     }
 
     /** Starts a voice note; false when the microphone could not be opened. */
     fun startRecording(): Boolean {
         val id = newId()
-        if (!recorder.start(c.journalFiles.voice(id))) return false
+        if (!recorder.start(c.journalFiles.voice(id))) {
+            notice("The microphone is busy right now. Try again in a moment.")
+            return false
+        }
         recordingId = id
         player.stop()
         _state.update { it.copy(recordingMs = 0) }
@@ -149,17 +224,21 @@ class JournalEditViewModel(private val c: AppContainer, private val routeId: Str
     }
 
     fun stopRecording() {
+        viewModelScope.launch { stopRecordingNow() }
+    }
+
+    /** Stops recording and attaches the note; false when nothing was recording. */
+    private suspend fun stopRecordingNow(): Boolean {
         recordJob?.cancel()
-        val id = recordingId ?: return
+        val id = recordingId ?: return false
         recordingId = null
         val recording = recorder.stop()
         _state.update { it.copy(recordingMs = null) }
-        if (recording == null) return
-        viewModelScope.launch {
-            ensurePersisted()
-            c.journalMedia.addVoice(entry.id, id, recording)
-            save()
-        }
+        if (recording == null || deleted) return false
+        ensurePersisted()
+        c.journalMedia.addVoice(entry.id, id, recording)
+        save()
+        return true
     }
 
     /** Plays or pauses the voice note [media]. */
@@ -194,7 +273,7 @@ class JournalEditViewModel(private val c: AppContainer, private val routeId: Str
         _state.update { it.copy(voiceHints = if (text == null) it.voiceHints - id else it.voiceHints + (id to text)) }
 
     private suspend fun ensurePersisted() {
-        if (!persisted) {
+        if (!persisted && !deleted) {
             entry = entry.copy(title = title.text.toString(), body = body.text.toString(), mood = _state.value.mood)
             c.journal.save(entry)
             persisted = true
@@ -209,5 +288,6 @@ class JournalEditViewModel(private val c: AppContainer, private val routeId: Str
 
     private companion object {
         const val AUTOSAVE_MS = 700L
+        const val NOTICE_MS = 4000L
     }
 }

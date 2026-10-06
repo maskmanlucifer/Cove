@@ -3,6 +3,7 @@ package app.cove.companion.feature.money
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.cove.companion.AppContainer
+import app.cove.companion.core.Undo
 import app.cove.companion.core.newId
 import app.cove.companion.core.toLocalDate
 import app.cove.companion.data.categorize.CategoryTokens
@@ -79,6 +80,19 @@ class CategoryDetailViewModel(c: AppContainer, id: String) : ViewModel() {
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CategoryDetailState())
 }
 
+/** Outcome of checking a category name; null from [validate] means it is fine. */
+object CategoryNames {
+    const val BLANK = "Add a name to continue"
+    const val TAKEN = "That name is already used"
+
+    /** Why [name] cannot be used, or null. [others] are the names of the other live categories. */
+    fun validate(name: String, others: List<String>): String? = when {
+        name.isBlank() -> BLANK
+        others.any { it.trim().equals(name.trim(), ignoreCase = true) } -> TAKEN
+        else -> null
+    }
+}
+
 data class CategoryFormState(
     val isNew: Boolean = true,
     val name: String = "",
@@ -89,44 +103,67 @@ data class CategoryFormState(
     val alertAt80: Boolean = true,
     /** Comma-separated words that file here; see [ExpenseCategoryEntity.keywords]. */
     val keywords: String = "",
+    /** Inline guidance under the name: a duplicate name right away, a blank one after a try at saving. */
+    val nameError: String? = null,
+    /** How many expenses are filed here, so Delete can say what moves to Other. */
+    val expenseCount: Int = 0,
+    /** True after typing more digits than a budget can hold, so the screen can say so. */
+    val budgetCapped: Boolean = false,
 )
 
 /** Create or edit a category; [id] is `new` or an existing category id. */
 class CategoryEditViewModel(private val c: AppContainer, private val id: String) : ViewModel() {
     private var existing: ExpenseCategoryEntity? = null
-    private val _state = MutableStateFlow(CategoryFormState(isNew = id == "new"))
-    val state: StateFlow<CategoryFormState> = _state
+
+    /** Id a new category is saved under; fixed for this screen so saving twice rewrites one row. */
+    private val newCategoryId = newId()
+    private val form = MutableStateFlow(CategoryFormState(isNew = id == "new"))
+    private val triedSave = MutableStateFlow(false)
+    private val otherNames = MutableStateFlow<List<String>>(emptyList())
+
+    val state: StateFlow<CategoryFormState> = combine(form, triedSave, otherNames) { f, tried, others ->
+        val error = CategoryNames.validate(f.name, others)
+        f.copy(nameError = error?.takeIf { error == CategoryNames.TAKEN || tried })
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, form.value)
 
     init {
+        viewModelScope.launch {
+            c.money.categories.collect { all -> otherNames.value = all.filter { it.id != id }.map { it.name } }
+        }
         if (id != "new") {
             viewModelScope.launch {
                 c.money.category(id)?.let { e ->
                     existing = e
-                    _state.value = CategoryFormState(
+                    form.value = CategoryFormState(
                         isNew = false, name = e.name, income = e.kind == "income",
                         budget = if (e.budgetPaise > 0) (e.budgetPaise / 100).toString() else "",
                         carryOver = e.carryOver, alertAt80 = e.alertAt80, keywords = e.keywords,
+                        expenseCount = c.money.expenseCount(id),
                     )
                 }
             }
         }
     }
 
-    fun setName(name: String) = _state.update { it.copy(name = name) }
-    fun setIncome(income: Boolean) = _state.update { it.copy(income = income) }
-    fun setBudget(text: String) = _state.update { it.copy(budget = text.filter(Char::isDigit).take(8)) }
-    fun setCarryOver(on: Boolean) = _state.update { it.copy(carryOver = on) }
-    fun setAlert(on: Boolean) = _state.update { it.copy(alertAt80 = on) }
-    fun setKeywords(text: String) = _state.update { it.copy(keywords = text.take(200)) }
+    fun setName(name: String) = form.update { it.copy(name = name) }
+    fun setIncome(income: Boolean) = form.update { it.copy(income = income) }
+    fun setBudget(text: String) = form.update {
+        val digits = text.filter(Char::isDigit)
+        it.copy(budget = digits.take(8), budgetCapped = digits.length > 8)
+    }
+    fun setCarryOver(on: Boolean) = form.update { it.copy(carryOver = on) }
+    fun setAlert(on: Boolean) = form.update { it.copy(alertAt80 = on) }
+    fun setKeywords(text: String) = form.update { it.copy(keywords = text.take(200)) }
 
-    /** Saves the category; false when the name is blank. */
+    /** Saves the category; false when the name is blank or already used (the screen then shows why). */
     suspend fun save(): Boolean {
-        val f = _state.value
+        triedSave.value = true
+        val f = form.value
         val name = f.name.trim()
-        if (name.isEmpty()) return false
+        if (CategoryNames.validate(name, otherNames.value) != null) return false
         val sort = existing?.sort ?: ((c.money.categories.first().maxOfOrNull { it.sort } ?: -1) + 1)
         c.money.saveCategory(
-            (existing ?: ExpenseCategoryEntity(newId(), name, sort = sort)).copy(
+            (existing ?: ExpenseCategoryEntity(newCategoryId, name, sort = sort)).copy(
                 name = name,
                 kind = if (f.income) "income" else "spending",
                 budgetPaise = (f.budget.toLongOrNull() ?: 0L) * 100,
@@ -138,10 +175,12 @@ class CategoryEditViewModel(private val c: AppContainer, private val id: String)
         return true
     }
 
-    fun delete(onDone: () -> Unit) {
-        viewModelScope.launch {
-            c.money.deleteCategory(id)
-            onDone()
-        }
+    /** Deletes the category and offers an Undo that brings it and its expenses back. */
+    suspend fun delete() {
+        val cat = existing ?: return
+        val moved = c.money.deleteCategory(id)
+        val message = if (moved.isEmpty()) "Category deleted"
+        else "Category deleted · ${moved.size} expense${if (moved.size == 1) "" else "s"} moved to Other"
+        Undo.center.post(MONEY_UNDO, message) { c.money.restoreCategory(cat.id, moved) }
     }
 }

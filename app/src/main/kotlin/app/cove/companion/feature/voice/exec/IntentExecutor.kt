@@ -8,6 +8,7 @@ import app.cove.companion.core.toLocalDate
 import app.cove.companion.core.toLocalDateTime
 import app.cove.companion.data.local.entity.AlarmEntity
 import app.cove.companion.data.local.entity.ExpenseEntity
+import app.cove.companion.data.local.entity.HabitEntity
 import app.cove.companion.data.local.entity.JournalEntryEntity
 import app.cove.companion.ai.model.VoiceIntent
 import kotlinx.serialization.Serializable
@@ -25,6 +26,9 @@ data class UndoPayload(
     val expenses: List<String> = emptyList(),
     val habits: List<HabitTick> = emptyList(),
     val journal: List<String> = emptyList(),
+    val habitsCreated: List<String> = emptyList(),
+    /** What undoing says it did, e.g. "removed 'Buy milk'". */
+    val labels: List<String> = emptyList(),
 ) {
     val isEmpty get() = this == UndoPayload()
 }
@@ -69,6 +73,7 @@ class IntentExecutor(private val store: VoiceStore, private val clock: Clock) {
                 acc.copy(
                     todos = acc.todos + u.todos, alarms = acc.alarms + u.alarms, alarmRestore = acc.alarmRestore + u.alarmRestore,
                     expenses = acc.expenses + u.expenses, habits = acc.habits + u.habits, journal = acc.journal + u.journal,
+                    habitsCreated = acc.habitsCreated + u.habitsCreated, labels = acc.labels + u.labels,
                 )
             }
         }
@@ -99,8 +104,9 @@ class IntentExecutor(private val store: VoiceStore, private val clock: Clock) {
             if (store.isHabitTicked(t.habitId, day)) store.toggleHabit(t.habitId, day)
         }
         p.journal.forEach { store.deleteJournal(it) }
+        p.habitsCreated.forEach { store.deleteHabit(it) }
         store.markUndone(cmd.id)
-        return ExecResult(null, "Undone")
+        return ExecResult(null, if (p.labels.isEmpty()) "Undone" else "Undone: " + p.labels.joinToString(", "))
     }
 
     private suspend fun undoLast() = undo(null)
@@ -112,12 +118,13 @@ class IntentExecutor(private val store: VoiceStore, private val clock: Clock) {
         is VoiceIntent.AddReminder -> {
             val todo = store.addTodo(intent.title, null, intent.at, remind = true)
             val whenText = intent.at?.let { " for " + dayTime(it) }.orEmpty()
-            Step("Reminder set$whenText", UndoPayload(todos = listOf(todo.id)))
+            Step("Reminder set$whenText", UndoPayload(todos = listOf(todo.id), labels = listOf("removed reminder '${intent.title}'")))
         }
         is VoiceIntent.SetAlarm -> {
             val kind = if (intent.label.contains("bed", true)) "bedtime" else "wake"
             val alarm = store.saveAlarm(AlarmEntity(newId(), intent.label, intent.minutes, intent.daysMask, kind))
-            Step("Alarm set for ${clockText(intent.minutes).let { it.digits + it.suffix }}", UndoPayload(alarms = listOf(alarm.id)))
+            val at = clockText(intent.minutes).let { it.digits + it.suffix }
+            Step("Alarm set for $at", UndoPayload(alarms = listOf(alarm.id), labels = listOf("removed alarm for $at")))
         }
         is VoiceIntent.ChangeAlarm -> changeAlarm(intent)
         is VoiceIntent.LogExpense -> logExpense(intent)
@@ -126,7 +133,12 @@ class IntentExecutor(private val store: VoiceStore, private val clock: Clock) {
             val now = clock.now()
             val entry = JournalEntryEntity(newId(), now.toLocalDate().toEpochDay(), body = intent.text, createdAt = now)
             store.saveJournal(entry)
-            Step("Saved to your journal", UndoPayload(journal = listOf(entry.id)))
+            Step("Saved to your journal", UndoPayload(journal = listOf(entry.id), labels = listOf("removed journal note")))
+        }
+        is VoiceIntent.AddHabit -> {
+            val habit = HabitEntity(newId(), intent.name, sort = store.habits().size)
+            store.saveHabit(habit)
+            Step("Added habit ${intent.name}", UndoPayload(habitsCreated = listOf(habit.id), labels = listOf("removed habit '${intent.name}'")))
         }
         VoiceIntent.QueryNext, VoiceIntent.UndoLast -> Step(error = "That can't be combined with other requests")
     }
@@ -137,7 +149,8 @@ class IntentExecutor(private val store: VoiceStore, private val clock: Clock) {
             val cat = categories.firstOrNull { it.name.equals(item.category, ignoreCase = true) }
             store.addTodo(item.title, cat?.id, item.dueAt, remind = false).id
         }
-        return Step("Saved ${ids.size} to-do${if (ids.size == 1) "" else "s"}", UndoPayload(todos = ids))
+        val what = intent.items.joinToString(", ") { "'${it.title}'" }
+        return Step("Saved ${ids.size} to-do${if (ids.size == 1) "" else "s"}", UndoPayload(todos = ids, labels = listOf("removed $what")))
     }
 
     private suspend fun changeAlarm(intent: VoiceIntent.ChangeAlarm): Step {
@@ -149,7 +162,7 @@ class IntentExecutor(private val store: VoiceStore, private val clock: Clock) {
         val t = clockText(intent.minutes)
         return Step(
             "Alarm moved to ${t.digits}${t.suffix}",
-            UndoPayload(alarmRestore = listOf(AlarmRestore(target.id, target.minutes, target.enabled))),
+            UndoPayload(alarmRestore = listOf(AlarmRestore(target.id, target.minutes, target.enabled)), labels = listOf("alarm moved back")),
         )
     }
 
@@ -163,7 +176,7 @@ class IntentExecutor(private val store: VoiceStore, private val clock: Clock) {
         )
         store.saveExpense(expense)
         val label = if (intent.received) "Received" else "Logged"
-        return Step("$label ${rupees(intent.amountPaise)}" + (cat?.let { " · ${it.name}" } ?: ""), UndoPayload(expenses = listOf(expense.id)))
+        return Step("$label ${rupees(intent.amountPaise)}" + (cat?.let { " · ${it.name}" } ?: ""), UndoPayload(expenses = listOf(expense.id), labels = listOf("removed ${rupees(intent.amountPaise)} expense")))
     }
 
     private suspend fun logHabit(intent: VoiceIntent.LogHabit): Step {
@@ -174,7 +187,7 @@ class IntentExecutor(private val store: VoiceStore, private val clock: Clock) {
         val day = clock.now().toLocalDate()
         if (store.isHabitTicked(habit.id, day)) return Step("${habit.name} is already ticked")
         store.toggleHabit(habit.id, day)
-        return Step("Ticked ${habit.name}", UndoPayload(habits = listOf(HabitTick(habit.id, day.toEpochDay()))))
+        return Step("Ticked ${habit.name}", UndoPayload(habits = listOf(HabitTick(habit.id, day.toEpochDay())), labels = listOf("unticked ${habit.name}")))
     }
 
     /** Spoken answer for "what's next": the earlier of the next event and the next alarm. */

@@ -44,4 +44,13 @@ class AmountInputTest {
         assertEquals("250", AmountInput.fromPaise(25_000))
         assertEquals("250.05", AmountInput.fromPaise(25_005))
     }
+
+    @Test fun refusedNinthDigitIsReported() {
+        val full = type(*"99999999".toCharArray())
+        assertEquals(full, AmountInput.push(full, '9'))
+        assertEquals(true, AmountInput.wouldOverflow(full, '9'))
+        assertEquals(false, AmountInput.wouldOverflow(full, '.'))
+        assertEquals(false, AmountInput.wouldOverflow("9999", '9'))
+        assertEquals(false, AmountInput.wouldOverflow("99999999.5", '9'))
+    }
 }

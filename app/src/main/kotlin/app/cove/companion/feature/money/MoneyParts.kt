@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredHeight
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -18,6 +20,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -76,7 +82,7 @@ internal fun PickRow(label: String, value: String, onClick: () -> Unit, divider:
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        CoveText(label, style = MoneyType.Row, color = Cove.colors.muted)
+        CoveText(label, Modifier.padding(end = 12.dp), style = MoneyType.Row, color = Cove.colors.muted)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             CoveText(value, style = MoneyType.Row)
             CoveIcon(CoveIcons.ChevronRight, Cove.colors.tail, size = 14.dp)
@@ -84,16 +90,32 @@ internal fun PickRow(label: String, value: String, onClick: () -> Unit, divider:
     }
 }
 
-/** 44dp white circle with an icon, used for close and add. */
+/**
+ * 44dp white circle with an icon, used for close and add. The tap area is 48dp and [label] is what screen readers
+ * announce, since the icon has no text.
+ */
 @Composable
-internal fun RoundIconButton(icon: ImageVector, onClick: () -> Unit, iconSize: Dp = 18.dp, filled: Boolean = true) {
+internal fun RoundIconButton(
+    icon: ImageVector,
+    onClick: () -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    iconSize: Dp = 18.dp,
+    filled: Boolean = true,
+) {
     Box(
-        Modifier
+        modifier
             .size(44.dp)
-            .background(if (filled) Cove.colors.card else Color.Transparent, CoveShapes.Circle)
-            .pressable(onClick),
+            .requiredSize(48.dp)
+            .pressable(onClick)
+            .semantics { contentDescription = label; role = Role.Button },
         contentAlignment = Alignment.Center,
-    ) { CoveIcon(icon, if (filled) Cove.colors.ink else Cove.colors.muted, size = iconSize) }
+    ) {
+        Box(
+            Modifier.size(44.dp).background(if (filled) Cove.colors.card else Color.Transparent, CoveShapes.Circle),
+            contentAlignment = Alignment.Center,
+        ) { CoveIcon(icon, if (filled) Cove.colors.ink else Cove.colors.muted, size = iconSize) }
+    }
 }
 
 /** Back button, centred label and a trailing text action: the bar of the pushed Money screens. */
@@ -105,9 +127,9 @@ internal fun MoneyTopBar(label: String, action: String, onBack: () -> Unit, onAc
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        RoundIconButton(CoveIcons.ChevronLeft, onBack, iconSize = 24.dp, filled = false)
+        RoundIconButton(CoveIcons.ChevronLeft, onBack, "Back", iconSize = 24.dp, filled = false)
         CoveText(label, style = CoveType.Meta, color = c.muted)
-        Box(Modifier.height(44.dp).pressable(onAction).padding(horizontal = 10.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.height(44.dp).requiredHeight(48.dp).pressable(onAction).padding(horizontal = 10.dp), contentAlignment = Alignment.Center) {
             CoveText(
                 action,
                 style = MoneyType.Row.copy(fontWeight = if (actionStrong) FontWeight.Medium else FontWeight.Normal),
@@ -156,7 +178,7 @@ internal fun KindToggle(options: List<String>, selected: Int, onSelect: (Int) ->
                     .then(if (on) Modifier.shadow(1.dp, CoveShapes.Pill, ambientColor = Color(0x0F141420), spotColor = Color(0x0F141420)) else Modifier)
                     .background(if (on) c.card else Color.Transparent, CoveShapes.Pill)
                     .pressable({ onSelect(i) })
-                    .padding(horizontal = 14.dp),
+                    .padding(horizontal = 16.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 CoveText(

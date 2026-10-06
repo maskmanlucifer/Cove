@@ -10,7 +10,9 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.lifecycle.Lifecycle
 import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -41,6 +43,20 @@ import app.cove.companion.feature.today.OneThingScreen
 import app.cove.companion.feature.voice.VoiceScreen
 
 
+/**
+ * Pops one screen, but only from a settled screen (a second tap during the exit animation is ignored) and never the
+ * last one: with nothing to pop, a screen that is not Main falls back to Main instead of leaving an empty stack.
+ */
+private fun safeBack(controller: NavHostController) {
+    val current = controller.currentBackStackEntry ?: return
+    if (current.lifecycle.currentState != Lifecycle.State.RESUMED) return
+    if (controller.previousBackStackEntry != null) {
+        controller.popBackStack()
+    } else if (current.destination.route != Routes.Main) {
+        controller.navigate(Routes.Main) { popUpTo(0) { inclusive = true } }
+    }
+}
+
 /** App-wide navigation graph. Screens receive [Nav] and route ids, never the controller. */
 @Composable
 fun CoveNavHost(start: String, voiceRequest: Int = 0, briefRequest: Int = 0) {
@@ -49,11 +65,12 @@ fun CoveNavHost(start: String, voiceRequest: Int = 0, briefRequest: Int = 0) {
     val fadeOut = fadeOut(tween(if (reduce) ReducedMotionMillis else 200))
     val controller = rememberNavController()
     val nav = remember(controller) {
+        val gate = TapGate()
         Nav(
-            go = { controller.navigate(it) },
-            back = { controller.popBackStack() },
+            go = { if (gate.allow(it)) controller.navigate(it) },
+            back = { safeBack(controller) },
             home = {
-                controller.navigate(Routes.Main) { popUpTo(0) { inclusive = true } }
+                if (gate.allow(Routes.Main)) controller.navigate(Routes.Main) { popUpTo(0) { inclusive = true } }
             },
         )
     }

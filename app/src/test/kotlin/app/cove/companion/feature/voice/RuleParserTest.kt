@@ -28,15 +28,22 @@ class RuleParserTest {
 
     private val cases: List<Pair<String, List<VoiceIntent>>> = listOf(
         "set an alarm for six thirty tomorrow" to listOf(VoiceIntent.SetAlarm(390)),
-        "set an alarm for 6:30" to listOf(VoiceIntent.SetAlarm(390)),
-        "wake me up at 7" to listOf(VoiceIntent.SetAlarm(420)),
+        "set an alarm for 6:30" to listOf(VoiceIntent.SetAlarm(18 * 60 + 30)),
+        "wake me up at 7" to listOf(VoiceIntent.SetAlarm(19 * 60)),
         "set an alarm for 6 pm" to listOf(VoiceIntent.SetAlarm(18 * 60)),
         "alarm at seven in the evening" to listOf(VoiceIntent.SetAlarm(19 * 60)),
-        "Hey Cove, set an alarm for quarter to seven" to listOf(VoiceIntent.SetAlarm(6 * 60 + 45)),
-        "set an alarm for half past five" to listOf(VoiceIntent.SetAlarm(5 * 60 + 30)),
+        "Hey Cove, set an alarm for quarter to seven" to listOf(VoiceIntent.SetAlarm(18 * 60 + 45)),
+        "set an alarm for half past five" to listOf(VoiceIntent.SetAlarm(17 * 60 + 30)),
         "set an alarm for weekdays at 6:45 am called gym" to listOf(VoiceIntent.SetAlarm(405, "Gym", 0b0011111)),
         "change my alarm to seven thirty" to listOf(VoiceIntent.ChangeAlarm(450)),
         "move the bedtime alarm to 10 pm" to listOf(VoiceIntent.ChangeAlarm(22 * 60, "bedtime")),
+        "wake me at 4" to listOf(VoiceIntent.SetAlarm(16 * 60)),
+        "wake me at 4 am" to listOf(VoiceIntent.SetAlarm(4 * 60)),
+        "wake me at 11" to listOf(VoiceIntent.SetAlarm(11 * 60)),
+        "wake me at 12" to listOf(VoiceIntent.SetAlarm(12 * 60)),
+        "wake me at 16:30" to listOf(VoiceIntent.SetAlarm(16 * 60 + 30)),
+        "add to do buy milk" to listOf(VoiceIntent.AddTodos(listOf(TodoDraft("Buy milk", "Shopping")))),
+        "add to-do: call the plumber" to listOf(VoiceIntent.AddTodos(listOf(TodoDraft("Call the plumber", "Personal")))),
         "remind me to call mum at 6" to listOf(VoiceIntent.AddReminder("Call mum", at(6, 18))),
         "remind me to buy milk tomorrow at 9" to listOf(VoiceIntent.AddReminder("Buy milk", at(7, 9))),
         "remind me at 4 pm" to listOf(VoiceIntent.AddReminder("Reminder", at(6, 16))),
@@ -63,10 +70,10 @@ class RuleParserTest {
         "I did my walk" to listOf(VoiceIntent.LogHabit("Walk")),
         "mark stretch as done" to listOf(VoiceIntent.LogHabit("Stretch")),
         "set an alarm for 6:30 and remind me to call mum at 6" to listOf(
-            VoiceIntent.SetAlarm(390), VoiceIntent.AddReminder("Call mum", at(6, 18)),
+            VoiceIntent.SetAlarm(18 * 60 + 30), VoiceIntent.AddReminder("Call mum", at(6, 18)),
         ),
         "add milk and then set an alarm for 7" to listOf(
-            VoiceIntent.AddTodos(listOf(TodoDraft("Milk", "Shopping"))), VoiceIntent.SetAlarm(420),
+            VoiceIntent.AddTodos(listOf(TodoDraft("Milk", "Shopping"))), VoiceIntent.SetAlarm(19 * 60),
         ),
     )
 
@@ -86,7 +93,7 @@ class RuleParserTest {
     @Test
     fun guessesWhenOnlyATimeWasHeard() {
         val guesses = parser.guesses("…mind me… the… at four…")
-        assertEquals(listOf(VoiceIntent.AddReminder("Reminder", at(6, 16)), VoiceIntent.SetAlarm(240)), guesses)
+        assertEquals(listOf(VoiceIntent.AddReminder("Reminder", at(6, 16)), VoiceIntent.SetAlarm(16 * 60)), guesses)
         assertTrue(parser.guesses("mumble").isEmpty())
     }
 
@@ -94,5 +101,19 @@ class RuleParserTest {
     fun expenseAtAnEarlierTimeToday() {
         val e = parser.parse("spent 340 on lunch at 8:15 am").single() as VoiceIntent.LogExpense
         assertEquals(at(6, 8, 15), e.at)
+    }
+
+    @Test fun unknownDoneThingsOfferAHabitOrAJournalNote() {
+        val guesses = parser.guesses("log a run")
+        assertEquals(listOf(VoiceIntent.AddHabit("Run"), VoiceIntent.JournalNote("Log a run")), guesses)
+        assertEquals(emptyList<VoiceIntent>(), parser.guesses("blah"))
+    }
+
+    @Test fun anAlarmForTomorrowKeepsBareHoursInTheMorning() {
+        assertEquals(listOf<VoiceIntent>(VoiceIntent.SetAlarm(4 * 60)), parser.parse("wake me at 4 tomorrow", habits))
+    }
+
+    @Test fun aKnownHabitIsTickedNotOffered() {
+        assertEquals(listOf<VoiceIntent>(VoiceIntent.LogHabit("Walk")), parser.parse("log a walk", habits))
     }
 }

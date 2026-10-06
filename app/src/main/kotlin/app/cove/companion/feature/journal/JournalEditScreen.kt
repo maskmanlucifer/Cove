@@ -2,6 +2,14 @@ package app.cove.companion.feature.journal
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import android.app.Activity
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -51,7 +59,11 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.text.input.OutputTransformation
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.text.ParagraphStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.LineHeightStyle
@@ -60,9 +72,11 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import app.cove.companion.core.OneShot
 import app.cove.companion.core.appViewModel
 import app.cove.companion.core.longLabel
 import app.cove.companion.design.Cove
@@ -71,6 +85,7 @@ import app.cove.companion.design.CoveIcons
 import app.cove.companion.design.CoveShapes
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.CoveText
+import app.cove.companion.design.components.UndoHost
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.design.components.pressable
 import app.cove.companion.navigation.Nav
@@ -90,14 +105,34 @@ fun JournalEditScreen(id: String, nav: Nav) {
     var sheet by rememberSaveable { mutableStateOf<String?>(null) }
     val titleFocus = remember { FocusRequester() }
     val bodyFocus = remember { FocusRequester() }
-    val leave: () -> Unit = { scope.launch { vm.finish(); nav.back() } }
+    val leaveGuard = remember { OneShot() }
+    val deleteGuard = remember { OneShot() }
+    var micHelp by remember { mutableStateOf(false) }
+    var micCanAsk by remember { mutableStateOf(true) }
+    val leave: () -> Unit = {
+        leaveGuard.launch(scope) {
+            if (vm.finish()) Toast.makeText(context, "Voice note kept", Toast.LENGTH_SHORT).show()
+            nav.back()
+            true
+        }
+    }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { it?.let(vm::addPhoto) }
     val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
         val target = vm.cameraTarget
         if (ok && target != null) vm.addPhoto(target.second) else target?.first?.delete()
     }
-    val mic = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted -> if (granted) vm.startRecording() }
+    val mic = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            micHelp = false
+            vm.startRecording()
+        } else {
+            // Once Android stops showing its prompt, only the Settings page can grant the permission.
+            val activity = context.findActivity()
+            micCanAsk = activity != null && ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.RECORD_AUDIO)
+            micHelp = true
+        }
+    }
 
     BackHandler(onBack = leave)
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { scope.launch { vm.save() } }
@@ -107,7 +142,7 @@ fun JournalEditScreen(id: String, nav: Nav) {
 
     Box(Modifier.fillMaxSize().background(paper()).imePadding()) {
         Column(Modifier.fillMaxSize().coveTopInset()) {
-            TopBar(s.status, onBack = leave, onDone = leave)
+            TopBar(s.status, canDelete = s.persisted, onBack = leave, onDone = leave, onDelete = { sheet = "delete" })
             Column(
                 Modifier
                     .weight(1f)
@@ -123,6 +158,12 @@ fun JournalEditScreen(id: String, nav: Nav) {
                 s.media.filter { it.kind == "voice" }.forEach { note ->
                     VoiceRow(note, s.playback, onToggle = { vm.togglePlayback(note) }, onRemove = { vm.removeMedia(note) }, hint = s.voiceHints[note.id])
                 }
+            }
+            s.notice?.let {
+                CoveText(
+                    it, Modifier.fillMaxWidth().padding(horizontal = 28.dp).semantics { liveRegion = LiveRegionMode.Polite },
+                    style = CoveType.Meta, color = c.muted, textAlign = TextAlign.Center,
+                )
             }
             Box(
                 Modifier.fillMaxWidth().padding(top = 8.dp, bottom = if (WindowInsets.isImeVisible) 12.dp else 40.dp),
@@ -154,14 +195,30 @@ fun JournalEditScreen(id: String, nav: Nav) {
             },
             onCamera = {
                 sheet = null
-                camera.launch(vm.newCameraUri())
+                try {
+                    camera.launch(vm.newCameraUri())
+                } catch (e: ActivityNotFoundException) {
+                    vm.cameraUnavailable()
+                }
             },
         )
-        MoodSheet(
-            sheet == "mood", s.mood, canDelete = s.persisted, onDismiss = { sheet = null },
-            onPick = { vm.setMood(it); sheet = null },
-            onDelete = { scope.launch { vm.delete(); nav.back() } },
+        MoodSheet(sheet == "mood", s.mood, onDismiss = { sheet = null }, onPick = { vm.setMood(it); sheet = null })
+        DeleteEntrySheet(
+            sheet == "delete", onDismiss = { sheet = null },
+            onDelete = {
+                sheet = null
+                deleteGuard.launch(scope) { vm.delete(); nav.back(); true }
+            },
         )
+        MicHelpSheet(
+            micHelp, micCanAsk, onDismiss = { micHelp = false },
+            onAllow = { mic.launch(Manifest.permission.RECORD_AUDIO) },
+            onSettings = {
+                micHelp = false
+                context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)))
+            },
+        )
+        UndoHost("journal", Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = 96.dp))
     }
 }
 
@@ -193,10 +250,10 @@ private fun paper(): Color = lerp(Cove.colors.canvas, Cove.colors.card, 0.6f)
 private fun bodyColor(): Color = lerp(Cove.colors.ink, Cove.colors.muted, 0.28f)
 
 @Composable
-private fun TopBar(status: SaveStatus, onBack: () -> Unit, onDone: () -> Unit) {
+private fun TopBar(status: SaveStatus, canDelete: Boolean, onBack: () -> Unit, onDone: () -> Unit, onDelete: () -> Unit) {
     val c = Cove.colors
     Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(44.dp).pressable(onBack, role = Role.Button).semantics { contentDescription = "Back" }, contentAlignment = Alignment.Center) {
+        Box(Modifier.size(48.dp).pressable(onBack, role = Role.Button).semantics { contentDescription = "Back" }, contentAlignment = Alignment.Center) {
             CoveIcon(CoveIcons.ChevronLeft, c.muted, size = 22.dp)
         }
         Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
@@ -209,7 +266,12 @@ private fun TopBar(status: SaveStatus, onBack: () -> Unit, onDone: () -> Unit) {
                 style = CoveType.Meta, color = c.muted,
             )
         }
-        Box(Modifier.height(44.dp).pressable(onDone).padding(horizontal = 10.dp), contentAlignment = Alignment.Center) {
+        if (canDelete) {
+            Box(Modifier.height(48.dp).pressable(onDelete).padding(horizontal = 10.dp), contentAlignment = Alignment.Center) {
+                CoveText("Delete", style = CoveType.Meta, color = c.alert)
+            }
+        }
+        Box(Modifier.height(48.dp).pressable(onDone).padding(horizontal = 10.dp), contentAlignment = Alignment.Center) {
             CoveText("Done", style = CoveType.Body.copy(fontSize = 16.sp, fontWeight = FontWeight.Medium))
         }
     }
@@ -254,4 +316,10 @@ private fun AttachChip(label: String, onClick: () -> Unit) {
         Modifier.height(44.dp).background(Cove.colors.well, CoveShapes.Pill).pressable(onClick).padding(horizontal = 16.dp),
         contentAlignment = Alignment.Center,
     ) { CoveText(label, style = CoveType.Meta, color = Cove.colors.muted) }
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }

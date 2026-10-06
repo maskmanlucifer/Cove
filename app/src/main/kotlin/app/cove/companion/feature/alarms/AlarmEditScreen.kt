@@ -38,6 +38,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.cove.companion.core.OneShot
 import app.cove.companion.core.appViewModel
 import app.cove.companion.data.local.entity.AlarmEntity
 import app.cove.companion.design.Cove
@@ -73,6 +74,7 @@ fun AlarmEditScreen(id: String, nav: Nav) {
     val vm = appViewModel(key = "alarm-$id") { AlarmEditViewModel(it, id) }
     val draft by vm.draft.collectAsState()
     val scope = rememberCoroutineScope()
+    val actionGuard = remember { OneShot() }
     var shown by remember { mutableStateOf(false) }
     var page by remember { mutableStateOf(Page.Main) }
     LaunchedEffect(Unit) { shown = true }
@@ -104,7 +106,7 @@ fun AlarmEditScreen(id: String, nav: Nav) {
                         Page.Main -> MainPage(alarm, vm, close, { page = it })
                         Page.Label -> LabelPage(alarm, vm) { page = Page.Main }
                         Page.Sound -> SoundPage(alarm, vm) { page = Page.Main }
-                        Page.ConfirmDelete -> ConfirmDelete(alarm, { page = Page.Main }) { scope.launch { vm.delete(); close() } }
+                        Page.ConfirmDelete -> ConfirmDelete(alarm, { page = Page.Main }) { actionGuard.launch(scope) { vm.delete(); close(); true } }
                     }
                 }
             }
@@ -115,6 +117,7 @@ fun AlarmEditScreen(id: String, nav: Nav) {
 @Composable
 private fun MainPage(alarm: AlarmEntity, vm: AlarmEditViewModel, close: () -> Unit, open: (Page) -> Unit) {
     val scope = rememberCoroutineScope()
+    val actionGuard = remember { OneShot() }
     DrumPicker(alarm.minutes, { m -> vm.edit { it.copy(minutes = m) } })
     DaysRow(alarm.daysMask) { i -> vm.edit { it.copy(daysMask = AlarmDays.flip(it.daysMask, i)) } }
     Column {
@@ -123,7 +126,7 @@ private fun MainPage(alarm: AlarmEntity, vm: AlarmEditViewModel, close: () -> Un
         GentleRow(alarm.gentleRise) { on -> vm.edit { it.copy(gentleRise = on) } }
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        ActionButton("Save", Modifier.weight(1f), primary = true) { scope.launch { vm.save(); close() } }
+        ActionButton("Save", Modifier.weight(1f), primary = true) { actionGuard.launch(scope) { vm.save(); close(); true } }
         if (vm.existing) ActionButton("Delete", Modifier.widthIn(min = 104.dp), primary = false) { open(Page.ConfirmDelete) }
     }
 }

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -30,10 +31,13 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cove.companion.ai.model.Summary
 import app.cove.companion.container
+import app.cove.companion.core.shortTime
+import app.cove.companion.core.toLocalDateTime
 import app.cove.companion.data.local.entity.JournalMediaEntity
 import app.cove.companion.data.media.PlaybackState
 import app.cove.companion.design.Cove
@@ -65,7 +69,11 @@ fun PhotoStrip(photos: List<JournalMediaEntity>, onRemove: (JournalMediaEntity) 
                     Modifier.align(Alignment.TopEnd).padding(6.dp).size(24.dp)
                         .background(Cove.colors.scrim, CoveShapes.Circle).pressable({ onRemove(photo) }, role = Role.Button).semantics { contentDescription = "Remove photo" },
                     contentAlignment = Alignment.Center,
-                ) { CoveIcon(CoveIcons.Close, Color.White, size = 12.dp) }
+                ) {
+                    Box(Modifier.size(24.dp).background(Cove.colors.scrim, CoveShapes.Circle), contentAlignment = Alignment.Center) {
+                        CoveIcon(CoveIcons.Close, Color.White, size = 12.dp)
+                    }
+                }
             }
         }
     }
@@ -77,7 +85,13 @@ private fun rememberThumb(photo: JournalMediaEntity): ImageBitmap? {
     val fetcher = LocalContext.current.container.driveKit.fetcher
     return produceState<ImageBitmap?>(null, photo.id, photo.thumbPath, photo.localPath) {
         value = withContext(Dispatchers.IO) {
-            (fetcher.thumb(photo) ?: fetcher.file(photo))?.let { BitmapFactory.decodeFile(it.path)?.asImageBitmap() }
+            try {
+                (fetcher.thumb(photo) ?: fetcher.file(photo))?.let { BitmapFactory.decodeFile(it.path)?.asImageBitmap() }
+            } catch (e: Exception) {
+                null
+            } catch (e: OutOfMemoryError) {
+                null
+            }
         }
     }.value
 }
@@ -88,16 +102,17 @@ fun VoiceRow(note: JournalMediaEntity, playback: PlaybackState, onToggle: () -> 
     val c = Cove.colors
     val playing = playback.id == note.id
     Row(
-        Modifier.fillMaxWidth().height(56.dp).background(c.well, CoveShapes.Pill).padding(start = 10.dp, end = 6.dp),
+        Modifier.fillMaxWidth().heightIn(min = 56.dp).background(c.well, CoveShapes.Pill).padding(start = 10.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box(Modifier.size(36.dp).background(c.ink, CoveShapes.Circle).pressable(onToggle, role = Role.Button).semantics { contentDescription = if (playing) "Pause voice note" else "Play voice note" }, contentAlignment = Alignment.Center) {
             CoveIcon(if (playing) CoveIcons.Pause else CoveIcons.Play, c.onInk, size = 16.dp)
         }
-        CoveText(hint ?: "Voice note", Modifier.weight(1f), style = CoveType.Body.copy(fontSize = 16.sp), color = if (hint != null) c.muted else c.ink)
+        val label = if (note.updatedAt > 0) "Voice note · " + shortTime(note.updatedAt.toLocalDateTime()) else "Voice note"
+        CoveText(hint ?: label, Modifier.weight(1f), style = CoveType.Body.copy(fontSize = 16.sp), color = if (hint != null) c.muted else c.ink)
         CoveText(formatDuration(if (playing) playback.positionMs else note.durationMs ?: 0), style = CoveType.Meta, color = c.muted)
-        Box(Modifier.size(44.dp).pressable(onRemove, role = Role.Button).semantics { contentDescription = "Remove voice note" }, contentAlignment = Alignment.Center) {
+        Box(Modifier.size(48.dp).pressable(onRemove, role = Role.Button).semantics { contentDescription = "Remove voice note" }, contentAlignment = Alignment.Center) {
             CoveIcon(CoveIcons.Close, c.tail, size = 14.dp)
         }
     }
@@ -116,7 +131,7 @@ fun RecordingBar(elapsedMs: Long, onStop: () -> Unit) {
             Box(Modifier.size(8.dp).background(c.alert, CoveShapes.Circle))
             CoveText("Recording ${formatDuration(elapsedMs)}", style = CoveType.Meta, color = c.muted)
         }
-        PillButton("Stop", onStop, Modifier.height(44.dp))
+        PillButton("Stop", onStop, Modifier.height(44.dp).semantics { contentDescription = "Stop recording" })
     }
 }
 
@@ -134,10 +149,10 @@ fun PhotoSheet(visible: Boolean, onDismiss: () -> Unit, onLibrary: () -> Unit, o
     }
 }
 
-/** Mood sheet: pick how the day felt; existing entries can also be deleted from here. */
+/** Mood sheet: pick how the day felt; tap the chosen mood again to clear it. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun MoodSheet(visible: Boolean, mood: String?, canDelete: Boolean, onDismiss: () -> Unit, onPick: (String?) -> Unit, onDelete: () -> Unit) {
+fun MoodSheet(visible: Boolean, mood: String?, onDismiss: () -> Unit, onPick: (String?) -> Unit) {
     CoveSheet(visible, onDismiss) {
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(20.dp)) {
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { SheetHandle() }
@@ -147,7 +162,42 @@ fun MoodSheet(visible: Boolean, mood: String?, canDelete: Boolean, onDismiss: ()
                     Chip(m, onClick = { onPick(if (m == mood) null else m) }, selected = m == mood)
                 }
             }
-            if (canDelete) PillButton("Delete entry", onDelete, Modifier.align(Alignment.CenterHorizontally), kind = ButtonKind.Destructive)
+            if (mood != null) CoveText("Tap it again to clear.", style = CoveType.Meta, color = Cove.colors.muted)
+        }
+    }
+}
+
+/** Calm confirmation before an entry is deleted; Undo follows on the list. */
+@Composable
+fun DeleteEntrySheet(visible: Boolean, onDismiss: () -> Unit, onDelete: () -> Unit) {
+    CoveSheet(visible, onDismiss) {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { SheetHandle() }
+            CoveText("Delete this entry?", style = CoveType.Section)
+            CoveText("Its photos and voice notes go too. You can undo this for a few seconds.", style = CoveType.Meta, color = Cove.colors.muted)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PillButton("Keep it", onDismiss, Modifier.weight(1f), height = 56.dp)
+                PillButton("Delete", onDelete, kind = ButtonKind.Destructive, height = 56.dp)
+            }
+        }
+    }
+}
+
+/** Explains why voice notes need the microphone; [canAsk] is false once Android will no longer show its prompt. */
+@Composable
+fun MicHelpSheet(visible: Boolean, canAsk: Boolean, onDismiss: () -> Unit, onAllow: () -> Unit, onSettings: () -> Unit) {
+    CoveSheet(visible, onDismiss) {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { SheetHandle() }
+            CoveText("Voice notes need the microphone", style = CoveType.Section)
+            CoveText(
+                if (canAsk) "Allow it and your notes will record on this phone." else "Allow it in Settings, under Permissions, and your notes will record on this phone.",
+                style = CoveType.Meta, color = Cove.colors.muted,
+            )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PillButton(if (canAsk) "Allow" else "Open settings", if (canAsk) onAllow else onSettings, Modifier.weight(1f), height = 56.dp)
+                PillButton("Not now", onDismiss, kind = ButtonKind.Secondary, height = 56.dp)
+            }
         }
     }
 }

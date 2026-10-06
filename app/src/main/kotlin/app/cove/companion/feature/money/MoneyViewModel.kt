@@ -28,7 +28,7 @@ data class MoneyState(
     val reviewBanner: String? = null,
 )
 
-/** Month overview for the Money tab: spend so far, daily strip and the four busiest categories. */
+/** Month overview for the Money tab: spend so far, daily strip and the busiest categories (the rest fold into Other). */
 class MoneyViewModel(c: AppContainer) : ViewModel() {
     private val today = c.clock.now().toLocalDate()
     private val range = ledgerRange(today)
@@ -45,11 +45,11 @@ class MoneyViewModel(c: AppContainer) : ViewModel() {
         val spent = MoneyMath.spentOf(month)
         val budget = perCategory.sumOf { it.budget }
         val loose = month.filter { it.kind == "spent" && it.categoryId == null }.sumOf { it.amountPaise }
-        val rows = perCategory.filter { it.spent > 0 }
-            .map { MoneyRow(it.category.id, it.category.name, it.spent, it.budget) }
-            .let { if (loose > 0) it + MoneyRow(null, "Other", loose, 0) else it }
-            .sortedByDescending { it.spent }
-            .take(4)
+        val rows = MoneyMath.collapseRows(
+            perCategory.filter { it.spent > 0 }
+                .map { MoneyRow(it.category.id, it.category.name, it.spent, it.budget) }
+                .let { if (loose > 0) it + MoneyRow(null, "Other", loose, 0) else it },
+        )
         MoneyState(
             month = today.month.getDisplayName(TextStyle.FULL, Locale.ENGLISH),
             spent = spent,

@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import app.cove.companion.core.toLocalDate
+import app.cove.companion.core.toLocalDateTime
 import app.cove.companion.design.Cove
 import app.cove.companion.design.CoveIcon
 import app.cove.companion.design.CoveIcons
@@ -46,7 +47,8 @@ fun ResultView(s: VoiceState, nowMillis: Long, vm: VoiceViewModel) {
         ExpenseDraft(s, single, nowMillis, vm)
         return
     }
-    val (head, tail) = resultHeadline(s.drafts, today)
+    val nowMinutes = nowMillis.toLocalDateTime().let { it.hour * 60 + it.minute }
+    val (head, tail) = resultHeadline(s.drafts, today, nowMinutes)
     var todoIndex = 0
     val rows = s.drafts.flatMap { intent ->
         if (intent is VoiceIntent.AddTodos) {
@@ -54,7 +56,7 @@ fun ResultView(s: VoiceState, nowMillis: Long, vm: VoiceViewModel) {
                 val index = todoIndex++
                 @Composable { CardRow(item.title) { CategoryChip(item.category ?: "Choose", s.categories) { vm.setTodoCategory(index, it) } } }
             }
-        } else listOf(@Composable { CardRow(describe(intent, today)) {} })
+        } else listOf(@Composable { CardRow(describe(intent, today, nowMinutes)) {} })
     }
     ResultFrame(
         s,
