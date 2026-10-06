@@ -35,7 +35,9 @@ import app.cove.companion.data.drive.DriveKit
 import app.cove.companion.data.media.ImageCompressor
 import app.cove.companion.data.media.JournalFiles
 import app.cove.companion.data.media.JournalMedia
+import app.cove.companion.data.media.PhotoLoader
 import app.cove.companion.data.media.PhotoQuality
+import app.cove.companion.data.media.ProfilePhotoStore
 import app.cove.companion.data.media.SupabaseThumbStore
 import app.cove.companion.data.media.VoiceNotePlayer
 import app.cove.companion.data.media.VoiceNoteRecorder
@@ -315,6 +317,13 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
     private val appContext = context
     fun voiceRecorder() = VoiceNoteRecorder(appContext)
     fun voicePlayer() = VoiceNotePlayer()
+    val photoLoader by lazy {
+        val memoryClass = (appContext.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager).memoryClass
+        PhotoLoader(memoryClass) { driveKit.fetcher }
+    }
+
+    /** The owner's profile photo; stays on this phone. */
+    val profilePhoto by lazy { ProfilePhotoStore(appContext) }
     val journalMedia = JournalMedia(
         journalFiles, ImageCompressor(context), journal, clock,
         quality = { PhotoQuality.webp(settings.settings.first().photoQuality) },

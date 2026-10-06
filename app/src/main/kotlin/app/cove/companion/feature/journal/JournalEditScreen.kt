@@ -106,6 +106,7 @@ fun JournalEditScreen(id: String, nav: Nav) {
     val bodyFocus = remember { FocusRequester() }
     val leaveGuard = remember { OneShot() }
     val deleteGuard = remember { OneShot() }
+    var viewing by rememberSaveable { mutableStateOf<Int?>(null) }
     var micHelp by remember { mutableStateOf(false) }
     var micCanAsk by remember { mutableStateOf(true) }
     val leave: () -> Unit = {
@@ -146,14 +147,14 @@ fun JournalEditScreen(id: String, nav: Nav) {
                 Modifier
                     .weight(1f)
                     .verticalScroll(rememberScrollState())
-                    .padding(start = 28.dp, end = 28.dp, top = 16.dp),
+                    .padding(start = 24.dp, end = 24.dp, top = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 CoveText(s.day.longLabel() + (s.mood?.let { " · $it" } ?: ""), style = CoveType.Meta, color = c.muted)
                 EntryField(vm.title, "Title", CoveType.Title, titleFocus, Modifier.offset(y = (-2).dp), singleLine = true, onNext = { bodyFocus.requestFocus() })
                 EntryField(vm.body, "Write whatever is on your mind.", BodyStyle, bodyFocus, Modifier.offset(y = (-3).dp).heightIn(min = 160.dp), bodyColor(), shortBlankLines = true)
                 val photos = s.media.filter { it.kind == "photo" }
-                if (photos.isNotEmpty()) PhotoStrip(photos) { vm.removeMedia(it) }
+                if (photos.isNotEmpty()) JournalPhotos(photos, onOpen = { viewing = it }, onRemove = { vm.removeMedia(it) })
                 s.media.filter { it.kind == "voice" }.forEach { note ->
                     VoiceRow(note, s.playback, onToggle = { vm.togglePlayback(note) }, onRemove = { vm.removeMedia(note) }, hint = s.voiceHints[note.id])
                 }
@@ -217,6 +218,12 @@ fun JournalEditScreen(id: String, nav: Nav) {
                 context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)))
             },
         )
+        viewing?.let { start ->
+            PhotoViewer(
+                s.media.filter { it.kind == "photo" }, start, onClose = { viewing = null },
+                onRemove = { viewing = null; vm.removeMedia(it) },
+            )
+        }
         UndoHost("journal", Modifier.align(Alignment.TopCenter))
     }
 }

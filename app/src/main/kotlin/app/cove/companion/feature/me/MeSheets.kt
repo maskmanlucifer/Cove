@@ -4,16 +4,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.cove.companion.design.Cove
@@ -123,15 +122,26 @@ fun MeSheets(sheet: MeSheet?, s: SettingsEntity, vm: MeViewModel, briefPlay: () 
 private fun OnOffSegment(on: Boolean, onChange: (Boolean) -> Unit) =
     Segmented(listOf("On", "Off"), if (on) 0 else 1, { onChange(it == 0) }, Modifier.fillMaxWidth(), fillWidth = true)
 
+/** Name editor: one line, at most [NAME_MAX] characters, saved only with Save. */
 @Composable
 private fun NameSheet(name: String, onSave: (String) -> Unit, onDismiss: () -> Unit) {
     var text by remember { mutableStateOf(name) }
-    val latest = rememberUpdatedState(text)
-    DisposableEffect(Unit) { onDispose { onSave(latest.value) } }
+    var saved by remember { mutableStateOf(false) }
     PlanSheet(onDismiss, gap = 16) { close ->
-        SheetCaption("Your name")
-        TitleField(text, { text = it }, "Your name", onDone = close, autofocus = true)
-        PillButton("Done", close, Modifier.fillMaxWidth(), height = 52.dp)
+        val save = {
+            if (!saved) {
+                saved = true
+                onSave(normalizeName(text))
+                close()
+            }
+        }
+        SheetHeading("Your name")
+        TitleField(text, { text = capName(it) }, "Your name", onDone = save, autofocus = true)
+        if (text.codePointCount(0, text.length) >= NAME_MAX - 10) SheetCaption("${text.codePointCount(0, text.length)} of $NAME_MAX")
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PillButton("Cancel", close, Modifier.weight(1f), kind = ButtonKind.Secondary, height = 52.dp)
+            PillButton("Save", save, Modifier.weight(1f), height = 52.dp)
+        }
     }
 }
 
