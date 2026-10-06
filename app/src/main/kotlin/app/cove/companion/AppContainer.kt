@@ -48,6 +48,7 @@ import app.cove.companion.data.repo.MoneyRepository
 import app.cove.companion.data.repo.PlanRepository
 import app.cove.companion.data.repo.SettingsRepository
 import app.cove.companion.data.repo.TodoRepository
+import app.cove.companion.data.repo.TrainingRepository
 import app.cove.companion.data.backup.RoomBackupStore
 import app.cove.companion.data.sync.ConflictResolver
 import app.cove.companion.data.sync.RoomSyncStore
@@ -153,6 +154,9 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
     val todos = TodoRepository(database, clock, changeLog)
     val habits = HabitRepository(database, clock, changeLog)
     val money = MoneyRepository(database, clock, changeLog)
+
+    /** Programme, sessions, sets and body weight (see `docs/TRAINING.md`). */
+    val training = TrainingRepository(database, clock, changeLog)
 
     /** Files spoken and typed expenses under the user's own categories (see `docs/CATEGORIZATION.md`). */
     val categoryResolver by lazy { LiveCategoryResolver(money, appScope) }

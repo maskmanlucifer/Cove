@@ -12,7 +12,7 @@ data class SyncTable(
     val conflictAware: Boolean = false,
 )
 
-/** The 16 synced tables, mirroring `supabase/migrations/0001_init.sql` and `0004_categorize.sql`. */
+/** The 23 synced tables, mirroring `supabase/migrations/0001_init.sql`, `0004_categorize.sql` and `0005_training.sql`. */
 object SyncTables {
     val all = listOf(
         SyncTable(
@@ -35,6 +35,13 @@ object SyncTables {
         SyncTable("suggestion_prefs", key = "kind", bools = setOf("muted")),
         SyncTable("voice_commands", bools = setOf("undone")),
         SyncTable("briefs", key = "day"),
+        SyncTable("exercises"),
+        SyncTable("workout_plans"),
+        SyncTable("plan_days"),
+        SyncTable("workout_sessions"),
+        SyncTable("set_logs"),
+        SyncTable("body_weights", key = "day"),
+        SyncTable("training_settings"),
     )
 
     private val byName = all.associateBy { it.name }

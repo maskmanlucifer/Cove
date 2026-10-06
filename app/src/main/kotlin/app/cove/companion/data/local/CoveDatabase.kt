@@ -18,6 +18,14 @@ import app.cove.companion.data.local.dao.JournalDao
 import app.cove.companion.data.local.dao.SettingsDao
 import app.cove.companion.data.local.dao.SyncDao
 import app.cove.companion.data.local.dao.TodoDao
+import app.cove.companion.data.local.dao.TrainingDao
+import app.cove.companion.data.local.entity.BodyWeightEntity
+import app.cove.companion.data.local.entity.ExerciseEntity
+import app.cove.companion.data.local.entity.PlanDayEntity
+import app.cove.companion.data.local.entity.SetLogEntity
+import app.cove.companion.data.local.entity.TrainingSettingsEntity
+import app.cove.companion.data.local.entity.WorkoutPlanEntity
+import app.cove.companion.data.local.entity.WorkoutSessionEntity
 import app.cove.companion.data.local.entity.AlarmEntity
 import app.cove.companion.data.local.entity.BriefEntity
 import app.cove.companion.data.local.entity.CategoryMemoryEntity
@@ -48,8 +56,10 @@ import app.cove.companion.data.local.entity.VoiceCommandEntity
         SuggestionPrefEntity::class, VoiceCommandEntity::class, BriefEntity::class,
         SearchIndexEntity::class, OutboxEntity::class, SyncStateEntity::class, SyncConflictEntity::class,
         CategoryMemoryEntity::class,
+        ExerciseEntity::class, WorkoutPlanEntity::class, PlanDayEntity::class, WorkoutSessionEntity::class,
+        SetLogEntity::class, BodyWeightEntity::class, TrainingSettingsEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 abstract class CoveDatabase : RoomDatabase() {
@@ -62,6 +72,7 @@ abstract class CoveDatabase : RoomDatabase() {
     abstract fun journal(): JournalDao
     abstract fun assistant(): AssistantDao
     abstract fun sync(): SyncDao
+    abstract fun training(): TrainingDao
 
     companion object {
         /** Adds the local-only `sync_conflicts` table. */
@@ -110,12 +121,19 @@ abstract class CoveDatabase : RoomDatabase() {
             }
         }
 
+        /** Adds the training tables (see `docs/TRAINING.md`). */
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                TrainingMigration.STATEMENTS.forEach { db.execSQL(it) }
+            }
+        }
+
         /** File name of the database in the app's databases directory. */
         const val NAME = "cove.db"
 
         fun create(context: Context, factory: SupportSQLiteOpenHelper.Factory? = null): CoveDatabase =
             Room.databaseBuilder(context, CoveDatabase::class.java, NAME)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                 // Room's own background coroutines (invalidation tracking) would crash the process on a failing database; report instead.
                 .setQueryCoroutineContext(Dispatchers.IO + CrashHandler.coroutineHandler("room"))
                 .apply { if (factory != null) openHelperFactory(factory) }
