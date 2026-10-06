@@ -20,6 +20,7 @@ import app.cove.companion.core.Clock
 import app.cove.companion.core.toEpochMillis
 import app.cove.companion.data.DebugSeed
 import app.cove.companion.feature.voice.VoiceDebug
+import app.cove.companion.feature.alarms.DebugAlarms
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -50,7 +51,7 @@ class MainActivity : ComponentActivity() {
             val animationsOff = remember { Settings.Global.getFloat(contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f }
             CoveTheme(dark, textScale = s.textScale, reduceMotion = resolveReduceMotion(s.reduceMotion, animationsOff)) {
                 CoveNavHost(
-                    start = debugRoute ?: if (s.onboarded) Routes.Main else Routes.Welcome,
+                    start = debugRoute ?: DebugLaunch.route ?: if (s.onboarded) Routes.Main else Routes.Welcome,
                     voiceRequest = voiceRequest.intValue,
                 )
             }
@@ -67,6 +68,7 @@ class MainActivity : ComponentActivity() {
     /**
      * Debug only. `--es now HH:mm` freezes the clock (`--es date yyyy-MM-dd` picks the day); `--es route <route>` starts on that route.
      * `--ez seed true [--ez dark true] [--ez evening true] [--ez moneyLogged true] [--es plan todos|empty|drag]` loads the design's sample data.
+     * `--es route alarms` starts on that route; see also `DebugAlarms`.
      * `--es tab plan --es segment 1 --es sheet categories --es title Dentist` open a Plan tab view directly.
      * `--es voiceState listening|result|partial|saved|micoff --es transcript "..."` opens the Voice screen in that state.
      */
@@ -95,6 +97,7 @@ class MainActivity : ComponentActivity() {
                 VoiceDebug.runSaved(container)
             }
         }
+        CoroutineScope(Dispatchers.IO).launch { DebugAlarms.handle(this@MainActivity, container, intent) }
     }
 
     companion object {

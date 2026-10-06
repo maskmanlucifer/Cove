@@ -13,4 +13,7 @@ object DebugLaunch {
 
     /** Title typed into the add sheet; also stops it from grabbing the keyboard. */
     var title: String? = null
+
+    /** Route to start on instead of Main, e.g. "alarms" or "alarms/alarm-wake". */
+    var route: String? = null
 }

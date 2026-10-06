@@ -43,8 +43,10 @@ object DebugSeed {
         if (evening) open.forEach { c.todos.setDone(it.id, true) }
 
         c.plan.saveEvent(EventEntity(newId(), "Coffee with Jo", at(11), at(11, 45), "Café Ivy", "bring her book back"))
-        c.plan.saveAlarm(AlarmEntity(newId(), "Wake up", 6 * 60 + 30, 0b0011111))
-        c.plan.saveAlarm(AlarmEntity(newId(), "Bedtime", 22 * 60 + 30, 0b1111111, kind = "bedtime"))
+        c.plan.saveAlarm(AlarmEntity("alarm-wake", "Wake up", 6 * 60 + 30, 0b0011111))
+        c.plan.saveAlarm(AlarmEntity("alarm-weekend", "Weekends", 8 * 60, 0b1100000))
+        c.plan.saveAlarm(AlarmEntity("alarm-nap", "Nap", 14 * 60 + 15, 0, enabled = false))
+        c.plan.saveAlarm(AlarmEntity("alarm-bed", "Bedtime", 22 * 60 + 30, 0b1111111, kind = "bedtime"))
 
         seedHabits(c, day, evening)
         seedJournal(c, day)
