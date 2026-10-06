@@ -34,6 +34,8 @@ import app.cove.companion.core.toLocalDate
 import app.cove.companion.data.DebugSeed
 import app.cove.companion.feature.brief.BriefDebug
 import app.cove.companion.feature.suggest.SuggestDebug
+import app.cove.companion.data.config.SetupCode
+import app.cove.companion.data.config.SetupCodeResult
 import app.cove.companion.feature.voice.VoiceDebug
 import app.cove.companion.feature.alarms.DebugAlarms
 import app.cove.companion.feature.widgets.DebugWidgets
@@ -45,7 +47,6 @@ import java.time.LocalTime
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /** Single activity hosting the Compose navigation graph. */
 class MainActivity : FragmentActivity() {
@@ -188,6 +189,10 @@ class MainActivity : FragmentActivity() {
         }
         if (intent.hasExtra("screenshots")) debugScreenshots = intent.getBooleanExtra("screenshots", false)
         if (intent.getBooleanExtra("lockNow", false)) container.appLock.lock()
+        intent.getStringExtra("setupCode")?.let { code ->
+            (SetupCode.parse(code) as? SetupCodeResult.Parsed)?.let { container.credentialStore.update(it.values) }
+        }
+        if (intent.getBooleanExtra("forgetCredentials", false)) container.credentialStore.clear()
         if (intent.getBooleanExtra("plainDb", false)) {
             CoroutineScope(Dispatchers.IO).launch { DebugSecurity.downgradeToPlaintext(this@MainActivity, container.database) }
         }

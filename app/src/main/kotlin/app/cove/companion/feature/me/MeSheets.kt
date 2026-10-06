@@ -19,7 +19,6 @@ import androidx.compose.ui.unit.dp
 import app.cove.companion.design.Cove
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.TextScales
-import app.cove.companion.design.components.ButtonKind
 import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.PillButton
 import app.cove.companion.data.local.entity.SettingsEntity

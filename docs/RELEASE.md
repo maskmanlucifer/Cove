@@ -15,7 +15,7 @@ keyAlias=cove
 keyPassword=...
 ```
 `storeFile` is relative to the repo root. Without `keystore.properties` the release build is signed with the debug keystore, so local builds still install; such an APK is not suitable to distribute.
-Add the release key's SHA-1 (`./gradlew signingReport`) to the Google OAuth Android client (see `supabase/README.md`, `docs/DRIVE_SETUP.md`).
+Add the release key's SHA-1 (`./gradlew signingReport`) to the Google OAuth Android client (see `docs/SETUP.md`).
 
 ## 2. Build
 ```
