@@ -32,7 +32,7 @@ object DockMotion {
         val left = (screenWidth - ORB_ZONE - ROW_WIDTH) / 2f
         val first = left + 23f
         val cx = first + SLOT_SPACING * selected
-        val extent = 10f + 8f + labelWidth + 8f + 14f + 6f
+        val extent = 10f + 8f + labelWidth
         return if (selected < LEFT_EXTENDING_FROM) {
             Geometry(left, left + ROW_WIDTH, cx - 23f, cx + extent + 16f, cx, first)
         } else {
