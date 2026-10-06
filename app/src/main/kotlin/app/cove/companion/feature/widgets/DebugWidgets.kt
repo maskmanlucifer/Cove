@@ -12,7 +12,7 @@ import app.cove.companion.feature.nudges.Nudges
 object DebugWidgets {
     /**
      * `--es pin_widget next|voice|spent|tasks` asks the launcher to pin that widget;
-     * `--ei nudge_in_sec N` schedules the bundled summary N seconds from real time;
+     * `--ei nudge_in_sec N` schedules the bundled summary N seconds from real time (after the scheduler's own startup sync);
      * `--ei reminder_in_sec N` adds a to-do "Test reminder" due N real seconds from now with a reminder;
      * `--ez brief_ready true` posts the brief-ready notification.
      */
@@ -27,7 +27,10 @@ object DebugWidgets {
             context.getSystemService(AppWidgetManager::class.java).requestPinAppWidget(ComponentName(context, receiver), null, null)
         }
         val nudgeIn = intent.getIntExtra("nudge_in_sec", -1)
-        if (nudgeIn >= 0) NudgeScheduler(context, c).scheduleBundleAt(System.currentTimeMillis() + nudgeIn * 1000L)
+        if (nudgeIn >= 0) {
+            kotlinx.coroutines.delay(2_000)
+            NudgeScheduler(context, c).scheduleBundleAt(System.currentTimeMillis() + nudgeIn * 1000L, exact = true)
+        }
         val reminderIn = intent.getIntExtra("reminder_in_sec", -1)
         if (reminderIn >= 0) {
             val todo = c.todos.add("Test reminder", null, System.currentTimeMillis() + reminderIn * 1000L)

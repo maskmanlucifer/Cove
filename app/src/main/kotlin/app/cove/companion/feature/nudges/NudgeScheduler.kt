@@ -64,9 +64,10 @@ class NudgeScheduler(context: Context, private val c: AppContainer) {
         syncBundle(c.settings.settings.first().nudgeMode, c.clock.now() + 30 * 60_000L)
     }
 
-    /** Registers a summary at [at] (inexact; the system may batch it, which suits a gentle nudge). */
-    fun scheduleBundleAt(at: Long) {
-        manager.setAndAllowWhileIdle(AlarmManager.RTC, at, bundlePending())
+    /** Registers a summary at [at]; inexact by default (the system may batch it, which suits a gentle nudge). */
+    fun scheduleBundleAt(at: Long, exact: Boolean = false) {
+        if (exact) manager.setExactAndAllowWhileIdle(AlarmManager.RTC, at, bundlePending())
+        else manager.setAndAllowWhileIdle(AlarmManager.RTC, at, bundlePending())
     }
 
     /** Makes the registered reminders match what [ReminderPlanner] says should exist. */
