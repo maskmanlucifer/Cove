@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavType
@@ -40,7 +41,7 @@ private val fadeOut = fadeOut(tween(200))
 
 /** App-wide navigation graph. Screens receive [Nav] and route ids, never the controller. */
 @Composable
-fun CoveNavHost(start: String) {
+fun CoveNavHost(start: String, voiceRequest: Int = 0) {
     val controller = rememberNavController()
     val nav = remember(controller) {
         Nav(
@@ -91,5 +92,6 @@ fun CoveNavHost(start: String) {
         composable(Routes.SyncConflict) { SyncConflictScreen(nav) }
         if (BuildConfig.DEBUG) composable("debug/money-logged") { MoneyLoggedDebugScreen() }
     }
+    LaunchedEffect(voiceRequest) { if (voiceRequest > 0 && start == Routes.Main) nav.go(Routes.Voice) }
 }
 

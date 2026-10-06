@@ -186,6 +186,9 @@ interface AssistantDao {
     @Query("SELECT * FROM voice_commands ORDER BY createdAt DESC LIMIT 1")
     suspend fun lastCommand(): VoiceCommandEntity?
 
+    @Query("SELECT * FROM voice_commands WHERE id = :id")
+    suspend fun command(id: String): VoiceCommandEntity?
+
     @Query("UPDATE voice_commands SET undone = 1 WHERE id = :id")
     suspend fun markUndone(id: String)
 

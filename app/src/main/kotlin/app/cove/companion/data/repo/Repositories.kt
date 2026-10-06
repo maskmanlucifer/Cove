@@ -220,6 +220,8 @@ class AssistantRepository(private val db: CoveDatabase, private val clock: Clock
 
     suspend fun lastCommand() = db.assistant().lastCommand()
 
+    suspend fun commandById(id: String) = db.assistant().command(id)
+
     suspend fun markUndone(id: String) = db.assistant().markUndone(id)
 }
 

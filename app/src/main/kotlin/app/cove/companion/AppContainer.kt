@@ -11,9 +11,10 @@ import app.cove.companion.data.repo.MoneyRepository
 import app.cove.companion.data.repo.PlanRepository
 import app.cove.companion.data.repo.SettingsRepository
 import app.cove.companion.data.repo.TodoRepository
+import app.cove.companion.feature.voice.VoiceKit
 
 /** Manual dependency graph, created once by [CoveApp]. */
-class AppContainer(context: Context, val clock: Clock = Clock.System) {
+class AppContainer(private val context: Context, val clock: Clock = Clock.System) {
     val database: CoveDatabase = CoveDatabase.create(context)
     private val changeLog = ChangeLog(database, clock)
 
@@ -24,4 +25,7 @@ class AppContainer(context: Context, val clock: Clock = Clock.System) {
     val money = MoneyRepository(database, clock, changeLog)
     val journal = JournalRepository(database, clock, changeLog)
     val assistant = AssistantRepository(database, clock)
+
+    /** Voice assistant services (parser, executor, TTS, undo chip). */
+    val voice by lazy { VoiceKit(context.applicationContext, this) }
 }

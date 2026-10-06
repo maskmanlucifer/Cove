@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="talk"
+        android:enabled="true"
+        android:icon="@drawable/ic_voice_mic"
+        android:shortcutShortLabel="@string/voice_shortcut_short"
+        android:shortcutLongLabel="@string/voice_shortcut_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="app.cove.companion"
+            android:targetClass="app.cove.companion.feature.voice.QuickListenActivity" />
+    </shortcut>
+</shortcuts>
