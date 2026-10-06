@@ -40,6 +40,13 @@ interface CloudGateway {
      * @return the line, or null when disabled, offline or on any error.
      */
     suspend fun briefLine(kind: String, facts: Map<String, String>): String? = null
+
+    /**
+     * Runs the category prompt ([system], [user] as built by `CategoryPrompt`: note text and category names only).
+     *
+     * @return the raw JSON reply to validate, or null when unsupported, offline or on any error.
+     */
+    suspend fun suggestCategories(system: String, user: String): String? = null
 }
 
 /**

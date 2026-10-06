@@ -2,7 +2,7 @@ package app.cove.companion.feature.voice
 
 import app.cove.companion.core.Clock
 import app.cove.companion.core.toEpochMillis
-import app.cove.companion.ai.provider.rules.CategoryResolver
+import app.cove.companion.ai.model.CategoryResolver
 import app.cove.companion.ai.provider.rules.RuleParser
 import app.cove.companion.data.categorize.ExpenseCategorizer
 import app.cove.companion.data.local.entity.ExpenseCategoryEntity

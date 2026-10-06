@@ -3,6 +3,8 @@ package app.cove.companion.ai
 import app.cove.companion.ai.model.AiResult
 import app.cove.companion.ai.model.BriefInput
 import app.cove.companion.ai.model.BriefLines
+import app.cove.companion.ai.model.CategoryRequest
+import app.cove.companion.ai.model.CategorySuggestion
 import app.cove.companion.ai.model.CloudCheck
 import app.cove.companion.ai.model.IntentContext
 import app.cove.companion.ai.model.ParsedIntents
@@ -43,6 +45,13 @@ interface AiService {
 
     /** A vector for [text], for semantic search. On-device only. */
     suspend fun embed(text: String): AiResult<FloatArray>
+
+    /**
+     * Files up to [CategoryRequest.MAX_BATCH] expense [notes] under the user's [categories] (names). Everyday data:
+     * only scrubbed note text and category names are sent. Manual use only: never call from a worker or automatically.
+     * Suggestions refer to notes by position; nothing is changed by this call.
+     */
+    suspend fun suggestCategories(notes: List<String>, categories: List<String>): AiResult<List<CategorySuggestion>>
 
     /** What each capability can use right now and why not, for settings screens. */
     suspend fun status(): AiStatus

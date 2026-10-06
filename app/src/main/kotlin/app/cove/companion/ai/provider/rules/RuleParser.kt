@@ -1,5 +1,6 @@
 package app.cove.companion.ai.provider.rules
 
+import app.cove.companion.ai.model.CategoryResolver
 import app.cove.companion.ai.model.TodoDraft
 import app.cove.companion.ai.model.VoiceIntent
 import app.cove.companion.core.Clock

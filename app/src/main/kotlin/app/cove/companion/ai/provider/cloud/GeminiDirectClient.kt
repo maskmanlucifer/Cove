@@ -62,13 +62,18 @@ class GeminiDirectClient(
         return withFallback(BriefPrompt.SYSTEM, user, BriefSchema::validateLine)
     }
 
+    override suspend fun suggestCategories(system: String, user: String): String? {
+        if (!enabled) return null
+        return withFallback(system, user, { it }, CATEGORY_TIMEOUT_MS)
+    }
+
     /** One tiny call on the primary model with a longer timeout, for "Test connection". */
     suspend fun ping(): GeminiReply =
         generate(model, "Reply with the single word OK.", "Say OK.", json = false, maxTokens = 16, timeout = PING_TIMEOUT_MS)
 
-    private suspend fun <R : Any> withFallback(system: String, user: String, validate: (String) -> R?): R? {
+    private suspend fun <R : Any> withFallback(system: String, user: String, validate: (String) -> R?, timeout: Long = timeoutMs): R? {
         for (m in listOf(model, fallbackModel).filter { it.isNotBlank() }.distinct()) {
-            when (val reply = generate(m, system, user)) {
+            when (val reply = generate(m, system, user, timeout = timeout)) {
                 is GeminiReply.Text -> validate(reply.text)?.let { return it }
                 is GeminiReply.Failure -> if (reply.error == GeminiError.InvalidKey || reply.error == GeminiError.Offline) return null
             }
@@ -121,6 +126,7 @@ class GeminiDirectClient(
         const val BASE = "https://generativelanguage.googleapis.com/v1beta/models"
         const val MAX_TRANSCRIPT = 600
         const val PING_TIMEOUT_MS = 10_000L
+        const val CATEGORY_TIMEOUT_MS = 12_000L
         private val json = Json { isLenient = false }
 
         /** Maps an HTTP failure to a [GeminiError]; the key is never part of [body] handling output. */

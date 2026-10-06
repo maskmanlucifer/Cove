@@ -6,6 +6,8 @@ import app.cove.companion.ai.model.BriefInput
 import app.cove.companion.ai.model.BriefLines
 import app.cove.companion.ai.model.BriefRequest
 import app.cove.companion.ai.model.Capability
+import app.cove.companion.ai.model.CategoryRequest
+import app.cove.companion.ai.model.CategorySuggestion
 import app.cove.companion.ai.model.CloudCheck
 import app.cove.companion.ai.model.IntentContext
 import app.cove.companion.ai.model.IntentRequest
@@ -73,6 +75,13 @@ class DefaultAiService(
 
     override suspend fun embed(text: String): AiResult<FloatArray> =
         router.route(Capability.Embedding, Sensitivity.Journal, providers.embedding) { it.embed(text) }
+
+    override suspend fun suggestCategories(notes: List<String>, categories: List<String>): AiResult<List<CategorySuggestion>> {
+        if (notes.isEmpty() || categories.isEmpty()) return AiResult.Failed(AiError.Unavailable("Nothing to check"))
+        if (notes.size > CategoryRequest.MAX_BATCH) return AiResult.Failed(AiError.Unavailable("Too many at once"))
+        val request = CategoryRequest(notes, categories)
+        return router.route(Capability.Category, Sensitivity.Everyday, providers.category) { it.suggest(request) }
+    }
 
     override suspend fun status(): AiStatus = router.status()
 

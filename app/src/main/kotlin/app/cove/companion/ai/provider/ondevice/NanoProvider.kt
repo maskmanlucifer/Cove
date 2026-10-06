@@ -4,28 +4,33 @@ import app.cove.companion.ai.model.AiError
 import app.cove.companion.ai.model.AiResult
 import app.cove.companion.ai.model.Availability
 import app.cove.companion.ai.model.BriefRequest
+import app.cove.companion.ai.model.CategoryRequest
+import app.cove.companion.ai.model.CategorySuggestion
 import app.cove.companion.ai.model.IntentRequest
 import app.cove.companion.ai.model.Location
 import app.cove.companion.ai.model.ParsedIntents
 import app.cove.companion.ai.model.Summary
 import app.cove.companion.ai.prompt.BriefPrompt
+import app.cove.companion.ai.prompt.CategoryPrompt
 import app.cove.companion.ai.prompt.IntentPrompt
 import app.cove.companion.ai.prompt.JournalPrompt
 import app.cove.companion.ai.provider.BriefProvider
 import app.cove.companion.ai.provider.CaptionProvider
+import app.cove.companion.ai.provider.CategoryProvider
 import app.cove.companion.ai.provider.IntentProvider
 import app.cove.companion.ai.provider.SummaryProvider
 import app.cove.companion.ai.schema.BriefSchema
+import app.cove.companion.ai.schema.CategorySchema
 import app.cove.companion.ai.schema.IntentSchema
 import app.cove.companion.ai.schema.JournalSchema
 import java.io.File
 
 /**
- * Gemini Nano as intent parser, brief writer, summariser and photo captioner. One id, one availability: the
+ * Gemini Nano as intent parser, brief writer, summariser, photo captioner and expense categoriser. One id, one availability: the
  * model either is on this phone or is not. Busy and quota answers are reported as such so the router can
  * back off once and then move on.
  */
-class NanoProvider(private val client: NanoClient) : IntentProvider, BriefProvider, SummaryProvider, CaptionProvider {
+class NanoProvider(private val client: NanoClient) : IntentProvider, BriefProvider, SummaryProvider, CaptionProvider, CategoryProvider {
     override val id = ID
     override val location = Location.Native
 
@@ -56,6 +61,11 @@ class NanoProvider(private val client: NanoClient) : IntentProvider, BriefProvid
         val tags = ask(client.generate(JournalPrompt.tags(text)), JournalSchema::tags).valueOrNull().orEmpty()
         val mood = ask(client.generate(JournalPrompt.mood(text)), JournalSchema::mood).valueOrNull()
         return AiResult.Ok(Summary(sentence, tags, mood), ref)
+    }
+
+    override suspend fun suggest(request: CategoryRequest): AiResult<List<CategorySuggestion>> {
+        val prompt = CategoryPrompt.nano(request) ?: return failed(AiError.Unavailable("Too long for the on-device model"))
+        return ask(client.generate(prompt)) { CategorySchema.parse(it, request.notes.size, request.categories) }
     }
 
     override suspend fun caption(image: File): AiResult<String> =

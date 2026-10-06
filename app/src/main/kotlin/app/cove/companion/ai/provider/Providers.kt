@@ -3,6 +3,8 @@ package app.cove.companion.ai.provider
 import app.cove.companion.ai.model.AiResult
 import app.cove.companion.ai.model.Availability
 import app.cove.companion.ai.model.BriefRequest
+import app.cove.companion.ai.model.CategoryRequest
+import app.cove.companion.ai.model.CategorySuggestion
 import app.cove.companion.ai.model.IntentRequest
 import app.cove.companion.ai.model.Location
 import app.cove.companion.ai.model.ParsedIntents
@@ -51,6 +53,11 @@ interface CaptionProvider : AiProvider {
 /** Summarises, tags and reads the mood of a journal text. */
 interface SummaryProvider : AiProvider {
     suspend fun summarize(text: String): AiResult<Summary>
+}
+
+/** Files a batch of expense notes under the user's categories. */
+interface CategoryProvider : AiProvider {
+    suspend fun suggest(request: CategoryRequest): AiResult<List<CategorySuggestion>>
 }
 
 /** Turns text into a fixed-size vector for semantic search. */

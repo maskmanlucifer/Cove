@@ -1,4 +1,4 @@
-package app.cove.companion.ai.provider.rules
+package app.cove.companion.ai.model
 
 /** Names the expense category for a spoken or typed note; lets the rule parser use the user's real categories without depending on features. */
 fun interface CategoryResolver {

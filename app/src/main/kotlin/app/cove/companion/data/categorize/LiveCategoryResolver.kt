@@ -1,6 +1,6 @@
 package app.cove.companion.data.categorize
 
-import app.cove.companion.ai.provider.rules.CategoryResolver
+import app.cove.companion.ai.model.CategoryResolver
 import app.cove.companion.data.local.entity.CategoryMemoryEntity
 import app.cove.companion.data.local.entity.ExpenseCategoryEntity
 import app.cove.companion.data.repo.MoneyRepository
