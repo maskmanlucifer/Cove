@@ -30,6 +30,7 @@ import app.cove.companion.feature.brief.BriefDebug
 import app.cove.companion.feature.suggest.SuggestDebug
 import app.cove.companion.feature.voice.VoiceDebug
 import app.cove.companion.feature.alarms.DebugAlarms
+import app.cove.companion.feature.widgets.DebugWidgets
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -136,6 +137,7 @@ class MainActivity : ComponentActivity() {
             CoroutineScope(Dispatchers.IO).launch { DebugSeed.seedDrive(container, intent.getBooleanExtra("driveRun", false)) }
         }
         CoroutineScope(Dispatchers.IO).launch { DebugAlarms.handle(this@MainActivity, container, intent) }
+        CoroutineScope(Dispatchers.IO).launch { DebugWidgets.handle(this@MainActivity, container, intent) }
     }
 
     companion object {

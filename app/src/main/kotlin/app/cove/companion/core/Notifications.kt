@@ -22,6 +22,13 @@ object Notifications {
     const val ID_WIND_DOWN = 4102
     const val ID_ALARM_MISSED = 4103
 
+    /** Bundled "N for this afternoon" summary; replaced, never stacked. */
+    const val ID_NUDGE_BUNDLE = 4201
+    const val ID_BRIEF_READY = 4202
+
+    /** Individual reminders use ids from here, one per to-do or event. */
+    const val ID_REMINDER_BASE = 10_000
+
     /** Creates every channel; safe to call repeatedly. */
     fun createChannels(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)

@@ -12,6 +12,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import app.cove.companion.feature.nudges.NudgeScheduler
+import app.cove.companion.feature.widgets.WidgetUpdater
 
 /** Application entry point; holds the [AppContainer]. */
 class CoveApp : Application() {
@@ -32,6 +34,8 @@ class CoveApp : Application() {
             container.settings.settings.map { it.briefOn to it.wakeMinutes }.distinctUntilChanged()
                 .collect { (on, wake) -> BriefScheduler.apply(this@CoveApp, on, wake) }
         }
+        NudgeScheduler(this, container).start(container.appScope)
+        WidgetUpdater.start(this, container, container.appScope)
     }
 }
 

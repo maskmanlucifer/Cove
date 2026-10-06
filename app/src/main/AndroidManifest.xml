@@ -97,5 +97,69 @@
                 <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
         </receiver>
+
+        <receiver
+            android:name=".feature.widgets.NextWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_next_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/next_info" />
+        </receiver>
+
+        <receiver
+            android:name=".feature.widgets.VoiceWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_voice_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/voice_info" />
+        </receiver>
+
+        <receiver
+            android:name=".feature.widgets.SpentWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_spent_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/spent_info" />
+        </receiver>
+
+        <receiver
+            android:name=".feature.widgets.TasksWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_tasks_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/tasks_info" />
+        </receiver>
+
+        <receiver
+            android:name=".feature.nudges.NudgeReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".feature.nudges.NudgeBootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

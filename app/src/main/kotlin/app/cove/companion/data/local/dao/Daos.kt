@@ -79,6 +79,9 @@ interface TodoDao {
 
 @Dao
 interface EventDao {
+    @Query("SELECT * FROM events WHERE id = :id")
+    suspend fun get(id: String): EventEntity?
+
     @Query("SELECT * FROM events WHERE deletedAt IS NULL AND startAt BETWEEN :from AND :to ORDER BY startAt")
     fun observeBetween(from: Long, to: Long): Flow<List<EventEntity>>
 
