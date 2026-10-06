@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -23,6 +24,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
@@ -34,9 +41,9 @@ import app.cove.companion.design.CoveIcons
 import app.cove.companion.design.CoveShapes
 import app.cove.companion.design.CoveType
 
-/** Round tick box used by to-dos and habits; filled ink when [checked]. */
+/** Round tick box used by to-dos and habits; filled ink when [checked]. [label] names the item for screen readers. */
 @Composable
-fun CheckCircle(checked: Boolean, onToggle: (() -> Unit)?, modifier: Modifier = Modifier, size: Int = 22) {
+fun CheckCircle(checked: Boolean, onToggle: (() -> Unit)?, modifier: Modifier = Modifier, size: Int = 22, label: String? = null) {
     val c = Cove.colors
     val bg by animateColorAsState(if (checked) c.ink else Color.Transparent, tween(200), label = "check")
     Box(
@@ -45,25 +52,37 @@ fun CheckCircle(checked: Boolean, onToggle: (() -> Unit)?, modifier: Modifier = 
             .clip(CoveShapes.Circle)
             .background(bg)
             .let { if (checked) it else it.border(1.5.dp, if (c.isDark) c.tail else Color(0xFFCFD1D5), CoveShapes.Circle) }
-            .let { if (onToggle != null) it.pressable(onToggle) else it },
+            .let {
+                if (onToggle != null) {
+                    it.pressable(onToggle, onClickLabel = if (checked) "Mark not done" else "Mark done", role = Role.Checkbox)
+                        .semantics {
+                            stateDescription = if (checked) "Done" else "Not done"
+                            if (label != null) contentDescription = label
+                        }
+                } else it
+            },
         contentAlignment = Alignment.Center,
     ) {
         if (checked) CoveIcon(CoveIcons.Check, c.onInk, size = (size * 0.7f).dp)
     }
 }
 
-/** 46x28 on/off switch from the design (ink track, white thumb). */
+/** 46x28 on/off switch from the design (ink track, white thumb); [label] names what it controls for screen readers. */
 @Composable
-fun CoveSwitch(checked: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
+fun CoveSwitch(checked: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier = Modifier, label: String? = null) {
     val c = Cove.colors
     val x by animateDpAsState(if (checked) 21.dp else 3.dp, tween(200), label = "thumb")
-    val track by animateColorAsState(if (checked) c.ink else c.wellStrong, tween(200), label = "track")
+    val track by animateColorAsState(if (checked) c.ink else c.switchOff, tween(200), label = "track")
     Box(
         modifier
             .size(46.dp, 28.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(track)
-            .pressable({ onChange(!checked) }),
+            .pressable({ onChange(!checked) }, role = Role.Switch)
+            .semantics {
+                stateDescription = if (checked) "On" else "Off"
+                if (label != null) contentDescription = label
+            },
     ) {
         Box(
             Modifier
@@ -101,14 +120,17 @@ fun Segmented(
                     .fillMaxHeight()
                     .clip(CoveShapes.Pill)
                     .background(if (on) c.card else Color.Transparent)
-                    .pressable({ onSelect(i) })
-                    .padding(horizontal = 14.dp),
+                    .pressable({ onSelect(i) }, role = Role.RadioButton)
+                    .semantics { this.selected = on }
+                    .padding(horizontal = 10.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 CoveText(
                     label,
                     style = base.copy(fontWeight = if (on) FontWeight.Medium else FontWeight.Normal),
                     color = if (on) c.ink else c.muted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Visible,
                 )
             }
         }
@@ -123,11 +145,11 @@ fun Chip(text: String, onClick: (() -> Unit)? = null, modifier: Modifier = Modif
         modifier
             .height(height.dp)
             .background(if (selected) c.ink else c.card, CoveShapes.Pill)
-            .let { if (onClick != null) it.pressable(onClick) else it }
+            .let { if (onClick != null) it.pressable(onClick, role = Role.Button).semantics { this.selected = selected } else it }
             .padding(horizontal = 14.dp),
         contentAlignment = Alignment.Center,
     ) {
-        CoveText(text, style = CoveType.Meta, color = if (selected) c.onInk else c.ink)
+        CoveText(text, style = CoveType.Meta, color = if (selected) c.onInk else c.ink, maxLines = 1)
     }
 }
 
@@ -163,13 +185,15 @@ fun ValueRow(
     Row(
         modifier
             .fillMaxWidth()
-            .height(56.dp)
-            .let { if (onClick != null) it.pressable(onClick) else it },
+            .heightIn(min = 56.dp)
+            .let { if (onClick != null) it.pressable(onClick, role = Role.Button) else it }
+            .semantics(mergeDescendants = true) {}
+            .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         CoveText(label, style = CoveType.Body.copy(fontSize = TextUnit(16f, TextUnitType.Sp)), color = c.muted)
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.End)) {
             if (value != null) CoveText(value, valueTail ?: "", style = CoveType.Body.copy(fontSize = TextUnit(16f, TextUnitType.Sp)))
             trailing?.invoke()
             if (chevron) CoveIcon(CoveIcons.ChevronRight, c.tail, size = 18.dp)

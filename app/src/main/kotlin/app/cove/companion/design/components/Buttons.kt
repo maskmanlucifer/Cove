@@ -6,13 +6,16 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -48,9 +51,9 @@ fun PillButton(
     }
     Box(
         modifier
-            .height(height)
+            .heightIn(min = height)
             .background(bg, CoveShapes.Pill)
-            .pressable(onClick)
+            .pressable(onClick, role = Role.Button)
             .padding(horizontal = horizontalPadding),
         contentAlignment = Alignment.Center,
     ) {
@@ -64,13 +67,21 @@ fun PillButton(
 
 /** Click with the design's press feel (no ripple, dims to 96% for 100 ms). */
 @Composable
-fun Modifier.pressable(onClick: () -> Unit, enabled: Boolean = true): Modifier {
+fun Modifier.pressable(onClick: () -> Unit, enabled: Boolean = true, onClickLabel: String? = null, role: Role? = null): Modifier {
     val source = remember { MutableInteractionSource() }
     val pressed = source.collectIsPressedAsState().value
     return this
         .graphicsLayerAlpha(if (pressed) 0.96f else 1f)
-        .clickable(interactionSource = source, indication = null, enabled = enabled, onClick = onClick)
+        .clickable(interactionSource = source, indication = null, enabled = enabled, onClickLabel = onClickLabel, role = role, onClick = onClick)
 }
+
+/**
+ * Icon-only button semantics: spoken [label] and a button role. Apply before [pressable] on the clickable
+ * node, or use [iconButton] to do both.
+ */
+@Composable
+fun Modifier.iconButton(label: String, onClick: () -> Unit): Modifier =
+    this.tapTarget().pressable(onClick, role = Role.Button).semantics { contentDescription = label }
 
 /** Minimum 48dp tap target around small icons. */
 fun Modifier.tapTarget(): Modifier = this.defaultMinSize(48.dp, 48.dp)

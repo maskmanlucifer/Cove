@@ -2,6 +2,8 @@ package app.cove.companion.feature.today
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,11 +29,11 @@ fun OfflineTodos(rows: List<TodoRow>, pending: Set<String>, onToggle: (String, B
         rows.forEachIndexed { i, row ->
             if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(c.well))
             Row(
-                Modifier.fillMaxWidth().heightIn(min = 56.dp),
+                Modifier.fillMaxWidth().heightIn(min = 56.dp).toggleable(row.done, role = Role.Checkbox, onValueChange = { onToggle(row.id, it) }),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                CheckCircle(row.done, onToggle = { onToggle(row.id, !row.done) })
+                CheckCircle(row.done, onToggle = null)
                 CoveText(row.title, Modifier.weight(1f), color = if (row.done) c.tail else c.ink)
                 if (row.id in pending) CoveText("will sync", style = CoveType.Meta, color = c.muted)
             }
