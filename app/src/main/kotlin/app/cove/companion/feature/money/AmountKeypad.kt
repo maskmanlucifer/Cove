@@ -8,7 +8,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -31,16 +40,27 @@ fun AmountKeypad(onKey: (Char) -> Unit, onBack: () -> Unit, onClear: () -> Unit,
         (Rows + listOf(".0⌫")).forEach { row ->
             Row(Modifier.fillMaxWidth()) {
                 row.forEach { ch ->
+                    val source = remember { MutableInteractionSource() }
+                    val pressed by source.collectIsPressedAsState()
                     Box(
                         Modifier
                             .weight(1f)
                             .height(56.dp)
+                            .graphicsLayer { alpha = if (pressed) 0.4f else 1f; scaleX = if (pressed) 0.94f else 1f; scaleY = scaleX }
                             .combinedClickable(
-                                interactionSource = null,
+                                interactionSource = source,
                                 indication = null,
                                 onLongClick = if (ch == '⌫') onClear else null,
+                                onLongClickLabel = if (ch == '⌫') "Clear amount" else null,
                                 onClick = { if (ch == '⌫') onBack() else onKey(ch) },
-                            ),
+                            )
+                            .semantics {
+                                role = Role.Button
+                                when (ch) {
+                                    '⌫' -> contentDescription = "Delete digit"
+                                    '.' -> contentDescription = "Decimal point"
+                                }
+                            },
                         contentAlignment = Alignment.Center,
                     ) {
                         if (ch == '⌫') CoveIcon(CoveIcons.Backspace, Cove.colors.ink, size = 24.dp)

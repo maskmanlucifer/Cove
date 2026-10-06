@@ -4,12 +4,15 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.cove.companion.AppContainer
+import app.cove.companion.core.Undo
 import app.cove.companion.core.newId
 import app.cove.companion.core.toLocalDate
 import app.cove.companion.data.categorize.ExpenseCategorizer
 import app.cove.companion.data.local.entity.CategoryMemoryEntity
 import app.cove.companion.data.local.entity.ExpenseCategoryEntity
 import app.cove.companion.data.local.entity.ExpenseEntity
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -33,6 +36,8 @@ data class ExpenseEditState(
     val paidWith: String = "UPI",
     /** Categories matching Spent / Received, in the user's order. */
     val categories: List<ExpenseCategoryEntity> = emptyList(),
+    /** Shown for a moment when a digit was refused because the amount is at its largest. */
+    val limitHint: String? = null,
 ) {
     val paise: Long get() = AmountInput.toPaise(amount)
 }
@@ -51,6 +56,11 @@ class ExpenseEditViewModel(private val c: AppContainer, private val id: String, 
         val whenMillis: Long = 0,
         val paidWith: String = "UPI",
     )
+
+    /** Id a new expense is saved under; stable across taps and process death, so saving twice only rewrites one row. */
+    private val newExpenseId: String = saved.get<String>(SAVED_ID) ?: newId().also { saved[SAVED_ID] = it }
+    private val limitHint = MutableStateFlow(false)
+    private var limitJob: Job? = null
 
     private val existingId = id.takeUnless { it == "new" || it.startsWith("new@") }
     private var existing: ExpenseEntity? = null
@@ -74,7 +84,7 @@ class ExpenseEditViewModel(private val c: AppContainer, private val id: String, 
         },
     )
 
-    val state: StateFlow<ExpenseEditState> = combine(form, c.money.categories, c.money.memory) { f, all, memory ->
+    val state: StateFlow<ExpenseEditState> = combine(form, c.money.categories, c.money.memory, limitHint) { f, all, memory, limit ->
         val wanted = if (f.received) "income" else "spending"
         val cats = all.filter { it.kind == wanted }
         ExpenseEditState(
@@ -86,6 +96,7 @@ class ExpenseEditViewModel(private val c: AppContainer, private val id: String, 
             whenMillis = f.whenMillis,
             paidWith = f.paidWith,
             categories = cats,
+            limitHint = if (limit) AmountInput.LIMIT_HINT else null,
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, ExpenseEditState(whenMillis = form.value.whenMillis))
 
@@ -128,7 +139,19 @@ class ExpenseEditViewModel(private val c: AppContainer, private val id: String, 
         }
     }
 
-    fun key(ch: Char) = form.update { it.copy(amount = AmountInput.push(it.amount, ch)) }
+    fun key(ch: Char) {
+        if (AmountInput.wouldOverflow(form.value.amount, ch)) showLimit()
+        form.update { it.copy(amount = AmountInput.push(it.amount, ch)) }
+    }
+
+    private fun showLimit() {
+        limitHint.value = true
+        limitJob?.cancel()
+        limitJob = viewModelScope.launch {
+            delay(2500)
+            limitHint.value = false
+        }
+    }
 
     fun back() = form.update { it.copy(amount = AmountInput.back(it.amount)) }
 
@@ -151,7 +174,7 @@ class ExpenseEditViewModel(private val c: AppContainer, private val id: String, 
         val s = state.value
         if (s.paise <= 0) return null
         val entity = ExpenseEntity(
-            id = existing?.id ?: newId(),
+            id = existing?.id ?: newExpenseId,
             amountPaise = s.paise,
             kind = if (s.received) "received" else "spent",
             categoryId = s.categoryId,
@@ -180,16 +203,15 @@ class ExpenseEditViewModel(private val c: AppContainer, private val id: String, 
         } else null
     }
 
-    fun delete() {
-        existingId?.let { eid ->
-            viewModelScope.launch {
-                c.money.delete(eid)
-                MoneyUndo.deleted.value = eid
-            }
-        }
+    /** Soft-deletes the expense and offers "Expense deleted · Undo" on the screen the user returns to. */
+    suspend fun delete() {
+        val eid = existingId ?: return
+        c.money.delete(eid)
+        Undo.center.post(MONEY_UNDO, "Expense deleted") { c.money.restore(eid) }
     }
 }
 
+private const val SAVED_ID = "expense-id"
 private const val SAVED_RECEIVED = "received"
 private const val SAVED_AMOUNT = "amount"
 private const val SAVED_CATEGORY = "category"

@@ -6,6 +6,13 @@ import app.cove.companion.core.rupees
 object AmountInput {
     private const val MaxWholeDigits = 8
 
+    /** Shown when a digit is refused because the amount is already at its largest. */
+    const val LIMIT_HINT = "Largest amount is ₹9,99,99,999"
+
+    /** True when [key] would be dropped only because the whole part already has the most digits allowed. */
+    fun wouldOverflow(current: String, key: Char): Boolean =
+        key.isDigit() && '.' !in current && current != "0" && current.length >= MaxWholeDigits
+
     /** Appends a digit or '.' to [current], ignoring input that would not make a valid amount. */
     fun push(current: String, key: Char): String {
         val whole = current.substringBefore('.')

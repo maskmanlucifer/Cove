@@ -13,14 +13,20 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.background
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.unit.sp
 import app.cove.companion.core.appViewModel
 import app.cove.companion.core.rupees
@@ -31,6 +37,7 @@ import app.cove.companion.design.CoveShapes
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.CoveScreen
 import app.cove.companion.design.components.CoveText
+import app.cove.companion.design.components.FitText
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.design.components.pressable
 import app.cove.companion.navigation.Nav
@@ -46,6 +53,11 @@ fun MoneyCategoryDetailScreen(id: String, nav: Nav) {
     val s by vm.state.collectAsState()
     val c = Cove.colors
     val cat = s.category
+    val owner = LocalLifecycleOwner.current
+    // A category deleted from its Edit sheet leaves this page empty: close it once it is the screen on top.
+    LaunchedEffect(s.loaded, cat == null) {
+        if (s.loaded && cat == null) owner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) { nav.back() }
+    }
     CoveScreen {
         Column(Modifier.fillMaxSize().coveTopInset()) {
             MoneyTopBar(
@@ -113,10 +125,15 @@ fun MoneyCategoryDetailScreen(id: String, nav: Nav) {
 @Composable
 private fun Hero(s: CategoryDetailState) {
     val c = Cove.colors
+    val spent = if (s.spent >= MoneyMath.CRORE_PAISE) MoneyMath.compactRupees(s.spent) else MoneyMath.wholeRupees(s.spent)
+    val spoken = "${MoneyMath.spokenRupees(s.spent)} spent" + if (s.budget > 0) " of ${MoneyMath.spokenRupees(s.budget)}" else ""
     Column(Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(Modifier.padding(bottom = 7.dp), verticalAlignment = Alignment.Bottom) {
-            CoveText(MoneyMath.wholeRupees(s.spent), style = Spent)
-            if (s.budget > 0) CoveText(" of ${MoneyMath.wholeRupees(s.budget).removePrefix("₹")}", style = OfBudget, color = c.tail)
+        Row(Modifier.padding(bottom = 7.dp).semantics(mergeDescendants = true) { contentDescription = spoken }, verticalAlignment = Alignment.Bottom) {
+            FitText(spent, Modifier.weight(1f, fill = false), style = Spent, minScale = 0.5f)
+            if (s.budget > 0) {
+                val budget = if (s.budget >= MoneyMath.CRORE_PAISE) MoneyMath.compactRupees(s.budget) else MoneyMath.wholeRupees(s.budget)
+                CoveText(" of ${budget.removePrefix("₹")}", style = OfBudget, color = c.tail, maxLines = 1)
+            }
         }
         if (s.budget > 0) {
             BudgetBar(MoneyMath.progress(s.spent, s.budget), MoneyMath.isOver(s.spent, s.budget))

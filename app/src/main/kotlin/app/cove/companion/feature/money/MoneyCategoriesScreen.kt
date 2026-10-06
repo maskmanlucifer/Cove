@@ -15,6 +15,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import app.cove.companion.core.appViewModel
 import app.cove.companion.design.Cove
@@ -83,11 +84,21 @@ private fun CategoryRow(item: CategoryMonth, first: Boolean, onClick: () -> Unit
     val cat = item.category
     if (!first) RowDivider()
     Column(Modifier.fillMaxWidth().pressable(onClick).padding(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.SpaceBetween) {
-            CoveText(cat.name, style = CoveType.BodyMedium)
-            val amount = MoneyMath.wholeRupees(item.spent)
+        val amount = MoneyMath.wholeRupees(item.spent)
+        val value: @Composable () -> Unit = {
             if (cat.kind == "income") CoveText(amount, style = MoneyType.Sub)
             else CoveText(amount, if (item.budget > 0) " of ${MoneyMath.wholeRupees(item.budget)}" else "", style = MoneyType.Sub, secondaryColor = c.muted)
+        }
+        if (LocalDensity.current.fontScale > 1.3f) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                CoveText(cat.name, style = CoveType.BodyMedium)
+                value()
+            }
+        } else {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.SpaceBetween) {
+                CoveText(cat.name, Modifier.weight(1f, fill = false), style = CoveType.BodyMedium, maxLines = 1)
+                value()
+            }
         }
         if (cat.kind == "spending" && item.budget > 0) {
             BudgetBar(MoneyMath.progress(item.spent, item.budget), item.over)

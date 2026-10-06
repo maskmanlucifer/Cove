@@ -10,6 +10,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,6 +18,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.requiredHeight
+import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -24,6 +28,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,10 +44,18 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
+import app.cove.companion.core.OneShot
 import app.cove.companion.core.appSavedViewModel
 import app.cove.companion.core.rupees
 import app.cove.companion.core.toEpochMillis
@@ -56,16 +69,17 @@ import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.CoveScreen
 import app.cove.companion.design.components.CoveSheet
 import app.cove.companion.design.components.CoveText
+import app.cove.companion.design.components.FitText
 import app.cove.companion.design.components.PillButton
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.design.components.graphicsLayerAlpha
 import app.cove.companion.design.components.pressable
 import app.cove.companion.navigation.Nav
 import app.cove.companion.navigation.Routes
-import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 
 /** Add or edit an expense: Spent/Received, amount on a custom keypad, category, note, time and payment method. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ExpenseEditScreen(id: String, nav: Nav) {
     val vm = appSavedViewModel(key = "expense-$id") { c, saved -> ExpenseEditViewModel(c, id, saved) }
@@ -74,6 +88,16 @@ fun ExpenseEditScreen(id: String, nav: Nav) {
     val focus = LocalFocusManager.current
     val scope = rememberCoroutineScope()
     var noteFocused by remember { mutableStateOf(false) }
+    val saveGuard = remember { OneShot() }
+    val deleteGuard = remember { OneShot() }
+    val imeVisible = WindowInsets.isImeVisible
+    var imeSeen by remember { mutableStateOf(false) }
+    // Back (or any other way of closing the keyboard) leaves the note field, so the keypad comes back.
+    LaunchedEffect(imeVisible, noteFocused) {
+        if (!noteFocused) imeSeen = false
+        else if (imeVisible) imeSeen = true
+        else if (imeSeen) { focus.clearFocus(); imeSeen = false }
+    }
     var methodSheet by remember { mutableStateOf(false) }
     val c = Cove.colors
     val today = remember { s.whenMillis.toLocalDate() }
@@ -85,14 +109,17 @@ fun ExpenseEditScreen(id: String, nav: Nav) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                RoundIconButton(CoveIcons.Close, nav.back)
+                Box(Modifier.width(72.dp), contentAlignment = Alignment.CenterStart) { RoundIconButton(CoveIcons.Close, nav.back, "Close") }
                 KindToggle(listOf("Spent", "Received"), if (s.received) 1 else 0, { vm.setReceived(it == 1) }, Modifier.align(Alignment.Top))
-                Box(Modifier.width(44.dp), contentAlignment = Alignment.CenterEnd) {
+                Box(Modifier.width(72.dp), contentAlignment = Alignment.CenterEnd) {
                     if (!s.isNew) {
-                        CoveText(
-                            "Delete", Modifier.pressable({ vm.delete(); nav.back() }).padding(vertical = 12.dp),
-                            style = CoveType.Meta, color = c.alert,
-                        )
+                        Box(
+                            Modifier.height(44.dp).requiredHeight(48.dp)
+                                .pressable({ deleteGuard.launch(scope) { vm.delete(); nav.back(); true } })
+                                .padding(start = 12.dp)
+                                .semantics { role = Role.Button; contentDescription = "Delete expense" },
+                            contentAlignment = Alignment.Center,
+                        ) { CoveText("Delete", style = CoveType.Meta, color = c.alert) }
                     }
                 }
             }
@@ -107,16 +134,17 @@ fun ExpenseEditScreen(id: String, nav: Nav) {
                     PickRow("Paid with", s.paidWith, { methodSheet = true })
                 }
                 Spacer(Modifier.weight(1f))
-                val label = if (s.paise > 0) "Save " + rupees(s.paise) else "Save"
+                val label = if (s.paise > 0) "Save " + MoneyMath.compactRupees(s.paise).let { if (s.paise < MoneyMath.CRORE_PAISE) rupees(s.paise) else it } else "Save"
                 PillButton(
                     label,
                     onClick = {
-                        if (s.paise > 0) scope.launch {
+                        if (s.paise > 0) saveGuard.launch(scope) {
                             vm.save()?.let { Toast.makeText(context, it, Toast.LENGTH_LONG).show() }
                             nav.back()
+                            true
                         }
                     },
-                    modifier = Modifier.padding(horizontal = 24.dp).fillMaxWidth().graphicsLayerAlpha(if (s.paise > 0) 1f else 0.35f),
+                    modifier = Modifier.padding(horizontal = 24.dp).fillMaxWidth().graphicsLayerAlpha(if (s.paise > 0 && !saveGuard.busy) 1f else 0.35f),
                     height = 56.dp,
                     textStyle = MoneyType.Row.copy(fontWeight = FontWeight.Medium),
                 )
@@ -141,9 +169,14 @@ private fun AmountBlock(s: ExpenseEditState, onNote: (String) -> Unit, focus: (B
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            CoveText(AmountInput.display(s.amount), style = MoneyType.Big, color = if (s.amount.isEmpty()) c.tail else c.ink)
+            FitText(
+                AmountInput.display(s.amount),
+                Modifier.weight(1f, fill = false).semantics { contentDescription = if (s.amount.isEmpty()) "Amount, none yet" else MoneyMath.spokenRupees(s.paise) },
+                style = MoneyType.Big, color = if (s.amount.isEmpty()) c.tail else c.ink,
+            )
             Box(Modifier.padding(start = 3.dp).width(2.dp).height(52.dp).background(c.ink))
         }
+        s.limitHint?.let { CoveText(it, Modifier.semantics { liveRegion = LiveRegionMode.Polite }, style = CoveType.Meta, color = c.muted) }
         val measurer = rememberTextMeasurer()
         val density = LocalDensity.current
         val requester = remember { FocusRequester() }
@@ -164,17 +197,22 @@ private fun AmountBlock(s: ExpenseEditState, onNote: (String) -> Unit, focus: (B
     }
 }
 
-/** Category chips scroll sideways; "+ New" stays pinned at the right so it is always reachable. */
+/**
+ * Category chips scroll sideways; "+ New" stays pinned at the right so it is always reachable, except at large font
+ * sizes where the pinned button would squeeze the names, so it scrolls with them.
+ */
 @Composable
 private fun CategoryChips(s: ExpenseEditState, onPick: (String) -> Unit, onNew: () -> Unit) {
+    val large = LocalDensity.current.fontScale > 1.3f
     Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
             Modifier.weight(1f).horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             s.categories.forEach { cat -> Chip(cat.name, cat.id == s.categoryId) { onPick(cat.id) } }
+            if (large) Chip("+ New", false, onNew)
         }
-        Chip("+ New", false, onNew)
+        if (!large) Chip("+ New", false, onNew)
     }
 }
 
@@ -183,9 +221,10 @@ private fun Chip(text: String, selected: Boolean, onClick: () -> Unit) {
     val c = Cove.colors
     Box(
         Modifier
-            .height(40.dp)
+            .heightIn(min = 40.dp)
             .background(if (selected) c.ink else c.card, CoveShapes.Pill)
             .pressable(onClick)
+            .semantics { this.selected = selected }
             .padding(horizontal = 16.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -193,6 +232,7 @@ private fun Chip(text: String, selected: Boolean, onClick: () -> Unit) {
             text,
             style = CoveType.Button.copy(fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal),
             color = if (selected) c.onInk else c.ink,
+            maxLines = 1,
         )
     }
 }

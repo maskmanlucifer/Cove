@@ -240,10 +240,25 @@ class MoneyRepository(private val db: CoveDatabase, private val clock: Clock, pr
         }
     }
 
-    /** Removes a category; its expenses fall back to "Other" (no category). */
-    suspend fun deleteCategory(id: String) {
-        db.expenses().inCategory(id).forEach { save(it.copy(categoryId = null)) }
+    /** Number of live expenses filed under [id], for the delete warning. */
+    suspend fun expenseCount(id: String): Int = db.expenses().inCategory(id).size
+
+    /**
+     * Removes a category; its expenses fall back to "Other" (no category).
+     *
+     * @return the ids of the expenses that were moved, to hand to [restoreCategory].
+     */
+    suspend fun deleteCategory(id: String): List<String> {
+        val moved = db.expenses().inCategory(id)
+        moved.forEach { save(it.copy(categoryId = null)) }
         db.expenses().getCategory(id)?.let { saveCategory(it.copy(deletedAt = clock.now())) }
+        return moved.map { it.id }
+    }
+
+    /** Brings back a category removed with [deleteCategory] and files [movedExpenses] under it again. */
+    suspend fun restoreCategory(id: String, movedExpenses: List<String>) {
+        db.expenses().getCategory(id)?.let { saveCategory(it.copy(deletedAt = null)) }
+        movedExpenses.forEach { eid -> db.expenses().get(eid)?.let { save(it.copy(categoryId = id)) } }
     }
 }
 
