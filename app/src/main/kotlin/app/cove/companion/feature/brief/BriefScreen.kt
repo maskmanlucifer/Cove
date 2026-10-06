@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -14,10 +16,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.shape.GenericShape
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -34,8 +36,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -43,7 +43,8 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cove.companion.core.appViewModel
@@ -103,6 +104,7 @@ fun BriefScreen(nav: Nav) {
 }
 
 /** Calm explanation for a phone that cannot read aloud, with the text view as the way forward. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ReadAloudNotice(problem: TtsProblem, onText: () -> Unit, onSettings: () -> Unit, onRetry: () -> Unit) {
     val c = Cove.colors
@@ -116,7 +118,7 @@ private fun ReadAloudNotice(problem: TtsProblem, onText: () -> Unit, onSettings:
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         CoveText(message, style = CoveType.Meta, color = c.muted)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             NoticeAction("Read as text", onText)
             NoticeAction("Voice settings", onSettings)
             NoticeAction("Try again", onRetry)
@@ -127,7 +129,7 @@ private fun ReadAloudNotice(problem: TtsProblem, onText: () -> Unit, onSettings:
 @Composable
 private fun NoticeAction(label: String, onClick: () -> Unit) {
     Box(Modifier.heightIn(min = 48.dp).pressable(onClick).padding(horizontal = 6.dp), contentAlignment = Alignment.Center) {
-        CoveText(label, style = CoveType.Meta.copy(fontWeight = FontWeight.Medium))
+        CoveText(label, maxLines = 1, style = CoveType.Meta.copy(fontWeight = FontWeight.Medium))
     }
 }
 
@@ -154,7 +156,7 @@ private fun Header(s: PlayerState, offline: Boolean, nav: Nav) {
         Box(Modifier.size(44.dp).background(c.card, CoveShapes.Circle).pressable(nav.back, role = Role.Button).semantics { contentDescription = "Close brief" }, contentAlignment = Alignment.Center) {
             CoveIcon(CoveIcons.ChevronDown, c.ink, size = 18.dp)
         }
-        CoveText(label, style = CoveType.Meta, color = c.muted)
+        CoveText(label, Modifier.weight(1f).padding(horizontal = 8.dp), style = CoveType.Meta, color = c.muted, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
         Spacer(Modifier.size(44.dp))
     }
 }
@@ -212,26 +214,32 @@ private fun Scrubber(s: PlayerState) {
     }
 }
 
-/** The design's row is wider than the screen, so its boxes shrink: 52 -> 42.1 and 76 -> 61.5 (the play button becomes an oval). */
+/** Speed, previous, play (a 64 dp circle), next, Text: equal-weight 48 dp cells so labels stay on one line at any width or font scale. */
 @Composable
 private fun Controls(s: PlayerState, player: BriefPlayer, textMode: Boolean, onText: () -> Unit) {
     val c = Cove.colors
-    val oval = GenericShape { size, _ -> addOval(Rect(0f, 0f, size.width, size.height)) }
     val speed = if (s.speed == 1f) "1×" else "${s.speed}×"
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
-        Cell(player::cycleSpeed, label = "Speed $speed") { CoveText(speed, style = CoveType.Meta, color = c.muted) }
-        Cell(player::previous, label = "Previous section") { CoveIcon(CoveIcons.Previous, c.ink) }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Cell(player::cycleSpeed, Modifier.weight(1f), label = "Speed $speed") { ControlLabel(speed, c.muted) }
+        Cell(player::previous, Modifier.weight(1f), label = "Previous section") { CoveIcon(CoveIcons.Previous, c.ink) }
         Box(
-            Modifier.size(61.5.dp, 76.dp).clip(oval).background(c.ink).pressable(player::toggle, role = Role.Button)
+            Modifier.size(64.dp).background(c.ink, CoveShapes.Circle).pressable(player::toggle, role = Role.Button)
                 .semantics { contentDescription = if (s.playing) "Pause" else "Play" },
             contentAlignment = Alignment.Center,
         ) { CoveIcon(if (s.playing) CoveIcons.Pause else CoveIcons.Play, c.onInk) }
-        Cell(player::next, label = "Next section") { CoveIcon(CoveIcons.Next, c.ink) }
-        Cell(onText, label = if (textMode) "Text view, on" else "Text view, off") { CoveText("Text", style = CoveType.Meta, color = if (textMode) c.ink else c.muted) }
+        Cell(player::next, Modifier.weight(1f), label = "Next section") { CoveIcon(CoveIcons.Next, c.ink) }
+        Cell(onText, Modifier.weight(1f), label = if (textMode) "Text view, on" else "Text view, off") { ControlLabel("Text", if (textMode) c.ink else c.muted) }
     }
 }
 
 @Composable
-private fun Cell(onClick: () -> Unit, width: Dp = 42.1.dp, label: String? = null, content: @Composable () -> Unit) {
-    Box(Modifier.size(width, 52.dp).pressable(onClick, role = Role.Button).semantics { if (label != null) contentDescription = label }, contentAlignment = Alignment.Center) { content() }
+private fun ControlLabel(text: String, color: Color) =
+    CoveText(text, style = CoveType.Meta, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
+
+@Composable
+private fun Cell(onClick: () -> Unit, modifier: Modifier = Modifier, label: String? = null, content: @Composable () -> Unit) {
+    Box(
+        modifier.heightIn(min = 52.dp).widthIn(min = 48.dp).pressable(onClick, role = Role.Button).semantics { if (label != null) contentDescription = label },
+        contentAlignment = Alignment.Center,
+    ) { content() }
 }
