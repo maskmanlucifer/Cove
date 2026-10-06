@@ -102,6 +102,7 @@ fun MeScreen(nav: Nav) {
             SettingsRow("Privacy and data", value = "Yours", onClick = { sheet = MeSheet.Privacy })
             RowDivider()
             SettingsRow("Forget imported-message history", onClick = { sheet = MeSheet.ForgetMessages })
+            SettingsRow("Clear all data", onClick = { sheet = MeSheet.ClearData })
         }
         SettingsGroup("Photos and backup") {
             SettingsRow("Photo quality", value = PhotoQuality.label(settings.photoQuality), onClick = { vm.resetBackup(); sheet = MeSheet.PhotoQuality })
@@ -137,7 +138,7 @@ fun MeScreen(nav: Nav) {
             SettingsRow("Version", value = BuildConfig.VERSION_NAME)
         }
     }
-    MeSheets(sheet, settings, vm, briefPlay = { nav.go(Routes.Brief) }, openConnect = { nav.go(Routes.Connect) }) { sheet = null }
+    MeSheets(sheet, settings, vm, briefPlay = { nav.go(Routes.Brief) }, openConnect = { nav.go(Routes.Connect) }, onOpen = { sheet = it }) { sheet = null }
 }
 
 @Composable

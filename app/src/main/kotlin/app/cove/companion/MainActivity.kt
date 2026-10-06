@@ -2,6 +2,8 @@ package app.cove.companion
 
 import androidx.compose.runtime.getValue
 import android.content.Intent
+import android.widget.Toast
+import app.cove.companion.data.wipe.DeviceWipe
 import android.os.Bundle
 import android.provider.Settings
 import android.view.WindowManager
@@ -89,6 +91,7 @@ class MainActivity : FragmentActivity() {
             }
         }
         if (BuildConfig.DEBUG) handleDebugIntent()
+        DeviceWipe.takeNotice(this)?.let { Toast.makeText(this, it, Toast.LENGTH_LONG).show() }
         if (intent.action == ACTION_LISTEN) voiceRequest.intValue++
         if (intent.action == ACTION_BRIEF) briefRequest.intValue++
         setContent {

@@ -52,12 +52,13 @@ class CredentialStore(
         _credentials.value = next.filledBy(devDefaults)
     }
 
+    /**
+     * What is on disk, or blank when it cannot be read right now. An unreadable file is left in place: deleting it
+     * would turn a passing Keystore hiccup into lost connections. The next [update] replaces it.
+     */
     private fun read(): Credentials {
         if (!file.exists()) return Credentials()
         return runCatching { json.decodeFromString<Credentials>(String(sealer.decrypt(file.readBytes()))) }
-            .getOrElse {
-                file.delete()
-                Credentials()
-            }
+            .getOrElse { Credentials() }
     }
 }

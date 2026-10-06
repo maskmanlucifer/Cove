@@ -30,7 +30,7 @@ import app.cove.companion.feature.me.SheetHeading
 import app.cove.companion.feature.plan.PlanSheet
 
 /** The sheets of the Connect screen. */
-enum class ConnectSheet { Code, Supabase, Google, Drive, Gemini }
+enum class ConnectSheet { Code, Supabase, Google, Drive, Gemini, Share }
 
 /** Hosts the sheet named by [sheet]. */
 @Composable
@@ -38,6 +38,7 @@ fun ConnectSheets(sheet: ConnectSheet?, ui: ConnectUi, vm: ConnectViewModel, onD
     when (sheet) {
         null -> Unit
         ConnectSheet.Code -> CodeSheet(vm, onDismiss)
+        ConnectSheet.Share -> ShareCodeSheet(vm, onDismiss)
         ConnectSheet.Supabase -> SupabaseSheet(ui, vm, onDismiss)
         ConnectSheet.Google -> GoogleSheet(ui, vm, onDismiss)
         ConnectSheet.Drive -> DriveSheet(ui, vm, onDismiss)

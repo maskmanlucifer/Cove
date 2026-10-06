@@ -32,11 +32,11 @@ import app.cove.companion.feature.security.LockUnavailableSheet
 import app.cove.companion.feature.plan.TitleField
 
 /** Which Me sheet is open. */
-enum class MeSheet { Name, Wake, Brief, OneThing, Spoken, Nudges, Motion, Look, Privacy, PhotoQuality, Backup, Restore, LockAfter, LockUnavailable, VoiceCheck, ForgetMessages }
+enum class MeSheet { Name, Wake, Brief, OneThing, Spoken, Nudges, Motion, Look, Privacy, PhotoQuality, Backup, Restore, LockAfter, LockUnavailable, VoiceCheck, ForgetMessages, ClearData }
 
 /** Hosts whichever sheet [sheet] names, reading and writing through [vm]. */
 @Composable
-fun MeSheets(sheet: MeSheet?, s: SettingsEntity, vm: MeViewModel, briefPlay: () -> Unit = {}, openConnect: () -> Unit = {}, onDismiss: () -> Unit) {
+fun MeSheets(sheet: MeSheet?, s: SettingsEntity, vm: MeViewModel, briefPlay: () -> Unit = {}, openConnect: () -> Unit = {}, onOpen: (MeSheet) -> Unit = {}, onDismiss: () -> Unit) {
     when (sheet) {
         null -> Unit
         MeSheet.Name -> NameSheet(s.displayName, { n -> vm.update { it.copy(displayName = n.trim()) } }, onDismiss)
@@ -95,13 +95,14 @@ fun MeSheets(sheet: MeSheet?, s: SettingsEntity, vm: MeViewModel, briefPlay: () 
                 Modifier.fillMaxWidth(), fillWidth = true,
             )
         }
-        MeSheet.Privacy -> PrivacySheet(onDismiss)
+        MeSheet.Privacy -> PrivacySheet(onDismiss) { onDismiss(); onOpen(MeSheet.ClearData) }
         MeSheet.ForgetMessages -> PlanSheet(onDismiss, gap = 16) { close ->
             SheetHeading("Forget imported-message history")
             SheetCaption("Cove will no longer remember which messages it has already looked at. Your expenses stay exactly as they are. Next time, Cove checks for repeats against your expenses.")
             PillButton("Forget history", { vm.forgetImportedMessages(); close() }, Modifier.fillMaxWidth(), height = 52.dp)
             PillButton("Cancel", close, Modifier.fillMaxWidth(), kind = ButtonKind.Secondary, height = 52.dp)
         }
+        MeSheet.ClearData -> app.cove.companion.feature.datacontrols.ClearDataSheet(onDismiss)
         MeSheet.LockAfter -> LockAfterSheet(s.lockAfter, { v -> vm.update { it.copy(lockAfter = v.key) } }, onDismiss)
         MeSheet.LockUnavailable -> LockUnavailableSheet(onDismiss)
         MeSheet.PhotoQuality -> PlanSheet(onDismiss, gap = 16) {
@@ -165,10 +166,16 @@ private val privacyGroups = listOf(
             "Gemini (only if you add a key)" to "Short non-journal commands (up to 160 characters), the facts for your morning brief, and expense notes with amounts removed (when you ask Review to sort them) go from this phone straight to Google with your own key. Without a key, your Supabase project may relay the same text.",
         ),
     ),
+    PrivacyGroup(
+        "Clearing your data",
+        listOf(
+            "Clear all data" to "Erases everything Cove stored on this phone, including your saved connections and sign-in, and makes Cove behave like a fresh install. Copies in your own Supabase and Google Drive stay unless you also choose to delete them there. Updates and reinstalls over the same app keep your connections.",
+        ),
+    ),
 )
 
 @Composable
-private fun PrivacySheet(onDismiss: () -> Unit) {
+private fun PrivacySheet(onDismiss: () -> Unit, onClear: () -> Unit) {
     PlanSheet(onDismiss, gap = 16) {
         SheetHeading("Privacy and data")
         Column(
@@ -184,6 +191,7 @@ private fun PrivacySheet(onDismiss: () -> Unit) {
                     }
                 }
             }
+            PillButton("Clear all data…", onClear, Modifier.fillMaxWidth(), kind = app.cove.companion.design.components.ButtonKind.Secondary, height = 52.dp)
         }
     }
 }

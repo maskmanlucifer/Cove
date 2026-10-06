@@ -29,7 +29,7 @@ Rule: the user never sits in a crash loop and always has either the app, a Recov
 - **Try again**: clears crash notes and restarts the app through a helper activity in its own process (`RestartActivity`), so the new process never races the dying one.
 - **Save a copy of my data**: system document picker (`CreateDocument`), a zip with the raw (encrypted) `cove.db` and sidecars, the technical notes and the journal photos and voice notes.
 - **Restore from a backup**: pick a `cove-YYYY-MM.json.gz` (local or via Drive in the picker). The unreadable database and key are moved to `files/recovery-old/<time>/` (not deleted), the backup is staged and imported into the fresh database on the next start, before the UI opens.
-- **Start fresh**: two steps. It states what is deleted, offers "Save a copy first" when none was saved, and needs the word DELETE typed. It deletes the database, keys, credentials, photos and settings, cancels alarms and restarts into onboarding.
+- **Start fresh**: two steps. It states what is deleted, offers "Save a copy first" when none was saved, and needs the word DELETE typed. It is the same full reset as Me > Clear all data (`DeviceWipe`, see `docs/DATA_CONTROLS.md`): alarms and jobs are cancelled, a `pending_wipe` marker is written and the app restarts; the database, keys, credentials, photos and settings are deleted at the start of the next process.
 - **Open storage settings** when storage is full.
 
 ## Permissions

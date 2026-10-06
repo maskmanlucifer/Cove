@@ -11,6 +11,7 @@ import app.cove.companion.data.config.CredentialField
 import app.cove.companion.data.config.CredentialValidator
 import app.cove.companion.data.config.Credentials
 import app.cove.companion.data.config.SetupCode
+import app.cove.companion.data.config.SetupCodeExport
 import app.cove.companion.data.config.SetupCodeResult
 import app.cove.companion.data.config.TestResult
 import io.ktor.client.HttpClient
@@ -79,6 +80,9 @@ class ConnectViewModel(private val c: AppContainer) : ViewModel() {
         if (result is SetupCodeResult.Parsed) save(result.values)
         return result
     }
+
+    /** The setup code for the connections saved on this phone, or null when none are. Contains secrets: never log it. */
+    fun setupCode(): String? = SetupCodeExport.code(c.credentialStore.saved)
 
     /** Names of the services a setup code just filled, for the confirmation line. */
     fun describe(values: Map<CredentialField, String>): String =

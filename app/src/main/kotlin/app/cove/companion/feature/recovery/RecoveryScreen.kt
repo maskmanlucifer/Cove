@@ -254,8 +254,8 @@ private fun StartFresh(
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         CoveText("Start fresh?", style = CoveType.Title)
         CoveText(
-            "This deletes everything Cove keeps on this phone: to-dos, alarms, money, journal and photos that are only here. " +
-                "Anything backed up to Google Drive or synced to your own database is not touched.",
+            "This returns Cove to a fresh install: it deletes everything Cove keeps on this phone (to-dos, alarms, money, journal, photos) " +
+                "and your saved connections and sign-in. Anything backed up to Google Drive or synced to your own database is not touched.",
             style = CoveType.Body, color = c.muted,
         )
     }
