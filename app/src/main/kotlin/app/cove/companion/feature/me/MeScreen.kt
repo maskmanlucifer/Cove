@@ -84,7 +84,7 @@ fun MeScreen(nav: Nav) {
         SettingsGroup("More") {
             SettingsRow("Look and text size", value = lookSummary(settings.theme, settings.textScale), onClick = { sheet = MeSheet.Look })
             RowDivider()
-            SettingsRow("Privacy and data", value = "On this phone", onClick = { sheet = MeSheet.Privacy })
+            SettingsRow("Privacy and data", value = "Yours", onClick = { sheet = MeSheet.Privacy })
         }
         SettingsGroup("Photos and backup") {
             SettingsRow("Photo quality", value = PhotoQuality.label(settings.photoQuality), onClick = { vm.resetBackup(); sheet = MeSheet.PhotoQuality })
@@ -146,7 +146,7 @@ private fun Header(name: String, onEdit: () -> Unit) {
         Column {
             if (name.isBlank()) CoveText("Add your name", style = CoveType.Section.copy(lineHeight = 32.sp), color = c.placeholder)
             else CoveText(name, style = CoveType.Section.copy(lineHeight = 32.sp))
-            CoveText("Everything stored on this phone", style = CoveType.Meta, color = c.muted)
+            CoveText("Your data lives in your own space", style = CoveType.Meta, color = c.muted)
         }
     }
 }
