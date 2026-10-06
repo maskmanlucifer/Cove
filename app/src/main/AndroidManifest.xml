@@ -160,6 +160,10 @@
             android:exported="false" />
 
         <receiver
+            android:name=".feature.training.rest.RestReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".feature.nudges.NudgeBootReceiver"
             android:exported="true"
             tools:ignore="UnsafeProtectedBroadcastReceiver">

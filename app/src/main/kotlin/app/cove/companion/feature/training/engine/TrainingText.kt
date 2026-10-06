@@ -55,6 +55,29 @@ object TrainingText {
     private const val SET_WORK_SECONDS = 45
     private const val EXERCISE_SETUP_SECONDS = 180
 
+    private val small = listOf(
+        "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen",
+        "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen",
+    )
+    private val tens = listOf("", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety")
+
+    /** English words for 0..999 ("thirty-seven", "one hundred and five"). */
+    fun spokenNumber(n: Int): String = when {
+        n < 20 -> small[n.coerceAtLeast(0)]
+        n < 100 -> tens[n / 10] + if (n % 10 == 0) "" else "-" + small[n % 10]
+        else -> small[(n / 100).coerceAtMost(9)] + " hundred" + if (n % 100 == 0) "" else " and " + spokenNumber(n % 100)
+    }
+
+    /** The hint under the steppers: `Or say “thirty-seven five for eight”` (kilograms or pounds as shown). */
+    fun sayHint(display: Double, reps: Int, bodyweight: Boolean): String {
+        if (bodyweight) return "Or say “${spokenNumber(reps)} reps”"
+        val tenths = Math.round(display * 10).toInt()
+        val whole = spokenNumber(tenths / 10)
+        val frac = tenths % 10
+        val w = if (frac == 0) whole else "$whole ${spokenNumber(frac)}"
+        return "Or say “$w for ${spokenNumber(reps)}”"
+    }
+
     /** "7 pm" or "7:30 pm" for [minutes] since midnight. */
     fun timeLabel(minutes: Int): String {
         val h24 = (minutes / 60) % 24

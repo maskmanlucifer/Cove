@@ -38,9 +38,9 @@ import app.cove.companion.feature.onboarding.MicPermissionScreen
 import app.cove.companion.feature.onboarding.WakeTimeScreen
 import app.cove.companion.feature.onboarding.WelcomeScreen
 import app.cove.companion.feature.sync.SyncConflictScreen
+import app.cove.companion.feature.training.trainingGraph
 import app.cove.companion.feature.connect.ConnectScreen
 import app.cove.companion.feature.today.OneThingScreen
-import app.cove.companion.feature.training.TrainingScreen
 import app.cove.companion.feature.voice.VoiceScreen
 
 
@@ -73,6 +73,7 @@ fun CoveNavHost(start: String, voiceRequest: Int = 0, briefRequest: Int = 0) {
             home = {
                 if (gate.allow(Routes.Main)) controller.navigate(Routes.Main) { popUpTo(0) { inclusive = true } }
             },
+            goReplacing = { route, upTo -> if (gate.allow(route)) controller.navigate(route) { popUpTo(upTo) { inclusive = false } } },
         )
     }
     fun id(e: NavBackStackEntry) = e.arguments?.getString("id") ?: "new"
@@ -99,7 +100,6 @@ fun CoveNavHost(start: String, voiceRequest: Int = 0, briefRequest: Int = 0) {
         ) { VoiceScreen(nav) }
         composable(Routes.Brief) { BriefScreen(nav) }
         composable(Routes.OneThing) { OneThingScreen(nav) }
-        composable(Routes.Training) { TrainingScreen(nav) }
 
         composable(Routes.Alarms) { AlarmsScreen(nav) }
         composable(Routes.AlarmEdit, idArg) { AlarmEditScreen(id(it), nav) }
@@ -114,6 +114,7 @@ fun CoveNavHost(start: String, voiceRequest: Int = 0, briefRequest: Int = 0) {
         composable(Routes.HabitNew) { HabitNewScreen(nav) }
         composable(Routes.HabitEdit, idArg) { HabitNewScreen(nav, id(it)) }
 
+        trainingGraph(nav)
         composable(Routes.JournalEdit, idArg) { JournalEditScreen(id(it), nav) }
         composable(Routes.SyncConflict) { SyncConflictScreen(nav) }
         composable(Routes.Connect) { ConnectScreen(nav) }

@@ -37,7 +37,6 @@ object Routes {
     const val JournalEdit = "journal/{id}"
     fun journalEdit(id: String = "new") = "journal/$id"
 
-    const val Training = "training"
     const val TrainingSetup = "training/setup"
     const val TrainingPlan = "training/plan"
     const val TrainingSession = "training/session"
