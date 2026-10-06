@@ -14,6 +14,7 @@ import app.cove.companion.navigation.Routes
 import app.cove.companion.core.Clock
 import app.cove.companion.core.toEpochMillis
 import app.cove.companion.data.DebugSeed
+import app.cove.companion.feature.alarms.DebugAlarms
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -36,7 +37,7 @@ class MainActivity : ComponentActivity() {
                 else -> isSystemInDarkTheme()
             }
             CoveTheme(dark) {
-                CoveNavHost(start = if (s.onboarded) Routes.Main else Routes.Welcome)
+                CoveNavHost(start = DebugLaunch.route ?: if (s.onboarded) Routes.Main else Routes.Welcome)
             }
         }
     }
@@ -44,6 +45,7 @@ class MainActivity : ComponentActivity() {
     /**
      * Debug only. `--es now HH:mm` freezes the clock; `--ez seed true [--ez dark true] [--ez evening true]`
      * loads the design's sample data (`--es plan todos` swaps in the to-do frames' lists).
+     * `--es route alarms` starts on that route; see also `DebugAlarms`.
      * `--es tab plan --es segment 1 --es sheet categories --es title Dentist` open a Plan tab view directly.
      */
     private fun handleDebugIntent() {
@@ -55,10 +57,12 @@ class MainActivity : ComponentActivity() {
         DebugLaunch.segment = intent.getStringExtra("segment")?.toIntOrNull()
         DebugLaunch.sheet = intent.getStringExtra("sheet")
         DebugLaunch.title = intent.getStringExtra("title")
+        DebugLaunch.route = intent.getStringExtra("route")
         if (intent.getBooleanExtra("seed", false)) {
             CoroutineScope(Dispatchers.IO).launch {
                 DebugSeed.load(container, intent.getBooleanExtra("dark", false), intent.getBooleanExtra("evening", false), intent.getStringExtra("plan"))
             }
         }
+        CoroutineScope(Dispatchers.IO).launch { DebugAlarms.handle(this@MainActivity, container, intent) }
     }
 }

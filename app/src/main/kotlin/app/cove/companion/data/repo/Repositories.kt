@@ -52,6 +52,8 @@ class PlanRepository(private val db: CoveDatabase, private val clock: Clock, pri
         return saved
     }
 
+    suspend fun alarm(id: String): AlarmEntity? = db.alarms().get(id)?.takeIf { it.deletedAt == null }
+
     suspend fun deleteAlarm(id: String) {
         db.alarms().get(id)?.let { saveAlarm(it.copy(deletedAt = clock.now(), enabled = false)) }
     }

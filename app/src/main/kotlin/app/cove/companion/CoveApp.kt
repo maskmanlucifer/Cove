@@ -2,6 +2,8 @@ package app.cove.companion
 
 import android.app.Application
 import android.content.Context
+import app.cove.companion.core.Notifications
+import app.cove.companion.feature.alarms.AlarmRescheduler
 
 /** Application entry point; holds the [AppContainer]. */
 class CoveApp : Application() {
@@ -11,6 +13,8 @@ class CoveApp : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        Notifications.createChannels(this)
+        AlarmRescheduler(this, container).start()
     }
 }
 
