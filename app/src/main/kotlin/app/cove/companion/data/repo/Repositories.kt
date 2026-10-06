@@ -230,6 +230,12 @@ class AssistantRepository(private val db: CoveDatabase, private val clock: Clock
         log?.mark("decisions", decision.id)
     }
 
+    suspend fun shownDecisions() = db.assistant().shown()
+
+    suspend fun decisionsSince(kind: String, since: Long) = db.assistant().countSince(kind, since)
+
+    suspend fun recentConfirmed(kind: String, limit: Int = 2) = db.assistant().recentConfirmed(kind, limit)
+
     suspend fun isMuted(kind: String) = db.assistant().isMuted(kind) == true
 
     suspend fun mute(kind: String) {
@@ -253,6 +259,9 @@ class AssistantRepository(private val db: CoveDatabase, private val clock: Clock
         log?.mark("voice_commands", id)
     }
 }
+
+/** Rows waiting to be pushed, so screens can say "will sync" while offline. */
+fun CoveDatabase.pendingIds(table: String): Flow<List<String>> = sync().observePendingIds(table)
 
 /** Today's day number in the habit/journal convention. */
 fun Clock.today(): Long = now().epochDay()

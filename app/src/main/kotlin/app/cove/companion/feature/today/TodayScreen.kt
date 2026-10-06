@@ -37,6 +37,12 @@ import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.DockClearance
 import app.cove.companion.design.components.PillButton
 import app.cove.companion.design.components.coveTopInset
+import app.cove.companion.design.components.OfflineNotice
+import app.cove.companion.design.components.rememberIsOffline
+import app.cove.companion.feature.suggest.SuggestionCard
+import app.cove.companion.feature.suggest.SuggestionViewModel
+import app.cove.companion.feature.suggest.WhySheet
+import androidx.compose.ui.unit.sp
 import app.cove.companion.navigation.Nav
 
 private val numberWords = listOf("Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten")
@@ -48,6 +54,10 @@ fun TodayScreen(nav: Nav) {
     val state by vm.state.collectAsState()
     val evening = state.phase == DayPhase.Evening
     val c = Cove.colors
+    val suggest = appViewModel { SuggestionViewModel(it) }
+    val sug by suggest.state.collectAsState()
+    val offline = rememberIsOffline()
+    val suggestion = sug.decision?.takeIf { !offline }
     DisposableEffect(Unit) { onDispose { vm.markNewSeen() } }
     if (state.oneThingMode) {
         OneThingContent(nav)
@@ -59,15 +69,18 @@ fun TodayScreen(nav: Nav) {
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .coveTopInset()
-            .padding(start = 24.dp, end = 24.dp, top = if (evening) 20.dp else 12.dp, bottom = DockClearance),
-        verticalArrangement = Arrangement.spacedBy(if (evening) 28.dp else 20.dp),
+            .padding(start = 24.dp, end = 24.dp, top = if (evening || suggestion != null) 20.dp else 12.dp, bottom = DockClearance),
+        verticalArrangement = Arrangement.spacedBy(if (suggestion != null || offline) 24.dp else if (evening) 28.dp else 20.dp),
     ) {
+        if (offline) OfflineNotice()
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            CoveText(state.date.longLabel(), style = CoveType.Meta, color = c.muted)
-            BalancedText(greeting(state), headline(state), CoveType.Title)
+            if (!offline) CoveText(state.date.longLabel(), style = CoveType.Meta, color = c.muted)
+            BalancedText(greeting(state), suggestion?.let { " ${it.title}" } ?: headline(state).let { h -> if (offline) h.replace(Regex(", nothing before .*\\.$"), ".") else h }, CoveType.Title)
         }
-        state.next?.let { NextCard(it, evening) }
-        Column {
+        if (suggestion != null) SuggestionCard(suggestion, sug.detail, suggest)
+        else if (!offline) state.next?.let { NextCard(it, evening) }
+        if (offline) OfflineTodos(state.todos, sug.pendingTodoIds, vm::toggle)
+        else Column {
             state.todos.forEach { row ->
                 Row(
                     Modifier.fillMaxWidth().heightIn(min = 52.dp),
@@ -85,7 +98,14 @@ fun TodayScreen(nav: Nav) {
                 }
             }
         }
-        if (evening) {
+        if (suggestion != null) {
+            CoveText("One suggestion at a time. Ignored ones disappear at noon.", style = CoveType.Meta, color = c.muted)
+        } else if (offline) {
+            CoveText(
+                "Voice, alarms and your journal work offline. Only weather and the brief's one thing to read wait for a connection.",
+                style = CoveType.Meta.copy(lineHeight = 21.sp), color = c.muted,
+            )
+        } else if (evening) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 CoveText("How was today?", style = CoveType.Meta, color = c.muted)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -101,6 +121,7 @@ fun TodayScreen(nav: Nav) {
             }
         }
     }
+    if (suggestion != null && sug.whyOpen) WhySheet(sug.detail, suggest)
 }
 
 @Composable

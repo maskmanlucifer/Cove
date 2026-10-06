@@ -181,6 +181,12 @@ interface AssistantDao {
     @Query("SELECT * FROM decisions WHERE kind = :kind AND status = 'confirmed' ORDER BY createdAt DESC LIMIT :limit")
     suspend fun recentConfirmed(kind: String, limit: Int): List<DecisionEntity>
 
+    @Query("SELECT * FROM decisions WHERE status = 'shown'")
+    suspend fun shown(): List<DecisionEntity>
+
+    @Query("SELECT COUNT(*) FROM decisions WHERE kind = :kind AND createdAt >= :since")
+    suspend fun countSince(kind: String, since: Long): Int
+
     @Upsert
     suspend fun upsert(decision: DecisionEntity)
 
@@ -255,4 +261,6 @@ interface SyncDao {
 
     @Query("DELETE FROM sync_conflicts WHERE tableName = :table AND rowId = :id")
     suspend fun deleteConflict(table: String, id: String)
+    @Query("SELECT DISTINCT rowId FROM outbox WHERE tableName = :table")
+    fun observePendingIds(table: String): Flow<List<String>>
 }
