@@ -34,8 +34,20 @@ data class WidgetSnapshot(
 
 /** Builds [WidgetSnapshot]s; pure apart from [load], so it can be tested. Widgets never run Nano or heavy work. */
 object WidgetData {
-    /** Reads the current state of the database once. */
-    suspend fun load(c: AppContainer): WidgetSnapshot {
+    /** What widgets draw when the database cannot be read: calm empty state instead of an error or a crash. */
+    val Empty = WidgetSnapshot(null, emptyList(), 0, 0, null)
+
+    /** Reads the current state of the database once; an unreadable database gives [Empty] and a crash note. */
+    suspend fun load(c: AppContainer): WidgetSnapshot = try {
+        read(c)
+    } catch (e: kotlinx.coroutines.CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        app.cove.companion.resilience.CrashHandler.report("widget-load", e)
+        Empty
+    }
+
+    private suspend fun read(c: AppContainer): WidgetSnapshot {
         val now = c.clock.now()
         val day = now.toLocalDate()
         val monthStart = day.withDayOfMonth(1).startOfDayMillis()

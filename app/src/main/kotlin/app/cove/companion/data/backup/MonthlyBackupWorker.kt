@@ -10,14 +10,15 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import app.cove.companion.container
+import app.cove.companion.resilience.guardedWork
 import java.util.concurrent.TimeUnit
 
 /** Writes the monthly backup to Drive; retried later when Drive is unreachable. */
 class MonthlyBackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
-    override suspend fun doWork(): Result {
+    override suspend fun doWork(): Result = guardedWork("backup-worker", runAttemptCount) {
         val kit = applicationContext.container.driveKit
-        if (!kit.enabled) return Result.success()
-        return when (kit.backupService().backUp()) {
+        if (!kit.enabled) return@guardedWork Result.success()
+        when (kit.backupService().backUp()) {
             is BackupResult.Offline, is BackupResult.Failed -> if (runAttemptCount < 3) Result.retry() else Result.success()
             else -> Result.success()
         }

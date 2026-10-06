@@ -40,6 +40,12 @@ import app.cove.companion.feature.voice.VoiceDebug
 import app.cove.companion.feature.alarms.DebugAlarms
 import app.cove.companion.feature.widgets.DebugWidgets
 import app.cove.companion.feature.security.LockScreen
+import app.cove.companion.feature.alarms.RingingBanner
+import app.cove.companion.feature.recovery.RecoveryScreen
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.Alignment
+import app.cove.companion.resilience.RecoveryReason
+import app.cove.companion.resilience.StartupState
 import app.cove.companion.security.DebugSecurity
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -85,6 +91,11 @@ class MainActivity : FragmentActivity() {
         if (intent.action == ACTION_LISTEN) voiceRequest.intValue++
         if (intent.action == ACTION_BRIEF) briefRequest.intValue++
         setContent {
+            val startup by container.startup.collectAsState()
+            (startup as? StartupState.Recovery)?.let {
+                RecoveryScreen(it.reason)
+                return@setContent
+            }
             val ready by container.dbReady.collectAsState()
             if (!ready) {
                 UpdatingSplash(container.dbMigrating.collectAsState().value)
@@ -121,11 +132,14 @@ class MainActivity : FragmentActivity() {
                     val pendingBrief = briefRequest.intValue
                     val brief = if (pendingBrief > handledBrief) pendingBrief else 0
                     LaunchedEffect(brief) { if (brief > 0) handledBrief = brief }
-                    CoveNavHost(
-                        start = debugRoute ?: DebugLaunch.route ?: if (s.onboarded) Routes.Main else Routes.Welcome,
-                        voiceRequest = request,
-                        briefRequest = brief,
-                    )
+                    Box {
+                        CoveNavHost(
+                            start = debugRoute ?: DebugLaunch.route ?: if (s.onboarded) Routes.Main else Routes.Welcome,
+                            voiceRequest = request,
+                            briefRequest = brief,
+                        )
+                        RingingBanner(Modifier.align(Alignment.TopCenter))
+                    }
                 }
             }
         }
@@ -184,6 +198,7 @@ class MainActivity : FragmentActivity() {
         }
         BriefDebug.frozen = intent.getStringExtra("briefAt")?.split("/")?.let { it[0].toInt() to it[1].toInt() }
         ConnectivityMonitor.forceOffline = intent.getBooleanExtra("offline", false)
+        intent.getStringExtra("crashTest")?.let(::debugCrashTest)
         if (intent.hasExtra("appLock")) {
             val on = intent.getBooleanExtra("appLock", false)
             CoroutineScope(Dispatchers.IO).launch { container.settings.update { it.copy(biometricLock = on) } }
@@ -219,6 +234,24 @@ class MainActivity : FragmentActivity() {
         }
         CoroutineScope(Dispatchers.IO).launch { DebugAlarms.handle(this@MainActivity, container, intent) }
         CoroutineScope(Dispatchers.IO).launch { DebugWidgets.handle(this@MainActivity, container, intent) }
+    }
+
+    /**
+     * Debug only. `--es crashTest db-corrupt|key-missing|key-invalid|migration|storage|unknown|loop` shows the Recovery screen for that
+     * failure class without damaging anything; `crash` throws on the main thread to exercise the crash handler.
+     */
+    private fun debugCrashTest(kind: String) {
+        val reason = when (kind) {
+            "db-corrupt" -> RecoveryReason.Corrupt
+            "key-missing" -> RecoveryReason.KeyMissing
+            "key-invalid" -> RecoveryReason.KeyInvalid
+            "migration" -> RecoveryReason.MigrationFailed
+            "storage" -> RecoveryReason.StorageFull
+            "unknown" -> RecoveryReason.Unknown
+            "loop" -> RecoveryReason.CrashLoop
+            else -> null
+        }
+        if (reason != null) container.forceRecovery(reason) else if (kind == "crash") throw IllegalStateException("crashTest")
     }
 
     companion object {

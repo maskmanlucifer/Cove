@@ -22,6 +22,8 @@ import androidx.core.app.ServiceCompat
 import app.cove.companion.R
 import app.cove.companion.container
 import app.cove.companion.core.Notifications
+import app.cove.companion.core.Permissions
+import app.cove.companion.resilience.CrashHandler
 import app.cove.companion.core.clockText
 import app.cove.companion.data.local.entity.AlarmEntity
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -73,9 +75,22 @@ class AlarmRingService : Service() {
         startedAt = System.currentTimeMillis()
         wakeLock = getSystemService(PowerManager::class.java)
             .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "cove:alarm").apply { acquire(TIMEOUT_MS + 5_000) }
-        play(intent.getStringExtra(EXTRA_SOUND).orEmpty())
-        vibrate()
+        runCatching { play(intent.getStringExtra(EXTRA_SOUND).orEmpty()) }.onFailure { CrashHandler.report("alarm-sound", it) }
+        runCatching { vibrate() }.onFailure { CrashHandler.report("alarm-vibrate", it) }
         handler.postDelayed(::timeout, TIMEOUT_MS)
+        if (!Permissions.notificationsAllowed(this) || !Permissions.fullScreenIntentAllowed(this)) openRingScreen()
+    }
+
+    /**
+     * With notifications (or full-screen alerts) off the notification cannot raise the ring screen, so open it directly.
+     * If Android refuses a background start, MainActivity still shows Stop and Snooze whenever the app is opened.
+     */
+    private fun openRingScreen() {
+        try {
+            startActivity(Intent(this, AlarmRingActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (e: Exception) {
+            CrashHandler.report("ring-screen", e)
+        }
     }
 
     private fun notification(ring: RingState): android.app.Notification {

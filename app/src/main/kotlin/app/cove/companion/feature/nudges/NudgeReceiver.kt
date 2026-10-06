@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import app.cove.companion.container
+import app.cove.companion.resilience.CrashHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -15,9 +16,9 @@ class NudgeReceiver : BroadcastReceiver() {
         val app = context.applicationContext
         val key = intent.getStringExtra(EXTRA_KEY)
         val pending = goAsync()
-        CoroutineScope(Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.IO + CrashHandler.coroutineHandler("nudge")).launch {
             try {
-                handle(app, intent, key)
+                CrashHandler.guarded("nudge") { handle(app, intent, key) }
             } finally {
                 pending.finish()
             }
@@ -67,9 +68,9 @@ class NudgeBootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val app = context.applicationContext
         val pending = goAsync()
-        CoroutineScope(Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.IO + CrashHandler.coroutineHandler("nudge-boot")).launch {
             try {
-                NudgeScheduler(app, app.container).syncNow()
+                CrashHandler.guarded("nudge-boot") { NudgeScheduler(app, app.container).syncNow() }
             } finally {
                 pending.finish()
             }

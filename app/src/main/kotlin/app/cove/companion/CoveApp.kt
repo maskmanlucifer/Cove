@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import app.cove.companion.feature.nudges.NudgeScheduler
 import app.cove.companion.feature.widgets.WidgetUpdater
+import app.cove.companion.feature.recovery.PendingRestore
 import app.cove.companion.resilience.CrashHandler
 import app.cove.companion.resilience.CrashLoop
 import app.cove.companion.resilience.DbCheck
@@ -34,7 +35,7 @@ class CoveApp : Application() {
         // Everything below touches Room, WorkManager, the Keystore or AlarmManager: keep it off the main thread
         // so the first frame is not delayed. Alarms, nudges and widgets are registered within moments of launch.
         container.appScope.launch(Dispatchers.IO) {
-            val check = container.prepareDatabase(crashLoop)
+            val check = container.prepareDatabase(crashLoop) { PendingRestore.applyIfStaged(this@CoveApp, container) }
             // Services touch the database: they start only when it opened and the last launches did not crash-loop.
             if (check == DbCheck.Ok && !crashLoop) startServices()
         }

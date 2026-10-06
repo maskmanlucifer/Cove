@@ -48,7 +48,10 @@ import app.cove.companion.data.repo.MoneyRepository
 import app.cove.companion.data.repo.PlanRepository
 import app.cove.companion.data.repo.SettingsRepository
 import app.cove.companion.data.repo.TodoRepository
+import app.cove.companion.data.backup.RoomBackupStore
 import app.cove.companion.data.sync.ConflictResolver
+import app.cove.companion.data.sync.RoomSyncStore
+import app.cove.companion.data.sync.SyncTables
 import app.cove.companion.data.sync.SyncManager
 import app.cove.companion.core.net.ConnectivityMonitor
 import app.cove.companion.data.auth.GoogleSignIn
@@ -111,12 +114,14 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
      * file off the main thread. A failure is classified, noted and turned into [startup] = Recovery; it never throws.
      * [crashLoop] (decided from the crash notes before this launch) also leads to Recovery, with the database fine.
      */
-    suspend fun prepareDatabase(crashLoop: Boolean = false): DbCheck {
+    suspend fun prepareDatabase(crashLoop: Boolean = false, beforeReady: suspend () -> Unit = {}): DbCheck {
         val check = withContext(Dispatchers.IO) {
             DatabaseGuard(::openDatabase, { CrashHandler.report("startup", it) }).check()
         }
+        if (forcedRecovery) return check
         val reason = SafeMode.reason(check, crashLoop)
         if (reason == null) {
+            beforeReady()
             dbReady.value = true
             startup.value = StartupState.Ready
         } else {
@@ -125,6 +130,8 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
         return check
     }
 
+    @Volatile private var forcedRecovery = false
+
     private fun openDatabase() {
         dbFactory.prepare()
         database.openHelper.writableDatabase.query("SELECT count(*) FROM sqlite_master").use { it.moveToFirst() }
@@ -132,10 +139,14 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
 
     /** Debug only: shows the Recovery screen for [reason] without damaging anything. */
     fun forceRecovery(reason: RecoveryReason) {
+        forcedRecovery = true
         dbReady.value = false
         startup.value = StartupState.Recovery(reason)
     }
     private val changeLog = ChangeLog(database, clock)
+
+    /** Backup/restore access to the database, used by the Recovery screen's staged restore as well as Drive. */
+    fun backupStore() = RoomBackupStore(RoomSyncStore(database), changeLog, SyncTables.all)
 
     val settings = SettingsRepository(database, clock, changeLog)
     val plan = PlanRepository(database, clock, changeLog)
