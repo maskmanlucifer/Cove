@@ -157,15 +157,16 @@ private fun DockMorph(
                             else Modifier.clearAndSetSemantics { },
                         ),
                 ) {
-                    CoveIcon(
-                        tab.icon, if (on) c.ink else c.dockInactive, size = 20.dp,
-                        modifier = Modifier.align(Alignment.Center).graphicsLayer { translationY = -3.dp.toPx() * DockMotion.frame(progress.value, reduce).geom },
-                    )
-                    Box(
-                        Modifier.align(Alignment.BottomCenter).padding(bottom = 7.dp).size(4.dp)
-                            .graphicsLayer { alpha = DockMotion.frame(progress.value, reduce).geom }
-                            .background(if (on) c.ink else Color.Transparent, CircleShape),
-                    )
+                    // Active state is colour, not a marker or a shift: a soft blue disc fades in behind the current icon
+                    // and the icon turns blue, so nothing moves vertically while the bar opens or closes.
+                    if (on) {
+                        Box(
+                            Modifier.align(Alignment.Center).size(36.dp)
+                                .graphicsLayer { alpha = DockMotion.frame(progress.value, reduce).geom }
+                                .background(c.accentSoft, CircleShape),
+                        )
+                    }
+                    CoveIcon(tab.icon, if (on) c.accent else c.dockInactive, size = 20.dp, modifier = Modifier.align(Alignment.Center))
                 }
             }
             if (!expanded) {
