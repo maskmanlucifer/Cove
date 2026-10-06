@@ -25,6 +25,7 @@ import app.cove.companion.data.local.entity.TodoCategoryEntity
 import app.cove.companion.data.local.entity.TodoEntity
 import app.cove.companion.data.local.entity.VoiceCommandEntity
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 
@@ -79,11 +80,43 @@ class PlanRepository(private val db: CoveDatabase, private val clock: Clock, pri
 
 /** To-dos and their categories. */
 class TodoRepository(private val db: CoveDatabase, private val clock: Clock, private val log: ChangeLog) {
+    companion object {
+        /** Name of the catch-all to-do category. */
+        const val INBOX = "Inbox"
+    }
+
     val categories: Flow<List<TodoCategoryEntity>> = db.todos().observeCategories()
     val todos: Flow<List<TodoEntity>> = db.todos().observeTodos()
 
+    /**
+     * The category that catches to-dos added without one (or whose category was deleted), created on first use, so a
+     * to-do can never end up in no list at all.
+     */
+    suspend fun inboxCategory(): TodoCategoryEntity {
+        val all = categories.first()
+        all.firstOrNull { it.name == INBOX }?.let { return it }
+        val created = TodoCategoryEntity(newId(), INBOX, sort = (all.minOfOrNull { it.sort } ?: 0) - 1)
+        saveCategory(created)
+        return created
+    }
+
+    /** [categoryId] when it is a live category, otherwise the Inbox. */
+    suspend fun resolveCategory(categoryId: String?): String {
+        if (categoryId != null && categories.first().any { it.id == categoryId }) return categoryId
+        return inboxCategory().id
+    }
+
+    /** Moves to-dos with no (or a deleted) category into the Inbox; run at start-up and when the Plan screen opens. */
+    suspend fun adoptOrphans() {
+        val live = categories.first().map { it.id }.toSet()
+        val orphans = todos.first().filter { it.categoryId == null || it.categoryId !in live }
+        if (orphans.isEmpty()) return
+        val inbox = inboxCategory().id
+        saveAll(orphans.map { it.copy(categoryId = inbox) })
+    }
+
     suspend fun add(title: String, categoryId: String?, dueAt: Long? = null, source: String = "manual"): TodoEntity {
-        val todo = TodoEntity(newId(), categoryId, title, dueAt, source = source, updatedAt = clock.now())
+        val todo = TodoEntity(newId(), resolveCategory(categoryId), title, dueAt, source = source, updatedAt = clock.now())
         db.todos().upsert(todo)
         log.mark("todos", todo.id)
         return todo

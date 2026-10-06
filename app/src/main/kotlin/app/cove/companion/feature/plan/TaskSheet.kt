@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -36,12 +37,20 @@ fun TaskSheet(
     onSetDone: (todo: TodoEntity, done: Boolean, edited: TodoEntity) -> Unit,
     onDelete: (TodoEntity) -> Unit,
     onDismiss: () -> Unit,
+    onCreateCategory: (String) -> Unit = {},
 ) {
     var title by rememberSaveable { mutableStateOf(todo.title) }
     var categoryId by rememberSaveable { mutableStateOf(todo.categoryId) }
     var dueAt by rememberSaveable { mutableStateOf(todo.dueAt) }
     var remind by rememberSaveable { mutableStateOf(todo.remind) }
     var page by rememberSaveable { mutableStateOf(TaskPage.Main) }
+    var pendingNew by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(categories, pendingNew) {
+        val made = pendingNew?.let { n -> categories.firstOrNull { it.name == n } } ?: return@LaunchedEffect
+        categoryId = made.id
+        pendingNew = null
+        page = TaskPage.Main
+    }
     var discard by rememberSaveable { mutableStateOf(false) }
 
     fun edited() = todo.copy(title = title.trim().ifEmpty { todo.title }, categoryId = categoryId, dueAt = dueAt, remind = remind && dueAt != null)
@@ -51,12 +60,12 @@ fun TaskSheet(
 
     PlanSheet(onDismiss = { commit(); onDismiss() }) { close ->
         when (page) {
-            TaskPage.Category -> CategoryPage(categories, categoryId, { categoryId = it; page = TaskPage.Main }) { page = TaskPage.Main }
+            TaskPage.Category -> CategoryPage(categories, categoryId, { categoryId = it; page = TaskPage.Main }, { page = TaskPage.Main }) { name -> pendingNew = name; onCreateCategory(name) }
             TaskPage.When -> WhenPage(dueAt, now, { dueAt = it; page = TaskPage.Main }) { page = TaskPage.Main }
             TaskPage.Main -> {
                 TitleField(title, { title = it }, "Title", onDone = {})
                 Column {
-                    SheetRow("Category", categories.firstOrNull { it.id == categoryId }?.name ?: "None", { page = TaskPage.Category })
+                    SheetRow("Category", categories.firstOrNull { it.id == categoryId }?.name ?: "Inbox", { page = TaskPage.Category })
                     val whenText = whenParts(dueAt, now)
                     SheetRow("When", whenText?.first ?: "Not set", { page = TaskPage.When }, whenText?.second, placeholder = whenText == null)
                     SheetControlRow("Remind me") {

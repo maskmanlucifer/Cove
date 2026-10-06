@@ -163,6 +163,7 @@ private fun PlanSheets(sheet: String?, state: PlanState, vm: PlanViewModel, undo
             onAddTodo = { title, cat, due, remind -> vm.addTodo(title, cat, due, remind) },
             onAddEvent = vm::addEvent,
             onDismiss = dismiss,
+            onCreateCategory = vm::addCategory,
         )
         sheet == CATEGORIES -> CategoriesSheet(
             state.groups,
@@ -184,6 +185,7 @@ private fun PlanSheets(sheet: String?, state: PlanState, vm: PlanViewModel, undo
                     onSetDone = { t, done, edited -> vm.setDone(t, done, edited) },
                     onDelete = vm::delete,
                     onDismiss = dismiss,
+                    onCreateCategory = vm::addCategory,
                 )
             }
         }

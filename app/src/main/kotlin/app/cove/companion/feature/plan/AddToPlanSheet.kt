@@ -12,6 +12,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -68,6 +69,7 @@ fun AddToPlanSheet(
     onAddTodo: (title: String, categoryId: String?, dueAt: Long?, remind: Boolean) -> Unit,
     onAddEvent: (EventEntity) -> Unit,
     onDismiss: () -> Unit,
+    onCreateCategory: (String) -> Unit = {},
     editing: EventEntity? = null,
     onDeleteEvent: (EventEntity) -> Unit = {},
 ) {
@@ -84,6 +86,13 @@ fun AddToPlanSheet(
     var remindBefore by rememberSaveable { mutableStateOf<Int?>(if (editing != null) editing.remindBeforeMin else 30) }
     var place by rememberSaveable { mutableStateOf(editing?.place.orEmpty()) }
     var categoryId by rememberSaveable { mutableStateOf(categories.firstOrNull()?.id) }
+    var pendingNew by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(categories, pendingNew) {
+        val made = pendingNew?.let { n -> categories.firstOrNull { it.name == n } } ?: return@LaunchedEffect
+        categoryId = made.id
+        pendingNew = null
+        page = AddPage.Main
+    }
     var dueAt by rememberSaveable { mutableStateOf<Long?>(null) }
     var remind by rememberSaveable { mutableStateOf(false) }
 
@@ -94,7 +103,7 @@ fun AddToPlanSheet(
             AddPage.Time -> TimeRangePage(start, end, { s, e -> start = s; end = e }, back)
             AddPage.Repeat -> { SubPageHeader("Repeat", back); OptionList(RepeatOptions, repeat) { repeat = it; back() } }
             AddPage.Remind -> { SubPageHeader("Remind me", back); OptionList(RemindOptions, remindBefore) { remindBefore = it; back() } }
-            AddPage.Category -> CategoryPage(categories, categoryId, { categoryId = it; back() }, back)
+            AddPage.Category -> CategoryPage(categories, categoryId, { categoryId = it; back() }, back) { name -> pendingNew = name; onCreateCategory(name) }
             AddPage.When -> WhenPage(dueAt, now, { dueAt = it; back() }, back)
             AddPage.Main -> {
                 TitleField(
@@ -109,7 +118,7 @@ fun AddToPlanSheet(
                         SheetRow("Repeat", RepeatOptions.first { it.first == repeat }.second, { page = AddPage.Repeat })
                         if (editing != null) SheetRow("Remind me", remindText(remindBefore), { page = AddPage.Remind })
                     } else {
-                        SheetRow("Category", categories.firstOrNull { it.id == categoryId }?.name ?: "None", { page = AddPage.Category })
+                        SheetRow("Category", categories.firstOrNull { it.id == categoryId }?.name ?: "Inbox", { page = AddPage.Category })
                         val whenText = whenParts(dueAt, now)
                         SheetRow("Time", whenText?.first ?: "Optional", { page = AddPage.When }, whenText?.second, placeholder = whenText == null)
                         if (dueAt != null) {

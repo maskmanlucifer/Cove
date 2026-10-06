@@ -131,14 +131,19 @@ class PlanViewModel(private val c: AppContainer) : ViewModel() {
         offerUndo("Deleted “${todo.title.ellipsize()}”") { c.todos.save(todo.copy(deletedAt = null)) }
     }
 
+    init {
+        viewModelScope.launch { c.todos.adoptOrphans() }
+    }
+
     fun save(todo: TodoEntity) = viewModelScope.launch { c.todos.save(todo) }
 
     /** Appends a new open to-do to [categoryId]. */
     fun addTodo(title: String, categoryId: String?, dueAt: Long? = null, remind: Boolean = false) = viewModelScope.launch {
         val clean = title.trim()
         if (clean.isEmpty()) return@launch
-        val next = state.value.groups.firstOrNull { it.category.id == categoryId }?.open?.maxOfOrNull { it.sort }?.plus(1) ?: 0
-        val todo = TodoEntity(newId(), categoryId, clean, dueAt, remind, sort = next)
+        val target = c.todos.resolveCategory(categoryId)
+        val next = state.value.groups.firstOrNull { it.category.id == target }?.open?.maxOfOrNull { it.sort }?.plus(1) ?: 0
+        val todo = TodoEntity(newId(), target, clean, dueAt, remind, sort = next)
         c.todos.save(todo)
         offerUndo("Added “${clean.ellipsize()}”") { c.todos.delete(todo.id) }
     }

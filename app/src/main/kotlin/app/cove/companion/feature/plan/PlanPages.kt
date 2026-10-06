@@ -1,6 +1,8 @@
 package app.cove.companion.feature.plan
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -9,6 +11,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -17,7 +20,10 @@ import app.cove.companion.core.clockText
 import app.cove.companion.core.toEpochMillis
 import app.cove.companion.core.toLocalDateTime
 import app.cove.companion.data.local.entity.TodoCategoryEntity
+import app.cove.companion.design.Cove
 import app.cove.companion.design.CoveType
+import app.cove.companion.design.components.AccentButton
+import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.ButtonKind
 import app.cove.companion.design.components.CoveSwitch
 import app.cove.companion.design.components.PillButton
@@ -28,11 +34,40 @@ import java.time.LocalTime
 
 private val ButtonText = CoveType.Button.copy(fontSize = 16.sp)
 
-/** Sheet sub-page that picks one of [categories]. */
+/**
+ * Sheet sub-page that picks one of [categories]. With none yet it explains what categories are and lets the person make
+ * the first one right here ([onCreate]); otherwise "New category" opens the same field under the list.
+ */
 @Composable
-fun CategoryPage(categories: List<TodoCategoryEntity>, selected: String?, onPick: (String) -> Unit, onBack: () -> Unit) {
+fun CategoryPage(
+    categories: List<TodoCategoryEntity>,
+    selected: String?,
+    onPick: (String) -> Unit,
+    onBack: () -> Unit,
+    onCreate: (String) -> Unit,
+) {
+    val c = Cove.colors
+    var creating by rememberSaveable { mutableStateOf(false) }
+    var name by rememberSaveable { mutableStateOf("") }
     SubPageHeader("Category", onBack)
-    OptionList(categories.map { it.id to it.name }, selected) { onPick(it) }
+    val create = { if (name.isNotBlank()) { onCreate(name.trim()); name = "" } }
+    if (categories.isEmpty()) {
+        Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            CoveText("No categories yet", style = CoveType.Heading)
+            CoveText(
+                "Categories keep your to-dos tidy, like Home or Shopping. Make your first one, or skip it and the to-do goes to Inbox.",
+                style = CoveType.Meta, color = c.muted,
+            )
+        }
+    } else {
+        OptionList(categories.map { it.id to it.name }, selected) { onPick(it) }
+    }
+    if (creating || categories.isEmpty()) {
+        TitleField(name, { name = it }, "Category name", onDone = create, autofocus = categories.isNotEmpty())
+        PillButton("Create category", create, Modifier.fillMaxWidth(), height = 52.dp, textStyle = ButtonText)
+    } else {
+        AccentButton("New category", { creating = true }, Modifier.padding(top = 8.dp))
+    }
 }
 
 /** Sheet sub-page that picks a due day and optionally a time; "Clear" removes the date. */
