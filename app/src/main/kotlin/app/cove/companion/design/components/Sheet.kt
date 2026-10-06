@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -29,6 +28,7 @@ import app.cove.companion.design.ReducedMotionMillis
 
 /**
  * Floating bottom sheet over a dimmed scrim. Rises in 280 ms; tap outside to dismiss.
+ * Sits 8 dp above the physical screen bottom and draws behind the gesture bar, as in the frames; the 24 dp bottom padding keeps content clear of the handle.
  * Place at the end of a full-screen `Box` so it overlays the page.
  */
 @Composable
@@ -52,7 +52,6 @@ fun CoveSheet(visible: Boolean, onDismiss: () -> Unit, modifier: Modifier = Modi
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
             Column(
                 modifier
-                    .navigationBarsPadding()
                     .padding(horizontal = 8.dp, vertical = 8.dp)
                     .fillMaxWidth()
                     .shadow(20.dp, CoveShapes.SheetFloating, ambientColor = shadow, spotColor = shadow)
