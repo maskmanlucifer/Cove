@@ -41,6 +41,10 @@ import app.cove.companion.design.components.Hairline
 import app.cove.companion.design.components.Tab
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.design.components.pressable
+import app.cove.companion.feature.permissions.PermissionGuides
+import app.cove.companion.feature.permissions.PermissionIssue
+import app.cove.companion.feature.permissions.PermissionNeeds
+import app.cove.companion.feature.permissions.rememberPermissionIssues
 import app.cove.companion.navigation.Nav
 import app.cove.companion.navigation.Routes
 
@@ -79,6 +83,9 @@ fun AlarmsScreen(nav: Nav) {
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
                 CoveText("Alarms", style = CoveType.Title)
+                val issues = rememberPermissionIssues(PermissionNeeds(alarms = true))
+                    .filter { it == PermissionIssue.Notifications || it == PermissionIssue.ExactAlarms || it == PermissionIssue.FullScreenIntent }
+                PermissionGuides(issues)
                 AlarmList(state.alarms, vm::setEnabled) { nav.go(Routes.alarmEdit(it)) }
                 Bedtime(state.bedtime) { nav.go(Routes.alarmEdit(it)) }
             }

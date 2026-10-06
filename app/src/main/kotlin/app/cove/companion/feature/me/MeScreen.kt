@@ -39,6 +39,9 @@ import app.cove.companion.feature.security.AuthAvailability
 import app.cove.companion.feature.security.Authenticator
 import app.cove.companion.feature.security.SecurityGroup
 import app.cove.companion.feature.security.findFragmentActivity
+import app.cove.companion.feature.permissions.PermissionGuides
+import app.cove.companion.feature.permissions.PermissionNeeds
+import app.cove.companion.feature.permissions.rememberPermissionIssues
 import app.cove.companion.navigation.Nav
 import app.cove.companion.navigation.Routes
 
@@ -64,6 +67,13 @@ fun MeScreen(nav: Nav) {
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Header(settings.displayName) { sheet = MeSheet.Name }
+        PermissionGuides(
+            rememberPermissionIssues(
+                PermissionNeeds(alarms = alarms.isNotEmpty(), brief = settings.briefOn, voice = false),
+            ),
+            alarmsInUse = alarms.isNotEmpty(),
+        )
+        sync.problem?.let { SyncProblemBanner(it, onRetry = vm::retrySync, onOpenConnect = { nav.go(Routes.Connect) }) }
         conflictTitle?.let { ConflictBanner(it) { nav.go(Routes.SyncConflict) } }
         SettingsGroup("Day") {
             SettingsRow("Alarms", value = alarmSummary(alarms.map { it.minutes }), onClick = { nav.go(Routes.Alarms) })
@@ -119,7 +129,7 @@ fun MeScreen(nav: Nav) {
             SettingsRow("Version", value = BuildConfig.VERSION_NAME)
         }
     }
-    MeSheets(sheet, settings, vm, briefPlay = { nav.go(Routes.Brief) }) { sheet = null }
+    MeSheets(sheet, settings, vm, briefPlay = { nav.go(Routes.Brief) }, openConnect = { nav.go(Routes.Connect) }) { sheet = null }
 }
 
 @Composable

@@ -1,5 +1,6 @@
 package app.cove.companion.security
 
+import app.cove.companion.resilience.KeyFileMissingException
 import java.io.File
 import java.security.SecureRandom
 
@@ -16,10 +17,14 @@ class DatabasePassphrase(
     /**
      * The passphrase as the ASCII hex of the random bytes, creating and storing it on first use.
      * Hex keeps it usable both as SQLCipher key bytes and as a quoted SQL string in `ATTACH ... KEY`.
+     *
+     * @param allowCreate false when an encrypted database already exists: a missing key file then throws
+     * [KeyFileMissingException] instead of minting a new key, which would make the old data unreadable for good.
      */
     @Synchronized
-    fun get(): String {
+    fun get(allowCreate: Boolean = true): String {
         if (file.exists()) return String(sealer.decrypt(file.readBytes()), Charsets.US_ASCII)
+        if (!allowCreate) throw KeyFileMissingException()
         val hex = ByteArray(KEY_BYTES).also(random::nextBytes).joinToString("") { "%02x".format(it) }
         file.parentFile?.mkdirs()
         val tmp = File(file.path + ".tmp")

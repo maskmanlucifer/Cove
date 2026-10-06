@@ -50,6 +50,9 @@ class PlaintextMigrator(private val dbFile: File, private val copier: DatabaseCo
 object SqliteHeader {
     private val MAGIC = "SQLite format 3\u0000".toByteArray(Charsets.US_ASCII)
 
+    /** True when [file] holds data but is not a plaintext SQLite file, i.e. it is (or claims to be) an encrypted database. */
+    fun isEncrypted(file: File): Boolean = file.isFile && file.length() > 0 && !isPlaintext(file)
+
     /** True when [file] exists and starts with the plaintext SQLite header. */
     fun isPlaintext(file: File): Boolean {
         if (!file.isFile || file.length() < MAGIC.size) return false

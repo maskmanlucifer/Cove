@@ -52,6 +52,15 @@ class RoomSyncStore(private val db: CoveDatabase) : SyncStore {
     suspend fun count(table: SyncTable): Int =
         db.query(SimpleSQLiteQuery("SELECT COUNT(*) FROM ${table.name}")).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
 
+    /** Number of rows of [table] matching the fixed SQL condition [where] (never user input). */
+    suspend fun countWhere(table: SyncTable, where: String): Int =
+        db.query(SimpleSQLiteQuery("SELECT COUNT(*) FROM ${table.name} WHERE $where")).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
+
+    /** Deletes the rows of [table] matching the fixed SQL condition [where] (never user input). */
+    suspend fun deleteWhere(table: SyncTable, where: String) {
+        db.openHelper.writableDatabase.execSQL("DELETE FROM ${table.name} WHERE $where")
+    }
+
     override suspend fun apply(table: SyncTable, rows: List<JsonObject>) {
         if (rows.isEmpty()) return
         val columns = localColumns(table)

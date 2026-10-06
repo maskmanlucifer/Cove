@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
 import app.cove.companion.data.local.CoveDatabase
+import app.cove.companion.resilience.MigrationStageException
 import kotlinx.coroutines.flow.MutableStateFlow
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 import java.io.File
@@ -18,9 +19,15 @@ object EncryptedDatabase {
     /** Database file of [context]. */
     fun file(context: Context): File = context.getDatabasePath(CoveDatabase.NAME)
 
-    /** The stored passphrase for [context], created on first use. */
+    /** Key file of [context]. */
+    fun keyFile(context: Context): File = File(context.noBackupFilesDir, "cove.key")
+
+    /** A new key may only be created while no encrypted database exists; otherwise it would orphan that data. */
+    fun mayCreateKey(dbFile: File): Boolean = !SqliteHeader.isEncrypted(dbFile)
+
+    /** The stored passphrase for [context]; created on first use unless an encrypted database already exists (then it throws). */
     fun passphrase(context: Context): String =
-        DatabasePassphrase(File(context.noBackupFilesDir, "cove.key"), SecretBox(KEY_ALIAS)).get()
+        DatabasePassphrase(keyFile(context), SecretBox(KEY_ALIAS)).get(allowCreate = mayCreateKey(file(context)))
 
     /**
      * Builds the Room database without touching the Keystore or the file: the passphrase and the one-time plaintext
@@ -39,8 +46,13 @@ class DeferredFactory(private val context: Context) : SupportSQLiteOpenHelper.Fa
         val file = EncryptedDatabase.file(context)
         file.parentFile?.mkdirs()
         migrating.value = SqliteHeader.isPlaintext(file)
-        PlaintextMigrator(file, SqlCipherCopier).migrateIfNeeded(pass)
-        migrating.value = false
+        try {
+            PlaintextMigrator(file, SqlCipherCopier).migrateIfNeeded(pass)
+        } catch (t: Throwable) {
+            throw MigrationStageException(t)
+        } finally {
+            migrating.value = false
+        }
         SupportOpenHelperFactory(pass.toByteArray(Charsets.US_ASCII))
     }
 

@@ -57,7 +57,15 @@ import app.cove.companion.feature.suggest.SuggestionCard
 import app.cove.companion.feature.suggest.SuggestionViewModel
 import app.cove.companion.feature.suggest.WhySheet
 import androidx.compose.ui.unit.sp
+import app.cove.companion.feature.nudges.ReminderPlanner
+import app.cove.companion.feature.permissions.PermissionGuides
+import app.cove.companion.feature.permissions.PermissionIssue
+import app.cove.companion.feature.permissions.PermissionNeeds
+import app.cove.companion.feature.permissions.rememberPermissionIssues
 import app.cove.companion.navigation.Nav
+import androidx.compose.runtime.produceState
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 
 private val numberWords = listOf("Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten")
 
@@ -68,10 +76,18 @@ fun TodayScreen(nav: Nav) {
     val state by vm.state.collectAsState()
     val evening = state.phase == DayPhase.Evening
     val c = Cove.colors
+    val context = LocalContext.current
     val suggest = appViewModel { SuggestionViewModel(it) }
     val sug by suggest.state.collectAsState()
     val offline = rememberIsOffline()
     val suggestion = sug.decision?.takeIf { !offline }
+    val remindersExist by produceState(false) {
+        val c = context.container
+        combine(c.todos.todos, c.plan.upcomingEvents(30)) { todos, events -> ReminderPlanner.plan(todos, events, c.clock.now()).isNotEmpty() }
+            .catch { emit(false) }.collect { value = it }
+    }
+    val permissionIssues = rememberPermissionIssues(PermissionNeeds(reminders = remindersExist))
+        .filter { it == PermissionIssue.Notifications }
     DisposableEffect(Unit) { onDispose { vm.markNewSeen() } }
     if (state.oneThingMode) {
         OneThingContent(nav)
@@ -79,7 +95,6 @@ fun TodayScreen(nav: Nav) {
     }
 
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
     val container = context.container
     val speaker = remember { TtsSpeaker(context) { container.settings.settings.first().spokenReplies } }
     DisposableEffect(Unit) { onDispose { speaker.shutdown() } }
@@ -100,6 +115,7 @@ fun TodayScreen(nav: Nav) {
         verticalArrangement = Arrangement.spacedBy(if (suggestion != null || offline) 24.dp else if (evening) 28.dp else 20.dp),
     ) {
         if (offline) OfflineNotice()
+        PermissionGuides(permissionIssues, alarmsInUse = false)
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (!offline) CoveText(state.date.longLabel(), style = CoveType.Meta, color = c.muted)
             BalancedText(greeting(state), suggestion?.let { " ${it.title}" } ?: headline(state).let { h -> if (offline) h.replace(Regex(", nothing before .*\\.$"), ".") else h }, CoveType.Title)

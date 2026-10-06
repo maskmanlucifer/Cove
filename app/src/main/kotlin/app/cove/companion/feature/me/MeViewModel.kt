@@ -8,7 +8,12 @@ import app.cove.companion.data.local.entity.AlarmEntity
 import app.cove.companion.data.local.entity.SettingsEntity
 import app.cove.companion.feature.onboarding.saveWakeTime
 import app.cove.companion.data.sync.ConflictDescriber
+import app.cove.companion.resilience.CrashHandler
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.SharingStarted
@@ -45,7 +50,7 @@ class MeViewModel(private val c: AppContainer) : ViewModel() {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     /** Back-up/restore sheet state: what is running and the message to show. */
-    data class BackupUi(val busy: Boolean = false, val message: String? = null)
+    data class BackupUi(val busy: Boolean = false, val message: String? = null, val needsConnect: Boolean = false)
 
     private val _backup = kotlinx.coroutines.flow.MutableStateFlow(BackupUi())
     val backup: StateFlow<BackupUi> = _backup
@@ -73,11 +78,34 @@ class MeViewModel(private val c: AppContainer) : ViewModel() {
     private fun runBackup(restoring: Boolean, work: suspend () -> BackupResult) {
         if (_backup.value.busy) return
         if (!c.driveKit.enabled) {
-            _backup.value = BackupUi(message = "Sign in with Google (Sync) to use Drive backups.")
+            _backup.value = BackupUi(message = BackupNotSignedIn, needsConnect = true)
             return
         }
         _backup.value = BackupUi(busy = true)
-        viewModelScope.launch { _backup.value = BackupUi(message = backupMessage(work(), restoring)) }
+        viewModelScope.launch {
+            // Room refuses the main thread, and a stuck network call must not spin forever.
+            val result = withTimeoutOrNull(BACKUP_TIMEOUT_MS) {
+                withContext(Dispatchers.IO) {
+                    try {
+                        work()
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        CrashHandler.report("backup", e)
+                        BackupResult.Failed("")
+                    }
+                }
+            } ?: BackupResult.Offline
+            if (result is BackupResult.Failed) result.cause?.let { CrashHandler.report("backup", it) }
+            _backup.value = BackupUi(message = backupMessage(result, restoring), needsConnect = backupNeedsConnect(result))
+        }
+    }
+
+    /** Asks sync to run now. */
+    fun retrySync() = c.sync.requestSync()
+
+    private companion object {
+        const val BACKUP_TIMEOUT_MS = 120_000L
     }
 
     fun update(change: (SettingsEntity) -> SettingsEntity) {

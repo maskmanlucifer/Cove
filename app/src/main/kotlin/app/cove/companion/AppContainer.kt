@@ -57,6 +57,12 @@ import app.cove.companion.data.config.CredentialStore
 import app.cove.companion.data.config.Credentials
 import app.cove.companion.data.config.ServiceProvider
 import app.cove.companion.security.SecretBox
+import app.cove.companion.resilience.CrashHandler
+import app.cove.companion.resilience.DatabaseGuard
+import app.cove.companion.resilience.DbCheck
+import app.cove.companion.resilience.RecoveryReason
+import app.cove.companion.resilience.SafeMode
+import app.cove.companion.resilience.StartupState
 import android.app.PendingIntent
 import java.io.File
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -94,13 +100,40 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
     /** True once the encrypted database is usable; the UI shows nothing but a splash until then. */
     val dbReady = MutableStateFlow(false)
 
+    /** [StartupState.Ready] once the database checked out; [StartupState.Recovery] when the UI must show the Recovery screen instead. */
+    val startup = MutableStateFlow<StartupState>(StartupState.Checking)
+
     /** True while an upgrade from a plaintext database is being encrypted (can take many seconds). */
     val dbMigrating: StateFlow<Boolean> get() = dbFactory.migrating
 
-    /** Creates the key and runs the one-time plaintext migration off the main thread, then flips [dbReady]. */
-    suspend fun prepareDatabase() {
-        withContext(Dispatchers.IO) { dbFactory.prepare() }
-        dbReady.value = true
+    /**
+     * Creates the key (never when an encrypted database exists), runs the one-time plaintext migration and opens the
+     * file off the main thread. A failure is classified, noted and turned into [startup] = Recovery; it never throws.
+     * [crashLoop] (decided from the crash notes before this launch) also leads to Recovery, with the database fine.
+     */
+    suspend fun prepareDatabase(crashLoop: Boolean = false): DbCheck {
+        val check = withContext(Dispatchers.IO) {
+            DatabaseGuard(::openDatabase, { CrashHandler.report("startup", it) }).check()
+        }
+        val reason = SafeMode.reason(check, crashLoop)
+        if (reason == null) {
+            dbReady.value = true
+            startup.value = StartupState.Ready
+        } else {
+            startup.value = StartupState.Recovery(reason)
+        }
+        return check
+    }
+
+    private fun openDatabase() {
+        dbFactory.prepare()
+        database.openHelper.writableDatabase.query("SELECT count(*) FROM sqlite_master").use { it.moveToFirst() }
+    }
+
+    /** Debug only: shows the Recovery screen for [reason] without damaging anything. */
+    fun forceRecovery(reason: RecoveryReason) {
+        dbReady.value = false
+        startup.value = StartupState.Recovery(reason)
     }
     private val changeLog = ChangeLog(database, clock)
 
@@ -237,7 +270,7 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
     /** Voice assistant services (parser, executor, TTS, undo chip). */
     val voice by lazy { VoiceKit(context.applicationContext, this) }
     /** Outlives screens; used for work that must finish after a screen closes, such as indexing a saved entry. */
-    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default + CrashHandler.coroutineHandler("appScope"))
     val foreground = ForegroundTracker()
 
     /** Lock state of the UI; alarms and workers never consult it. */
