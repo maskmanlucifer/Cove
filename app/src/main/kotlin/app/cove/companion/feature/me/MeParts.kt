@@ -91,7 +91,7 @@ fun ConflictBanner(title: String, onReview: () -> Unit) {
     ) {
         Column(Modifier.weight(1f)) {
             CoveText("Two versions of “$title”", style = CoveType.BodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            CoveText("Changed on another device. Pick whenever you like.", style = CoveType.Meta, color = c.muted)
+            CoveText("Changed on another device.", style = CoveType.Meta, color = c.muted)
         }
         CoveText("Review", style = CoveType.Button, color = c.ink)
     }
