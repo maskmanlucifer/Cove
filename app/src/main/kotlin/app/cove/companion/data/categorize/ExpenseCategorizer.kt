@@ -2,9 +2,12 @@ package app.cove.companion.data.categorize
 
 import app.cove.companion.data.local.entity.CategoryMemoryEntity
 import app.cove.companion.data.local.entity.ExpenseCategoryEntity
+import app.cove.companion.data.local.entity.PayeeMemoryEntity
+import app.cove.companion.data.sms.PayeeKey
 
 /** Which layer produced a [Suggestion]; [label] is the short plain-language reason shown in the UI. */
 enum class Reason(val label: String) {
+    Payee("Learned from your earlier payment"),
     Learned("learned"),
     Keyword("your keyword"),
     Name("its name"),
@@ -25,19 +28,32 @@ data class Suggestion(val categoryId: String?, val confidence: Float, val reason
 
 /**
  * Cheap, instant, offline expense categoriser. Layers, strongest first:
+ * 0. payee memory: what the user filed for this exact payee (`PayeeKey`), when the caller knows it,
  * 1. learned memory (what the user filed before),
  * 2. the user's own words for a category, then the category's own name,
  * 3. built-in rules (common words and Indian merchants) mapped onto the user's categories by name.
  *
- * Confidence scale: learned 0.75 (one pick) up to 0.95 (five or more); your keyword 0.85, 0.90 when a
+ * Confidence scale: payee 0.87 (one confirmation) up to 0.95; learned 0.75 (one pick) up to 0.95 (five or more); your keyword 0.85, 0.90 when a
  * multi-word phrase matched; category name 0.70; built-in 0.55 up to 0.65 for several words; none 0.
  * Ties are broken by the user's category order, then name, then id, so results are deterministic.
  */
 object ExpenseCategorizer {
-    /** Suggests a spending category for [note] among [categories], using learned [memory] keyed by token. */
-    fun suggest(note: String, categories: List<ExpenseCategoryEntity>, memory: Map<String, CategoryMemoryEntity> = emptyMap()): Suggestion {
-        val tokens = CategoryTokens.tokens(note)
+    /**
+     * Suggests a spending category for [note] among [categories], using learned [memory] keyed by token and, when the
+     * expense has a known payee, its [payee] memory, which wins over everything else. A generic fallback note
+     * ("Payment") says nothing, so it never matches words.
+     */
+    fun suggest(
+        note: String,
+        categories: List<ExpenseCategoryEntity>,
+        memory: Map<String, CategoryMemoryEntity> = emptyMap(),
+        payee: PayeeMemoryEntity? = null,
+    ): Suggestion {
         val usable = categories.filter { it.deletedAt == null && it.kind == "spending" }
+        if (payee != null && payee.deletedAt == null && payee.count > 0 && usable.any { it.id == payee.categoryId }) {
+            return Suggestion(payee.categoryId, 0.85f + 0.02f * minOf(payee.count, 5), Reason.Payee)
+        }
+        val tokens = if (PayeeKey.isGenericNote(note)) emptyList() else CategoryTokens.tokens(note)
         if (tokens.isEmpty() || usable.isEmpty()) return Suggestion.NONE
         return learned(tokens, usable, memory) ?: keyword(tokens, usable) ?: byName(tokens, usable) ?: builtIn(tokens, usable) ?: Suggestion.NONE
     }
@@ -51,6 +67,7 @@ object ExpenseCategorizer {
         val ids = cats.map { it.id }.toSet()
         val score = HashMap<String, Int>()
         for (t in tokens) {
+            if (t in CategoryTokens.genericWords) continue
             val m = memory[t] ?: memory[CategoryTokens.stem(t)] ?: continue
             if (m.deletedAt == null && m.count > 0 && m.categoryId in ids) score.merge(m.categoryId, m.count, Int::plus)
         }

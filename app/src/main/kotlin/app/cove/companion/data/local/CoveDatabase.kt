@@ -28,6 +28,7 @@ import app.cove.companion.data.local.entity.TrainingSettingsEntity
 import app.cove.companion.data.local.entity.AlarmEntity
 import app.cove.companion.data.local.entity.BriefEntity
 import app.cove.companion.data.local.entity.CategoryMemoryEntity
+import app.cove.companion.data.local.entity.PayeeMemoryEntity
 import app.cove.companion.data.local.entity.DecisionEntity
 import app.cove.companion.data.local.entity.EventEntity
 import app.cove.companion.data.local.entity.ExpenseCategoryEntity
@@ -58,9 +59,9 @@ import app.cove.companion.data.local.entity.VoiceCommandEntity
         CategoryMemoryEntity::class,
         PlanExerciseEntity::class, DayOverrideEntity::class, ExerciseLogEntity::class,
         BodyWeightEntity::class, TrainingSettingsEntity::class,
-        SmsImportLogEntity::class,
+        SmsImportLogEntity::class, PayeeMemoryEntity::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = true,
 )
 abstract class CoveDatabase : RoomDatabase() {
@@ -153,12 +154,24 @@ abstract class CoveDatabase : RoomDatabase() {
             }
         }
 
+        /** Adds `expenses.payeeKey` (indexed) and the synced `payee_memory` table (see `docs/CATEGORIZATION.md`). */
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `expenses` ADD COLUMN `payeeKey` TEXT")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_expenses_payeeKey` ON `expenses` (`payeeKey`)")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `payee_memory` (`payeeKey` TEXT NOT NULL, `categoryId` TEXT NOT NULL, `label` TEXT, " +
+                        "`displayName` TEXT NOT NULL, `count` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, PRIMARY KEY(`payeeKey`))",
+                )
+            }
+        }
+
         /** File name of the database in the app's databases directory. */
         const val NAME = "cove.db"
 
         fun create(context: Context, factory: SupportSQLiteOpenHelper.Factory? = null): CoveDatabase =
             Room.databaseBuilder(context, CoveDatabase::class.java, NAME)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
                 // Room's own background coroutines (invalidation tracking) would crash the process on a failing database; report instead.
                 .setQueryCoroutineContext(Dispatchers.IO + CrashHandler.coroutineHandler("room"))
                 .apply { if (factory != null) openHelperFactory(factory) }

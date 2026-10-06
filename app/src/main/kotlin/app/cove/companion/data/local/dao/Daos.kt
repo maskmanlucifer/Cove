@@ -10,6 +10,7 @@ import app.cove.companion.data.local.entity.BriefEntity
 import app.cove.companion.data.local.entity.DecisionEntity
 import app.cove.companion.data.local.entity.EventEntity
 import app.cove.companion.data.local.entity.CategoryMemoryEntity
+import app.cove.companion.data.local.entity.PayeeMemoryEntity
 import app.cove.companion.data.local.entity.ExpenseCategoryEntity
 import app.cove.companion.data.local.entity.ExpenseEntity
 import app.cove.companion.data.local.entity.HabitEntity
@@ -157,6 +158,27 @@ interface ExpenseDao {
 
     @Query("SELECT * FROM expenses WHERE deletedAt IS NULL AND kind = 'spent' AND spentAt >= :from ORDER BY spentAt DESC")
     suspend fun spentSince(from: Long): List<ExpenseEntity>
+
+    @Query("SELECT * FROM payee_memory WHERE deletedAt IS NULL AND count > 0")
+    fun observePayeeMemory(): Flow<List<PayeeMemoryEntity>>
+
+    @Query("SELECT * FROM payee_memory WHERE payeeKey = :key")
+    suspend fun payeeMemory(key: String): PayeeMemoryEntity?
+
+    @Query("SELECT * FROM payee_memory WHERE payeeKey IN (:keys)")
+    suspend fun payeeMemoryFor(keys: List<String>): List<PayeeMemoryEntity>
+
+    @Query("SELECT * FROM payee_memory WHERE deletedAt IS NULL AND count > 0")
+    suspend fun livePayeeMemory(): List<PayeeMemoryEntity>
+
+    @Upsert
+    suspend fun upsertPayeeMemory(memory: PayeeMemoryEntity)
+
+    @Query("SELECT * FROM expenses WHERE deletedAt IS NULL AND payeeKey = :key")
+    suspend fun withPayee(key: String): List<ExpenseEntity>
+
+    @Query("SELECT * FROM expenses WHERE deletedAt IS NULL AND kind = 'spent' AND payeeKey IS NOT NULL")
+    suspend fun spentWithPayee(): List<ExpenseEntity>
 }
 
 @Dao

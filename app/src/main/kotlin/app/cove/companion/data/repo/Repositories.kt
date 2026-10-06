@@ -6,6 +6,11 @@ import app.cove.companion.core.newId
 import app.cove.companion.core.startOfDayMillis
 import app.cove.companion.data.categorize.CategoryLearning
 import app.cove.companion.data.categorize.CategoryTokens
+import app.cove.companion.data.categorize.PastProposal
+import app.cove.companion.data.categorize.PayeeLearning
+import app.cove.companion.data.categorize.PayeeLogic
+import app.cove.companion.data.categorize.RetroChange
+import app.cove.companion.data.sms.PayeeKey
 import app.cove.companion.data.local.CoveDatabase
 import app.cove.companion.data.local.entity.AlarmEntity
 import app.cove.companion.data.local.entity.BriefEntity
@@ -19,6 +24,7 @@ import app.cove.companion.data.local.entity.HabitLogEntity
 import app.cove.companion.data.local.entity.JournalEntryEntity
 import app.cove.companion.data.local.entity.JournalMediaEntity
 import app.cove.companion.data.local.entity.OutboxEntity
+import app.cove.companion.data.local.entity.PayeeMemoryEntity
 import app.cove.companion.data.local.entity.SettingsEntity
 import app.cove.companion.data.local.entity.SuggestionPrefEntity
 import app.cove.companion.data.local.entity.TodoCategoryEntity
@@ -149,7 +155,10 @@ class HabitRepository(private val db: CoveDatabase, private val clock: Clock, pr
 }
 
 /** One expense moving from category [from] (null = uncategorised) to [to]. */
-data class CategoryChange(val expenseId: String, val from: String?, val to: String)
+data class CategoryChange(val expenseId: String, val from: String?, val to: String, val payee: PayeeSnapshot? = null)
+
+/** A payee's memory row before a change (null: there was none), so Undo can put it back exactly. */
+data class PayeeSnapshot(val payeeKey: String, val before: PayeeMemoryEntity?)
 
 /** Spending, income and budgets. */
 class MoneyRepository(private val db: CoveDatabase, private val clock: Clock, private val log: ChangeLog) {
@@ -193,7 +202,7 @@ class MoneyRepository(private val db: CoveDatabase, private val clock: Clock, pr
      * out of that category so a changed mind weakens the old mapping.
      */
     suspend fun teach(note: String, categoryId: String, previousId: String? = null) {
-        val tokens = CategoryTokens.tokens(note)
+        val tokens = if (PayeeKey.isGenericNote(note)) emptyList() else CategoryTokens.tokens(note).filter { it !in CategoryTokens.genericWords }
         if (tokens.isEmpty()) return
         val now = clock.now()
         val rows = db.expenses().memoryFor(tokens).associateBy { it.token }.toMutableMap()
@@ -205,6 +214,79 @@ class MoneyRepository(private val db: CoveDatabase, private val clock: Clock, pr
             log.mark("category_memory", t)
         }
     }
+
+    /** Payee memory keyed by `PayeeKey`, for [app.cove.companion.data.categorize.ExpenseCategorizer] and recall on import. */
+    val payeeMemory: Flow<Map<String, PayeeMemoryEntity>> = db.expenses().observePayeeMemory().map { rows -> rows.associateBy { it.payeeKey } }
+
+    /** The live memory of [key], or null. */
+    suspend fun payee(key: String): PayeeMemoryEntity? = db.expenses().payeeMemory(key)?.takeIf { it.deletedAt == null && it.count > 0 }
+
+    /** Live memory rows of [keys], by key. */
+    suspend fun payees(keys: Collection<String>): Map<String, PayeeMemoryEntity> =
+        keys.distinct().chunked(400).flatMap { db.expenses().payeeMemoryFor(it) }.filter { it.deletedAt == null && it.count > 0 }.associateBy { it.payeeKey }
+
+    /**
+     * Remembers that the user filed payee [key] under [categoryId] with [label] (null keeps the cleaned [displayName]); see
+     * [PayeeLearning.learn]. Explicit user actions only. Returns what was there before, for [restorePayee].
+     */
+    suspend fun teachPayee(key: String, categoryId: String, label: String?, displayName: String, keepLabel: Boolean = false): PayeeSnapshot {
+        val before = db.expenses().payeeMemory(key)
+        db.expenses().upsertPayeeMemory(PayeeLearning.learn(before, key, categoryId, label, displayName, clock.now(), keepLabel))
+        log.mark("payee_memory", key)
+        return PayeeSnapshot(key, before)
+    }
+
+    /** Puts a payee's memory back to [snapshot] (Undo), newest first when several touched the same key. */
+    suspend fun restorePayee(snapshot: PayeeSnapshot) {
+        val now = clock.now()
+        val row = snapshot.before?.copy(updatedAt = now) ?: db.expenses().payeeMemory(snapshot.payeeKey)?.let { PayeeLearning.forgotten(it, now) } ?: return
+        db.expenses().upsertPayeeMemory(row)
+        log.mark("payee_memory", snapshot.payeeKey)
+    }
+
+    /** Forgets one payee ("Forget" on the expense); returns the snapshot for Undo. */
+    suspend fun forgetPayee(key: String): PayeeSnapshot? {
+        val before = db.expenses().payeeMemory(key)?.takeIf { it.deletedAt == null && it.count > 0 } ?: return null
+        db.expenses().upsertPayeeMemory(PayeeLearning.forgotten(before, clock.now()))
+        log.mark("payee_memory", key)
+        return PayeeSnapshot(key, before)
+    }
+
+    /** Forgets every payee (Me > forget); expenses and word memory stay. Returns how many were forgotten. */
+    suspend fun forgetAllPayees(): Int {
+        val now = clock.now()
+        val rows = db.expenses().livePayeeMemory()
+        rows.forEach {
+            db.expenses().upsertPayeeMemory(PayeeLearning.forgotten(it, now))
+            log.mark("payee_memory", it.payeeKey)
+        }
+        return rows.size
+    }
+
+    /** Live spent expenses of payee [key]. */
+    suspend fun expensesWithPayee(key: String): List<ExpenseEntity> = db.expenses().withPayee(key)
+
+    /** Earlier payments of [keys]' payees that differ from the chosen category/label, per [PayeeLogic.retroChanges]. */
+    suspend fun retroChanges(picks: Map<String, Pair<String, String?>>, excludeIds: Set<String>): List<RetroChange> =
+        picks.flatMap { (key, pick) -> PayeeLogic.retroChanges(db.expenses().withPayee(key), excludeIds, pick.first, pick.second) }
+
+    /** Applies [changes] to earlier payments without teaching anything; [undoRetro] reverses it. */
+    suspend fun applyRetro(changes: List<RetroChange>) {
+        for (ch in changes) expense(ch.expenseId)?.let { save(it.copy(categoryId = ch.toCategoryId, note = ch.toNote)) }
+    }
+
+    /** Puts the expenses of [changes] back as they were. */
+    suspend fun undoRetro(changes: List<RetroChange>) {
+        for (ch in changes) expense(ch.expenseId)?.let { save(it.copy(categoryId = ch.fromCategoryId, note = ch.fromNote)) }
+    }
+
+    /** Payees the user has filed consistently but Cove has no memory of yet ("Learn from my past payments"). */
+    suspend fun pastPayeeProposals(categories: List<ExpenseCategoryEntity>): List<PastProposal> =
+        PayeeLogic.pastProposals(db.expenses().spentWithPayee(), db.expenses().livePayeeMemory().map { it.payeeKey }.toSet(), categories)
+
+    /** Creates payee memory for [proposals] (category only, label stays the merchant name); returns snapshots for Undo. */
+    suspend fun rememberPayees(proposals: List<PastProposal>): List<PayeeSnapshot> =
+        proposals.map { teachPayee(it.payeeKey, it.categoryId, null, it.displayName) }
 
     /** Takes the words of [note] out of [categoryId] (used when an accepted suggestion is undone). */
     suspend fun forget(note: String, categoryId: String) {
@@ -228,7 +310,8 @@ class MoneyRepository(private val db: CoveDatabase, private val clock: Clock, pr
             val e = expense(ch.expenseId) ?: return@mapNotNull null
             save(e.copy(categoryId = ch.to))
             teach(e.note, ch.to, ch.from)
-            ch.copy(from = e.categoryId)
+            val snapshot = e.payeeKey?.let { key -> teachPayee(key, ch.to, null, payee(key)?.displayName ?: e.note, keepLabel = true) }
+            ch.copy(from = e.categoryId, payee = snapshot)
         }
 
     /** Reverses [applyCategories]: puts each expense back and forgets what was taught. */
@@ -238,6 +321,7 @@ class MoneyRepository(private val db: CoveDatabase, private val clock: Clock, pr
             save(e.copy(categoryId = ch.from))
             forget(e.note, ch.to)
         }
+        changes.mapNotNull { it.payee }.asReversed().forEach { restorePayee(it) }
     }
 
     /** Number of live expenses filed under [id], for the delete warning. */

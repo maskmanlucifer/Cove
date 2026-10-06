@@ -28,6 +28,8 @@ data class ParsedSms(
     val ref: String?,
     val bank: String?,
     val confidence: Float,
+    /** Stable identity of the counterparty (see [PayeeKey]); null for ATM cash and generic or unreadable payees. */
+    val payeeKey: String? = null,
 )
 
 /** Outcome of [SmsTransactionParser.parse]. */
@@ -155,8 +157,16 @@ object SmsTransactionParser {
         if (last4 != null) conf += 0.1f
         if (merchant != null) conf += 0.1f
         if (fromText) conf += 0.05f
-        return ParseResult.Accepted(ParsedSms(amount, direction, merchant, at, fromText, last4, paidWith, ref, bank, conf.coerceAtMost(1f)))
+        val payeeKey = if (atm) null else PayeeKey.derive(payeeVpa(text), merchant, paidWith)
+        return ParseResult.Accepted(ParsedSms(amount, direction, merchant, at, fromText, last4, paidWith, ref, bank, conf.coerceAtMost(1f), payeeKey))
     }
+
+    private val ownHandleCue = Regex("""(?i)(your|own|linked|registered)\W*(upi\W*)?(id|vpa)?\W*$""")
+
+    /** First UPI handle in [text] that is not the user's own ("your VPA", "linked to VPA"). */
+    private fun payeeVpa(text: String): String? = vpa.findAll(text).firstOrNull { m ->
+        !ownHandleCue.containsMatchIn(text.substring(maxOf(0, m.range.first - 16), m.range.first))
+    }?.let { it.groupValues[1] + "@" + it.groupValues[2] }
 
     /** True for senders that are phone numbers (a person), as opposed to alphanumeric bank ids. */
     fun isPersonalNumber(sender: String): Boolean = sender.count { it.isDigit() } >= 7 && sender.none { it.isLetter() }
@@ -246,7 +256,8 @@ object SmsTransactionParser {
 
     private fun nameFromVpa(local: String): String? {
         val tokens = local.lowercase().split(Regex("""[._\-]+""")).map { it.replace(Regex("""\d+$"""), "") }.filter { it.length >= 2 && it !in noiseTokens }
-        if (tokens.isEmpty()) return if (local.all { it.isDigit() }) null else cleanName(local.replace(Regex("""\d+"""), ""))
+        if (tokens.isEmpty()) return null
+        if (Regex("""(?i)^(paytmqr|paytm\.?s|q)\d""").containsMatchIn(local)) return null
         if (tokens.all { it.all { ch -> ch.isDigit() } }) return null
         if (local.take(8).all { it.isDigit() } && local.length >= 10) return null
         return titleCase(tokens.take(2).joinToString(" "))
