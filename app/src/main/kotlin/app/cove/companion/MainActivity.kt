@@ -13,6 +13,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -69,6 +70,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val settings by container.settings.settings.collectAsState(initial = null)
             val s = settings ?: return@setContent
+            LaunchedEffect(Unit) { reportFullyDrawn() }
             val dark = when (s.theme) {
                 "dark" -> true
                 "light" -> false
