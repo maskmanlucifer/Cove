@@ -155,8 +155,8 @@ class AndroidSpeechProvider(private val context: Context, private val mode: Mode
         .putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
         .putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
         .putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-        .putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, SILENCE_MS)
-        .putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, SILENCE_MS)
+        .putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, COMPLETE_SILENCE_MS)
+        .putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, POSSIBLY_COMPLETE_SILENCE_MS)
 
     private fun text(b: Bundle) = b.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()?.takeIf { it.isNotBlank() }
 
@@ -207,7 +207,9 @@ class AndroidSpeechProvider(private val context: Context, private val mode: Mode
     }
 
     private companion object {
-        const val SILENCE_MS = 1_500L
+        /** Pauses of this length end a run; long enough for a thought, and the app keeps listening across runs anyway. */
+        const val COMPLETE_SILENCE_MS = 4_000L
+        const val POSSIBLY_COMPLETE_SILENCE_MS = 3_000L
         const val ERROR_LANGUAGE_NOT_SUPPORTED = 12
         const val ERROR_LANGUAGE_UNAVAILABLE = 13
 

@@ -63,6 +63,9 @@ class VoiceViewModel(private val c: AppContainer) : ViewModel() {
     private var started = false
     private var frozen = false
     private val gate = ListenGate()
+    private var finishRequested = false
+    private var segmentActive = false
+    private val heard = StringBuilder()
 
     /** Starts listening once; debug builds may instead jump to a frame via [VoiceDebug]. */
     fun begin() {
@@ -113,7 +116,7 @@ class VoiceViewModel(private val c: AppContainer) : ViewModel() {
                 session = picked
                 val ticker = launch { while (true) { delay(1000); _state.update { it.copy(seconds = it.seconds + 1) } } }
                 try {
-                    collect(picked, showsLevel = true)
+                    dictate(picked)
                 } finally {
                     ticker.cancel()
                 }
@@ -123,10 +126,24 @@ class VoiceViewModel(private val c: AppContainer) : ViewModel() {
         }
     }
 
-    /** Stop button and Done: ask the engine for its final transcript (ignored until it is ready). */
+    /**
+     * Stop button and Done: end the dictation and understand everything heard so far. While an engine is capturing it is asked
+     * for its final transcript; before it is ready, or between two engine runs, the words already on screen are used.
+     */
     fun finish() {
-        if (!_state.value.ready) return
-        viewModelScope.launch { session?.stop() }
+        val s = _state.value
+        if (s.stage != Stage.Listening || s.busy) return
+        finishRequested = true
+        val engine = session
+        if (segmentActive && s.ready && engine != null) {
+            viewModelScope.launch { engine.stop() }
+        } else {
+            job?.cancel()
+            viewModelScope.launch {
+                val text = _state.value.transcript.trim()
+                if (text.isEmpty()) trouble(SpeechFailure.NoMatch, 0) else understand(text, heardByVoice = true)
+            }
+        }
     }
 
     /** Type instead, Type it and Edit: the text box, prefilled with what was heard. */
@@ -148,6 +165,83 @@ class VoiceViewModel(private val c: AppContainer) : ViewModel() {
         job?.cancel()
         job = viewModelScope.launch { collect(typed, showsLevel = false) }
     }
+
+    /** One engine run: its final text (or last partial) and why it ended, if it failed. */
+    private class Segment(val text: String, val failure: SpeechEvent.Failure?)
+
+    /**
+     * Keeps listening across the recognizer's own pauses: Android engines end a run after a short silence, which used to
+     * cut a sentence in half. Each run's words are appended; the loop ends on Done, a long silence, a hard failure or
+     * [MAX_DICTATION_MS]. Then everything heard is understood at once.
+     */
+    private suspend fun dictate(first: SpeechSession) {
+        heard.clear()
+        finishRequested = false
+        val began = android.os.SystemClock.elapsedRealtime()
+        var engine: SpeechSession = first
+        var silentRuns = 0
+        var busyRetries = 0
+        while (true) {
+            val seg = listenSegment(engine)
+            val said = seg.text.trim()
+            if (said.isNotEmpty()) {
+                if (heard.isNotEmpty()) heard.append(' ')
+                heard.append(said)
+                silentRuns = 0
+            }
+            val failure = seg.failure
+            val elapsed = android.os.SystemClock.elapsedRealtime() - began
+            when {
+                finishRequested -> break
+                failure?.reason == SpeechFailure.PermissionDenied -> return trouble(failure.reason, failure.code)
+                failure?.reason == SpeechFailure.NoMatch || (failure == null && said.isEmpty()) -> {
+                    silentRuns++
+                    if (heard.isEmpty() && (silentRuns >= MAX_SILENT_RUNS || elapsed > QUIET_GIVE_UP_MS)) return trouble(SpeechFailure.NoMatch, 0)
+                    if (heard.isNotEmpty() && silentRuns >= MAX_SILENT_RUNS) break
+                }
+                failure?.reason == SpeechFailure.Busy && busyRetries++ < MAX_BUSY_RETRIES -> delay(400)
+                failure != null -> {
+                    if (heard.isEmpty()) return trouble(failure.reason, failure.code)
+                    break
+                }
+            }
+            if (elapsed > MAX_DICTATION_MS) break
+            delay(RESTART_GAP_MS)
+            engine = c.ai.openSpeech().also { session = it }
+        }
+        val text = heard.toString().trim().ifEmpty { _state.value.transcript.trim() }
+        if (text.isEmpty()) trouble(SpeechFailure.NoMatch, 0) else understand(text, heardByVoice = true)
+    }
+
+    private suspend fun listenSegment(source: SpeechSession): Segment {
+        var final: String? = null
+        var lastPartial = ""
+        var failure: SpeechEvent.Failure? = null
+        segmentActive = true
+        try {
+            source.events.collect { e ->
+                when (e) {
+                    is SpeechEvent.Ready -> _state.update { it.copy(ready = true, onDevice = e.source.location.isLocal) }
+                    SpeechEvent.Began -> Unit
+                    is SpeechEvent.Partial -> {
+                        lastPartial = e.text
+                        _state.update { it.copy(transcript = joinHeard(e.text)) }
+                    }
+                    is SpeechEvent.Level -> _state.update { it.copy(level = e.value) }
+                    is SpeechEvent.Final -> final = e.text
+                    is SpeechEvent.Failure -> failure = e
+                }
+            }
+        } finally {
+            segmentActive = false
+        }
+        val text = final ?: lastPartial
+        if (text.isNotBlank()) _state.update { it.copy(transcript = joinHeard(text), level = 0f) }
+        return Segment(text, failure)
+    }
+
+    /** Words from earlier runs plus [tail], for the live transcript. */
+    private fun joinHeard(tail: String) = if (heard.isEmpty()) tail else if (tail.isBlank()) heard.toString() else "$heard $tail"
 
     private suspend fun collect(source: SpeechSession, showsLevel: Boolean) {
         var final: String? = null
@@ -279,5 +373,20 @@ class VoiceViewModel(private val c: AppContainer) : ViewModel() {
             "ready" -> _state.update { it.copy(stage = Stage.Listening, ready = true, transcript = d.transcript, seconds = d.seconds, level = 0.5f) }
             else -> viewModelScope.launch { understand(d.transcript, heardByVoice = true) }
         }
+    }
+
+    private companion object {
+        /** Pause between two engine runs while dictating. */
+        const val RESTART_GAP_MS = 150L
+
+        /** Longest a single dictation may last. */
+        const val MAX_DICTATION_MS = 3 * 60_000L
+
+        /** Silent engine runs in a row before giving up (about 7 s each with nothing said). */
+        const val MAX_SILENT_RUNS = 4
+
+        /** Nothing said at all for this long: show the "didn't hear anything" help. */
+        const val QUIET_GIVE_UP_MS = 25_000L
+        const val MAX_BUSY_RETRIES = 3
     }
 }

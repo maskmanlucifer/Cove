@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.flow
  * Debug builds only: `--es voiceFail <mode>` replaces the microphone engines by scripted fakes so every guidance
  * screen can be shown on an emulator without a microphone. Modes: `permission`, `busy`, `noservice`, `network`,
  * `silence` (engine heard the mic, nobody spoke), `noactivity` (engine never captured audio), `failover` (first engine
- * errors at once, second one hears "add milk and eggs"), `listen` (listens for ever with moving levels).
+ * errors at once, second one hears "add milk and eggs"), `listen` (listens for ever with moving levels), `dictate` (the first run ends by itself after "add milk", like a recognizer cutting off at a pause; the next run keeps listening and answers "and eggs" when stopped).
  */
 object SpeechDebug {
     @Volatile var mode: String? = null
@@ -38,10 +38,39 @@ object SpeechDebug {
                 delay(700); emit(SpeechEvent.Partial("add milk")); delay(900); emit(SpeechEvent.Partial("add milk and eggs")); delay(900)
                 emit(SpeechEvent.Final("Add milk and eggs"))
             })
+            "dictate" -> listOf(
+                if (++dictateRuns % 2 == 1) Fake("fake-a", Location.Native, levels = true) {
+                    ready(); levels(); emit(SpeechEvent.Began)
+                    delay(600); emit(SpeechEvent.Partial("add milk")); delay(500); emit(SpeechEvent.Final("add milk"))
+                } else Stoppable("fake-b")
+            )
             "listen" -> listOf(Fake("fake-a", Location.Native, levels = true) { ready(); while (true) { levels(); delay(250) } })
             else -> return null
         }
-        return SpeechChain(engines, if (m == "listen") SpeechTiming(maxMs = 600_000, noSpeechMs = 600_000) else fast)
+        return SpeechChain(engines, if (m == "listen" || m == "dictate") SpeechTiming(maxMs = 600_000, noSpeechMs = 600_000) else fast)
+    }
+
+    private var dictateRuns = 0
+
+    /** An engine that keeps listening until it is stopped, then returns what it "heard" (like a real recognizer asked to stop). */
+    private class Stoppable(override val id: String) : SpeechProvider {
+        override val location = Location.Native
+        override val reportsLevels get() = true
+        override suspend fun availability(): Availability = Availability.Available
+        override fun open() = object : SpeechSession {
+            @Volatile private var stopped = false
+            override val source: ProviderRef = ref
+            override val events: Flow<SpeechEvent> = flow {
+                ready(); emit(SpeechEvent.Began)
+                var t = 0
+                while (!stopped) {
+                    levels(); delay(250); t += 250
+                    if (t == 1_000) emit(SpeechEvent.Partial("and eggs"))
+                }
+                emit(SpeechEvent.Final("and eggs"))
+            }
+            override suspend fun stop() { stopped = true }
+        }
     }
 
     private class Fake(
