@@ -9,6 +9,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 
@@ -47,16 +48,18 @@ object Permissions {
 
     /** Whether exact alarms may be scheduled (always true where `USE_EXACT_ALARM` is granted). */
     fun exactAlarmsAllowed(c: Context): Boolean =
-        Build.VERSION.SDK_INT < 31 || c.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
+        c.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
 
-    /** Whether the ring screen may take over the display from a notification. */
-    fun fullScreenIntentAllowed(c: Context): Boolean = c.getSystemService(NotificationManager::class.java).canUseFullScreenIntent()
+    /** Whether the ring screen may take over the display from a notification (always allowed before Android 14). */
+    fun fullScreenIntentAllowed(c: Context): Boolean =
+        Build.VERSION.SDK_INT < 34 || c.getSystemService(NotificationManager::class.java).canUseFullScreenIntent()
 
     /** Opens the system "Alarms & reminders" page for this app. */
     fun exactAlarmSettings(c: Context) =
         Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${c.packageName}"))
 
     /** System screen where the user allows full-screen alerts (Android 14+). */
+    @RequiresApi(34)
     fun fullScreenIntentSettings(c: Context) =
         Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:${c.packageName}"))
 

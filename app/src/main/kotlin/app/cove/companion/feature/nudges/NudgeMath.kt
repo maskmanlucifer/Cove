@@ -44,7 +44,7 @@ object NudgeMath {
             else -> return null
         }
         val start = Instant.ofEpochMilli(startAt).atZone(zone).toLocalDateTime()
-        val today = LocalDate.ofInstant(Instant.ofEpochMilli(now), zone)
+        val today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
         var k = (unit.between(start.toLocalDate(), today) - 1).coerceAtLeast(1)
         while (true) {
             val at = start.plus(k, unit).atZone(zone).toInstant().toEpochMilli()

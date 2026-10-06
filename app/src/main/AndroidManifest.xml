@@ -89,7 +89,8 @@
 
         <receiver
             android:name=".feature.alarms.BootReceiver"
-            android:exported="true">
+            android:exported="true"
+            tools:ignore="UnsafeProtectedBroadcastReceiver">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.TIME_SET" />
@@ -153,7 +154,8 @@
 
         <receiver
             android:name=".feature.nudges.NudgeBootReceiver"
-            android:exported="true">
+            android:exported="true"
+            tools:ignore="UnsafeProtectedBroadcastReceiver">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.TIME_SET" />

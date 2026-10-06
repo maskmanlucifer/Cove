@@ -1,6 +1,7 @@
 package app.cove.companion.feature.voice
 
 import android.app.Activity
+import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -34,6 +35,7 @@ class CoveTileService : TileService() {
         }
     }
 
+    @SuppressLint("StartActivityAndCollapseDeprecated")
     override fun onClick() {
         val intent = listenIntent(this)
         if (Build.VERSION.SDK_INT >= 34) {
