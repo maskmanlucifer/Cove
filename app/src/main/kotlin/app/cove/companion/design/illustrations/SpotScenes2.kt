@@ -4,7 +4,7 @@ import kotlin.random.Random
 
 internal fun alarmsArt() = spotScene(
     MascotPose.Sleeping, mx = 140f, ms = 1.1f, sky = { it.day(it.coralSoft, it.sunSoft) }, haze = { it.pinkSoft },
-    back = { sun(120f, 118f, 26f); cloud(50f, 60f, 54f, a = 0.8f); cloud(194f, 78f, 44f, a = 0.7f); birds2() },
+    back = { sun(120f, 118f, 26f); cloud(50f, 60f, 54f, a0 = 0.8f); cloud(194f, 78f, 44f, a0 = 0.7f); birds2() },
     ground = { alarmClock(58f, 196f, 1.15f) },
 )
 
@@ -32,7 +32,7 @@ private fun Painter.songbird(x: Float, y: Float) = at(x, y) {
 internal fun messagesArt() = spotScene(
     MascotPose.Waving, mx = 120f, ms = 1.15f, sky = { it.day(it.pinkSoft, it.warmWhite) }, haze = { it.pinkSoft },
     back = {
-        cloud(60f, 54f, 48f, a = 0.8f)
+        cloud(60f, 54f, 48f, a0 = 0.8f)
         dotTrail(70f, 140f, 60f, 30f, 150f, 36f, 18, pal.coral)
         paperPlane(160f, 34f, 1f, -12f)
     },
@@ -44,7 +44,7 @@ internal fun syncedArt() = spotScene(
     back = {
         cloud(120f, 52f, 96f)
         fill(oval(120f, 82f, 14f), vgrad(68f, 96f, pal.leafLight, pal.leaf))
-        line(path { moveTo(113f, 82f); lineTo(118f, 87f); lineTo(128f, 76f) }, pal.warmWhite, 2.8f)
+        line(path { moveTo(113f, 82f); lineTo(118f, 87f); lineTo(128f, 76f) }, pal.sheet, 2.8f)
         dotTrail(120f, 98f, 128f, 108f, 122f, 118f, 5, pal.leaf)
         leafAt(180f, 70f, 40f, 9f, 3.4f, pal.leafLight, vein = false); leafAt(56f, 76f, 150f, 8f, 3f, pal.leaf, vein = false)
     },
@@ -53,9 +53,9 @@ internal fun syncedArt() = spotScene(
 internal fun offlineArt() = spotScene(
     MascotPose.Idle, mx = 112f, ms = 1.15f, sky = { it.day(it.mix(it.lilac, it.lilacSoft, 0.55f), it.pinkSoft) }, haze = { it.lilacSoft },
     back = {
-        cloud(100f, 50f, 100f, pal.mix(pal.warmWhite, pal.lilac, 0.35f), 0.95f)
-        repeat(3) { sparkle(168f + it * 8f, 30f + it * 10f, 2.8f, pal.warmWhite, 0.8f) }
-        sparkle(40f, 90f, 3f, pal.warmWhite, 0.8f)
+        cloud(100f, 50f, 100f, pal.mix(pal.sheet, pal.lilac, 0.35f), 0.95f)
+        repeat(3) { sparkle(168f + it * 8f, 30f + it * 10f, 2.8f, pal.sheet, 0.8f) }
+        sparkle(40f, 90f, 3f, pal.sheet, 0.8f)
     },
     ground = {
         fill(rrect(186f, 118f, 190.5f, 196f, 2f), pal.clay)
@@ -121,7 +121,7 @@ internal fun lockArt() = SceneArt(S, S, ArtShape.Circle, MascotSpot(MascotPose.I
     rollingMeadow(S, S, 124f, pal.nightLow, 8, 1.2f, between = {
         // garden gate: two posts and a round-topped gate with a padlock
         fill(oval(86f, 200f, 52f, 6f), pal.shade)
-        for (x in listOf(40f, 132f)) { fill(rrect(x - 5f, 112f, x + 5f, 202f, 3f), vgrad(112f, 202f, pal.mix(pal.clay, pal.warmWhite, 0.2f), pal.clay)); fill(oval(x, 112f, 6f, 3.4f), pal.clay) }
+        for (x in listOf(40f, 132f)) { fill(rrect(x - 5f, 112f, x + 5f, 202f, 3f), vgrad(112f, 202f, pal.mix(pal.clay, pal.sheet, 0.2f), pal.clay)); fill(oval(x, 112f, 6f, 3.4f), pal.clay) }
         val gate = path { moveTo(46f, 200f); lineTo(46f, 148f); quadraticTo(86f, 118f, 126f, 148f); lineTo(126f, 200f); close() }
         fill(gate, pal.olive, 0.35f)
         for (i in 0..5) line(path { moveTo(52f + i * 13f, 200f); lineTo(52f + i * 13f, 140f + kotlin.math.abs(i - 2.5f) * 5f) }, pal.clay, 4f)

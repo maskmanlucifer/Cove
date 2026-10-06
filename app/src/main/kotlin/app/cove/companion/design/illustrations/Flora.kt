@@ -58,14 +58,14 @@ internal fun Painter.flower(kind: Bloom, x: Float, y: Float, s: Float, turn: Flo
         Bloom.White -> {
             repeat(3) {
                 val a = turn + it * 120f - 90f
-                petal(x, y, a, s * 0.5f, s * 0.34f, pal.warmWhite)
-                petal(x, y, a, s * 0.36f, s * 0.2f, lerp(pal.warmWhite, pal.leafSoft, 0.7f), 0.7f)
+                petal(x, y, a, s * 0.5f, s * 0.34f, pal.petal)
+                petal(x, y, a, s * 0.36f, s * 0.2f, lerp(pal.petal, pal.leafLight, 0.35f), 0.6f)
             }
             fill(oval(x, y, s * 0.2f), pal.sun)
             fill(oval(x - s * 0.04f, y - s * 0.05f, s * 0.09f), pal.glow)
         }
         Bloom.Daisy -> {
-            repeat(5) { petal(x, y, turn + it * 72f, s * 0.38f, s * 0.2f, lerp(pal.warmWhite, pal.lilacSoft, 0.35f)) }
+            repeat(5) { petal(x, y, turn + it * 72f, s * 0.38f, s * 0.2f, lerp(pal.petal, pal.lilac, 0.3f)) }
             fill(oval(x, y, s * 0.14f), pal.sun)
         }
     }

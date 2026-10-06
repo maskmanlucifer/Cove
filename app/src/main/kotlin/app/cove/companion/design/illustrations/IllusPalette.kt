@@ -44,12 +44,16 @@ class IllusPalette(val dark: Boolean) {
     val shade = if (dark) Color(0xFF000000).copy(alpha = 0.34f) else Color(0xFF1F2B22).copy(alpha = 0.13f)
     val nightTop = c(0xFF352F5B, 0xFF171528)
     val nightLow = c(0xFF8A6FA8, 0xFF3A3057)
+    /** Petal white: stays light in dark mode so white flowers still glow. */
+    val petal = c(0xFFFFFDF7, 0xFFDDD6C0)
+    /** Paper-sheet white for props (notebooks, cards, envelopes): stays light in dark mode. */
+    val sheet = c(0xFFFFFCF5, 0xFFE9E2CC)
     val cream = c(0xFFFFF6E0, 0xFFE8DFC5)
 
     /** Light-to-dark body tones of the mascot (sage with a clay warmth). */
-    val bodyLight = c(0xFFDCE5C6, 0xFFA5B491)
-    val bodyMid = c(0xFFB7C6A1, 0xFF8A9C78)
-    val bodyDark = c(0xFF8EA37F, 0xFF667958)
+    val bodyLight = c(0xFFE9E3C4, 0xFFB5B38F)
+    val bodyMid = c(0xFFC7C096, 0xFF979470)
+    val bodyDark = c(0xFF9A9468, 0xFF6C6A4C)
     val hand = c(0xFFD9AE8A, 0xFFB08662)
 
     /** Mixes two palette colours. */

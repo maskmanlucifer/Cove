@@ -131,7 +131,7 @@ private fun props(p: Painter, pose: MascotPose) {
     val pal = p.pal
     when (pose) {
         MascotPose.Waving -> listOf(-14f, 0f, 14f).forEachIndexed { i, a ->
-            p.at(47f, -94f, 1f, a - 16f) { p.line(path { moveTo(0f, -4f - i % 2); lineTo(0f, -10f - i % 2) }, pal.olive, 1.4f, 0.55f) }
+            p.at(47f, -94f, 1f, a - 16f) { p.line(path { moveTo(0f, -5f - i % 2); lineTo(0f, -9f - i % 2) }, if (pal.dark) pal.cream else pal.olive, 1.6f, 0.6f) }
         }
         MascotPose.Sleeping, MascotPose.Blanket -> {
             if (pose == MascotPose.Blanket) blanket(p)

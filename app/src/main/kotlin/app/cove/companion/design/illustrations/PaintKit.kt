@@ -138,14 +138,16 @@ internal class Painter(val ds: DrawScope, val pal: IllusPalette, val seed: Long 
         }
     }
 
-    fun cloud(cx: Float, cy: Float, w: Float, c: Color = pal.warmWhite, a: Float = 0.95f) {
+    fun cloud(cx: Float, cy: Float, w: Float, c0: Color? = null, a0: Float = 0.95f) {
+        val c = c0 ?: if (pal.dark) pal.mix(pal.nightLow, pal.cream, 0.4f) else pal.warmWhite
+        val a = if (pal.dark) a0 * 0.55f else a0
         val h = w * 0.28f
         val p = path {
             addRoundRect(RoundRect(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2, CornerRadius(h / 2)))
             addOval(Rect(cx - w * 0.30f, cy - h * 1.15f, cx + w * 0.04f, cy + h * 0.25f))
             addOval(Rect(cx - w * 0.10f, cy - h * 1.5f, cx + w * 0.28f, cy + h * 0.2f))
         }
-        fill(p, vgrad(cy - h * 1.5f, cy + h / 2, c, lerp(c, pal.lilacSoft, if (pal.dark) 0.25f else 0.55f)), a)
+        fill(p, vgrad(cy - h * 1.5f, cy + h / 2, c, lerp(c, if (pal.dark) pal.nightLow else pal.lilacSoft, if (pal.dark) 0.35f else 0.55f)), a)
         fill(oval(cx - w * 0.12f, cy - h * 0.7f, w * 0.12f, h * 0.3f), Color.White, if (pal.dark) 0.06f else 0.5f)
     }
 
