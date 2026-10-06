@@ -23,6 +23,9 @@ data class CoveColors(
     val alert: Color,
     val saved: Color,
     val scrim: Color,
+    /** Calm blue for tappable secondary actions such as "Edit categories"; ink stays for primary buttons. */
+    val accent: Color,
+    val accentSoft: Color,
     val isDark: Boolean,
 )
 
@@ -42,6 +45,8 @@ val LightColors = CoveColors(
     alert = Color(0xFFB5562F),
     saved = Color(0xFF3F7A5A),
     scrim = Color(0x2E16171A),
+    accent = Color(0xFF3558D6),
+    accentSoft = Color(0xFFE6ECFF),
     isDark = false,
 )
 
@@ -61,6 +66,8 @@ val DarkColors = CoveColors(
     alert = Color(0xFFE08A64),
     saved = Color(0xFF6DB38E),
     scrim = Color(0x99000000),
+    accent = Color(0xFF9DB2FF),
+    accentSoft = Color(0xFF232A4A),
     isDark = true,
 )
 
