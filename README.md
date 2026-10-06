@@ -37,6 +37,7 @@ Send with `adb shell am start -n app.cove.companion/.MainActivity <extras>`.
 |---|---|
 | `--ez seed true` (`--ez dark true`, `--ez evening true`, `--ez moneyLogged true`, `--es plan todos\|empty\|drag`, `--ez conflict true`) | Load the design's sample data (`CLEAR=1 tools/run.sh` wipes data first) |
 | `--es now HH:mm` (`--es date yyyy-MM-dd`) | Freeze the clock |
+| `--ei journalPhotos N` | Create journal entry `debug-photos` with N generated photos (several shapes, EXIF-rotated, corrupt) and a voice row; open it with `--es route journal/debug-photos` |
 | `--es route <route>` | Start on a route (`alarms`, `money/categories`, `sync/conflict`, `brief`, `one-thing`, ...; see `navigation/Routes.kt`) |
 | `--es tab plan --es segment 1 --es sheet categories --es title Dentist` | Open a Plan tab view, segment, sheet or prefilled title |
 | `--es suggest late-night` | Fake a 1:40 am phone use for the late-night suggestion |
@@ -69,6 +70,7 @@ Release builds ignore all of these. Debug builds also log StrictMode violations 
 - `docs/CATEGORIZATION.md`: how expenses are filed (rules, learning, Review, optional AI cross-check).
 - `docs/SMS_IMPORT.md`: Money > Import from messages: parsing, dedupe, privacy, how to add a bank format.
 - `docs/TRAINING.md`: the simple weekday workout plan, weight suggestion rules, voice phrases.
+- `docs/audit/LAYOUT.md`: journal photos and viewer, voice-note row, brief controls, profile photo (device-local, 512 px WebP).
 - `docs/SECURITY.md`: database encryption and app lock.
 - `docs/RESILIENCE.md`: what happens when the database, key or app fails, and what the user sees.
 - `docs/SETUP.md`: connect your own Supabase, Google, Drive and Gemini (15 minutes); `tools/make-setup-code.py` builds a one-paste setup code.
