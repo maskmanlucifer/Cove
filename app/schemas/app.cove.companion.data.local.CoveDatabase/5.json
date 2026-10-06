@@ -1,12 +1,12 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 4,
-    "identityHash": "73bee71a37f8d46b46d6362fce4f5e77",
+    "version": 5,
+    "identityHash": "c835540a9c1ed20630e34b1c10f63c9e",
     "entities": [
       {
         "tableName": "settings",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `displayName` TEXT NOT NULL, `wakeMinutes` INTEGER NOT NULL, `theme` TEXT NOT NULL, `textScale` REAL NOT NULL, `spokenReplies` INTEGER NOT NULL, `reduceMotion` TEXT NOT NULL, `nudgeMode` TEXT NOT NULL, `oneThingMode` INTEGER NOT NULL, `briefOn` INTEGER NOT NULL, `suggestionsOn` INTEGER NOT NULL, `biometricLock` INTEGER NOT NULL, `onboarded` INTEGER NOT NULL, `photoQuality` TEXT NOT NULL, `uploadOnWifiOnly` INTEGER NOT NULL, `lockAfter` TEXT NOT NULL, `hideInRecents` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `displayName` TEXT NOT NULL, `wakeMinutes` INTEGER NOT NULL, `theme` TEXT NOT NULL, `textScale` REAL NOT NULL, `spokenReplies` INTEGER NOT NULL, `reduceMotion` TEXT NOT NULL, `nudgeMode` TEXT NOT NULL, `oneThingMode` INTEGER NOT NULL, `oneThingUntil` INTEGER NOT NULL, `briefOn` INTEGER NOT NULL, `suggestionsOn` INTEGER NOT NULL, `biometricLock` INTEGER NOT NULL, `onboarded` INTEGER NOT NULL, `photoQuality` TEXT NOT NULL, `uploadOnWifiOnly` INTEGER NOT NULL, `lockAfter` TEXT NOT NULL, `hideInRecents` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -59,6 +59,12 @@
           {
             "fieldPath": "oneThingMode",
             "columnName": "oneThingMode",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "oneThingUntil",
+            "columnName": "oneThingUntil",
             "affinity": "INTEGER",
             "notNull": true
           },
@@ -1204,7 +1210,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '73bee71a37f8d46b46d6362fce4f5e77')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c835540a9c1ed20630e34b1c10f63c9e')"
     ]
   }
 }

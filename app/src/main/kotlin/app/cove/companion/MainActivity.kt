@@ -4,10 +4,11 @@ import androidx.compose.runtime.getValue
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
-import androidx.activity.ComponentActivity
+import android.view.WindowManager
 import androidx.activity.compose.setContent
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -16,6 +17,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.DisposableEffect
 import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -34,6 +37,8 @@ import app.cove.companion.feature.suggest.SuggestDebug
 import app.cove.companion.feature.voice.VoiceDebug
 import app.cove.companion.feature.alarms.DebugAlarms
 import app.cove.companion.feature.widgets.DebugWidgets
+import app.cove.companion.feature.security.LockScreen
+import app.cove.companion.security.DebugSecurity
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -42,14 +47,19 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 /** Single activity hosting the Compose navigation graph. */
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     private var debugRoute: String? = null
+    private var debugScreenshots = false
 
     /** Bumped whenever something asks to open straight into listening (tile, shortcut, debug). */
     private val voiceRequest = mutableIntStateOf(0)
 
     /** Bumped when the brief-ready notification asks to open the brief player. */
     private val briefRequest = mutableIntStateOf(0)
+
+    /** Last [voiceRequest] already acted on, so a request made while locked runs once after unlocking and never again. */
+    private var handledVoice = 0
+    private var handledBrief = 0
 
     /** Shows Google's Drive consent screen when the uploader needs it and hands the result back. */
     private val driveConsent = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
@@ -87,14 +97,45 @@ class MainActivity : ComponentActivity() {
                 onDispose {}
             }
             val animationsOff = remember { Settings.Global.getFloat(contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f }
+            val locked by container.appLock.locked.collectAsState()
+            val showLock = s.biometricLock && locked
+            SideEffect { applySecureFlag(s.biometricLock && (locked || s.hideInRecents)) }
             CoveTheme(dark, textScale = s.textScale, reduceMotion = resolveReduceMotion(s.reduceMotion, animationsOff)) {
-                CoveNavHost(
-                    start = debugRoute ?: DebugLaunch.route ?: if (s.onboarded) Routes.Main else Routes.Welcome,
-                    voiceRequest = voiceRequest.intValue,
-                    briefRequest = briefRequest.intValue,
-                )
+                if (showLock) {
+                    LockScreen(
+                        onUnlock = container.appLock::unlock,
+                        onTurnOff = { lifecycleScope.launch { container.settings.update { it.copy(biometricLock = false) } } },
+                    )
+                } else {
+                    val pending = voiceRequest.intValue
+                    val request = if (pending > handledVoice) pending else 0
+                    LaunchedEffect(request) { if (request > 0) handledVoice = request }
+                    val pendingBrief = briefRequest.intValue
+                    val brief = if (pendingBrief > handledBrief) pendingBrief else 0
+                    LaunchedEffect(brief) { if (brief > 0) handledBrief = brief }
+                    CoveNavHost(
+                        start = debugRoute ?: DebugLaunch.route ?: if (s.onboarded) Routes.Main else Routes.Welcome,
+                        voiceRequest = request,
+                        briefRequest = brief,
+                    )
+                }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        container.appLock.onForeground()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        container.appLock.onBackground()
+    }
+
+    /** Hides the window from recents and screenshots while [secure]. */
+    private fun applySecureFlag(secure: Boolean) {
+        if (secure && !(BuildConfig.DEBUG && debugScreenshots)) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE) else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -114,6 +155,8 @@ class MainActivity : ComponentActivity() {
      * `--ez fakeDrive true [--ez driveRun true]` uses a folder-backed fake Drive with a seeded pending photo; driveRun uploads it and backs up.
      * `--es suggest late-night` fakes a 1:40 am phone use so the late-night suggestion appears; `--es briefAt 51/124` freezes the brief player
      * at elapsed/total seconds; `--ez offline true` forces the offline look.
+     * `--ez appLock true|false` switches the app lock setting without authenticating; `--ez lockNow true` locks immediately; `--ez screenshots true` drops FLAG_SECURE so adb screencap works;
+     * `--ez plainDb true` rewrites the database as plaintext and kills the process, so the next launch runs the plaintext migration.
      * `--es voiceState listening|result|partial|saved|micoff --es transcript "..."` opens the Voice screen in that state.
      */
     private fun handleDebugIntent() {
@@ -132,6 +175,15 @@ class MainActivity : ComponentActivity() {
         }
         BriefDebug.frozen = intent.getStringExtra("briefAt")?.split("/")?.let { it[0].toInt() to it[1].toInt() }
         ConnectivityMonitor.forceOffline = intent.getBooleanExtra("offline", false)
+        if (intent.hasExtra("appLock")) {
+            val on = intent.getBooleanExtra("appLock", false)
+            CoroutineScope(Dispatchers.IO).launch { container.settings.update { it.copy(biometricLock = on) } }
+        }
+        if (intent.hasExtra("screenshots")) debugScreenshots = intent.getBooleanExtra("screenshots", false)
+        if (intent.getBooleanExtra("lockNow", false)) container.appLock.lock()
+        if (intent.getBooleanExtra("plainDb", false)) {
+            CoroutineScope(Dispatchers.IO).launch { DebugSecurity.downgradeToPlaintext(this@MainActivity, container.database) }
+        }
         val voiceState = intent.getStringExtra("voiceState")
         VoiceDebug.set(voiceState, intent.getStringExtra("transcript"), intent.getIntExtra("voiceSeconds", 7))
         if (voiceState != null && voiceState != "saved") voiceRequest.intValue++
