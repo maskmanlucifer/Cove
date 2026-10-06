@@ -27,10 +27,12 @@ import app.cove.companion.data.media.PhotoQuality
 import app.cove.companion.feature.onboarding.WakeWheel
 import app.cove.companion.design.components.Segmented
 import app.cove.companion.feature.plan.PlanSheet
+import app.cove.companion.feature.security.LockAfterSheet
+import app.cove.companion.feature.security.LockUnavailableSheet
 import app.cove.companion.feature.plan.TitleField
 
 /** Which Me sheet is open. */
-enum class MeSheet { Name, Wake, Nudges, Motion, Look, Privacy, Sync, PhotoQuality, Backup, Restore }
+enum class MeSheet { Name, Wake, Nudges, Motion, Look, Privacy, Sync, PhotoQuality, Backup, Restore, LockAfter, LockUnavailable }
 
 /** Hosts whichever sheet [sheet] names, reading and writing through [vm]. */
 @Composable
@@ -77,6 +79,8 @@ fun MeSheets(sheet: MeSheet?, s: SettingsEntity, vm: MeViewModel, onDismiss: () 
             )
         }
         MeSheet.Privacy -> PrivacySheet(onDismiss)
+        MeSheet.LockAfter -> LockAfterSheet(s.lockAfter, { v -> vm.update { it.copy(lockAfter = v.key) } }, onDismiss)
+        MeSheet.LockUnavailable -> LockUnavailableSheet(onDismiss)
         MeSheet.PhotoQuality -> PlanSheet(onDismiss, gap = 16) {
             SheetHeading("Photo quality")
             Segmented(

@@ -10,6 +10,10 @@ import app.cove.companion.data.insights.NanoInsights
 import app.cove.companion.data.insights.NoOpEmbedder
 import app.cove.companion.data.insights.SearchIndexer
 import app.cove.companion.data.local.CoveDatabase
+import app.cove.companion.feature.security.AppLock
+import app.cove.companion.feature.security.LockAfter
+import app.cove.companion.security.DeferredFactory
+import app.cove.companion.security.EncryptedDatabase
 import app.cove.companion.data.drive.DriveKit
 import app.cove.companion.data.media.ImageCompressor
 import app.cove.companion.data.media.JournalFiles
@@ -45,11 +49,28 @@ import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 
 /** Manual dependency graph, created once by [CoveApp]. */
 class AppContainer(private val context: Context, val clock: Clock = Clock.System) {
-    val database: CoveDatabase = CoveDatabase.create(context)
+    private val dbFactory = DeferredFactory(context)
+    val database: CoveDatabase = EncryptedDatabase.open(context, dbFactory)
+
+    /** True once the encrypted database is usable; the UI shows nothing but a splash until then. */
+    val dbReady = MutableStateFlow(false)
+
+    /** True while an upgrade from a plaintext database is being encrypted (can take many seconds). */
+    val dbMigrating: StateFlow<Boolean> get() = dbFactory.migrating
+
+    /** Creates the key and runs the one-time plaintext migration off the main thread, then flips [dbReady]. */
+    suspend fun prepareDatabase() {
+        withContext(Dispatchers.IO) { dbFactory.prepare() }
+        dbReady.value = true
+    }
     private val changeLog = ChangeLog(database, clock)
 
     val settings = SettingsRepository(database, clock, changeLog)
@@ -78,6 +99,11 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
     /** Outlives screens; used for work that must finish after a screen closes, such as indexing a saved entry. */
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val foreground = ForegroundTracker()
+
+    /** Lock state of the UI; alarms and workers never consult it. */
+    val appLock = AppLock(android.os.SystemClock::elapsedRealtime).also { lock ->
+        appScope.launch { settings.settings.collect { lock.configure(it.biometricLock, LockAfter.fromKey(it.lockAfter)) } }
+    }
     val journalFiles = JournalFiles(context)
     private val appContext = context
     fun voiceRecorder() = VoiceNoteRecorder(appContext)

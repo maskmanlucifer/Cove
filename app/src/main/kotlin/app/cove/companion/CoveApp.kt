@@ -28,7 +28,10 @@ class CoveApp : Application() {
         container.foreground.onEnter = { container.appScope.launch { container.sync.onForeground() } }
         // Everything below touches Room, WorkManager, the Keystore or AlarmManager: keep it off the main thread
         // so the first frame is not delayed. Alarms, nudges and widgets are registered within moments of launch.
-        container.appScope.launch(Dispatchers.IO) { startServices() }
+        container.appScope.launch(Dispatchers.IO) {
+            container.prepareDatabase()
+            startServices()
+        }
     }
 
     private suspend fun startServices() {
