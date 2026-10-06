@@ -176,6 +176,7 @@ class MainActivity : FragmentActivity() {
      * `--ez reviewSeed true` (with seed) adds five unfiled expenses and two misfiled ones for `--es route money/review`.
      * `--ez conflict true` (with seed) adds the sync conflict from frame 31; open it with `--es route sync/conflict`.
      * `--es tab plan --es segment 1 --es sheet categories --es title Dentist` open a Plan tab view directly.
+     * `--ez fakeDriveOnly true` switches to the fake Drive without seeding any data (for testing Restore on a fresh Cove).
      * `--ez fakeDrive true [--ez driveRun true]` uses a folder-backed fake Drive with a seeded pending photo; driveRun uploads it and backs up.
      * `--es suggest late-night` fakes a 1:40 am phone use so the late-night suggestion appears; `--es briefAt 51/124` freezes the brief player
      * at elapsed/total seconds; `--ez offline true` forces the offline look.
@@ -230,6 +231,7 @@ class MainActivity : FragmentActivity() {
                 VoiceDebug.runSaved(container)
             }
         }
+        if (intent.getBooleanExtra("fakeDriveOnly", false)) CoroutineScope(Dispatchers.IO).launch { container.driveKit.useFake() }
         if (intent.getBooleanExtra("fakeDrive", false)) {
             CoroutineScope(Dispatchers.IO).launch { DebugSeed.seedDrive(container, intent.getBooleanExtra("driveRun", false)) }
         }
