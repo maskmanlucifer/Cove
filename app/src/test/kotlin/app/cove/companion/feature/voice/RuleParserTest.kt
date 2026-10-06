@@ -2,9 +2,9 @@ package app.cove.companion.feature.voice
 
 import app.cove.companion.core.Clock
 import app.cove.companion.core.toEpochMillis
-import app.cove.companion.feature.voice.intent.RuleParser
-import app.cove.companion.feature.voice.intent.TodoDraft
-import app.cove.companion.feature.voice.intent.VoiceIntent
+import app.cove.companion.ai.provider.rules.RuleParser
+import app.cove.companion.ai.model.TodoDraft
+import app.cove.companion.ai.model.VoiceIntent
 import java.time.LocalDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

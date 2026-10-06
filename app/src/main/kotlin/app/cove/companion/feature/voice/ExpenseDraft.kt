@@ -16,7 +16,7 @@ import app.cove.companion.core.toLocalDateTime
 import app.cove.companion.design.Cove
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.CoveText
-import app.cove.companion.feature.voice.intent.VoiceIntent
+import app.cove.companion.ai.model.VoiceIntent
 import java.util.Locale
 
 private val Figure = CoveType.Figure.copy(fontSize = 64.sp, lineHeight = 66.sp)

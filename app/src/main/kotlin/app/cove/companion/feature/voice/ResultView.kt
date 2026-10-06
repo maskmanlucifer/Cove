@@ -35,7 +35,7 @@ import app.cove.companion.design.components.BalancedText
 import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.design.components.pressable
-import app.cove.companion.feature.voice.intent.VoiceIntent
+import app.cove.companion.ai.model.VoiceIntent
 
 /** Frame 03: the drafts for what was heard, with an auto-picked category per to-do; nothing is saved until Save all. */
 @Composable

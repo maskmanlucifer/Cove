@@ -1,8 +1,6 @@
 package app.cove.companion.data.config
 
-import app.cove.companion.data.ai.GeminiDirectClient
-import app.cove.companion.data.ai.GeminiError
-import app.cove.companion.data.ai.GeminiReply
+import app.cove.companion.ai.AiService
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.header
@@ -18,8 +16,8 @@ import kotlinx.serialization.json.booleanOrNull
 /** What "Test connection" found: [ok] and a plain-language [message]; [offerSetupSql] adds a Copy setup SQL button. */
 data class TestResult(val ok: Boolean, val message: String, val offerSetupSql: Boolean = false)
 
-/** The "Test connection" checks. Messages never contain keys or raw error text. */
-class ConnectionTester(private val client: HttpClient, private val timeoutMs: Long = 10_000) {
+/** The "Test connection" checks. Messages never contain keys or raw error text. The Gemini check goes through [ai]. */
+class ConnectionTester(private val client: HttpClient, private val ai: AiService, private val timeoutMs: Long = 10_000) {
     /** Reachable, anon key accepted, and Cove's tables present. */
     suspend fun supabase(url: String, anonKey: String): TestResult {
         val base = url.trimEnd('/')
@@ -44,7 +42,7 @@ class ConnectionTester(private val client: HttpClient, private val timeoutMs: Lo
 
     /** One tiny Gemini call with [apiKey]. */
     suspend fun gemini(apiKey: String, model: String): TestResult =
-        geminiResult(GeminiDirectClient(apiKey, model, "", client).ping())
+        ai.testCloud(apiKey, model).let { TestResult(it.ok, it.message) }
 
     internal companion object {
         private val json = Json { isLenient = true }
@@ -79,24 +77,5 @@ class ConnectionTester(private val client: HttpClient, private val timeoutMs: Lo
             val external = (json.parseToJsonElement(body) as? JsonObject)?.get("external") as? JsonObject
             (external?.get("google") as? JsonPrimitive)?.booleanOrNull
         }.getOrNull()
-
-        /** Plain-language verdict for a Gemini ping. */
-        fun geminiResult(reply: GeminiReply): TestResult = when (reply) {
-            is GeminiReply.Text -> TestResult(true, "Gemini answered. Your key works.")
-            is GeminiReply.Failure -> TestResult(false, geminiProblem(reply.error))
-        }
-
-        /** What went wrong, in words. */
-        fun geminiProblem(error: GeminiError): String = when (error) {
-            GeminiError.InvalidKey -> "Google says this API key is not valid. Copy it again from AI Studio."
-            GeminiError.Forbidden -> "This key is not allowed to use Gemini. Check its restrictions in AI Studio."
-            GeminiError.Quota -> "The key works, but its quota is used up for now. Try again later."
-            GeminiError.ModelNotFound -> "That model name was not found. Check the model in Advanced."
-            GeminiError.BadRequest -> "Gemini did not accept the request. Check the model name in Advanced."
-            GeminiError.Offline -> "Cannot reach Gemini. Check your internet connection."
-            GeminiError.Timeout -> "Gemini took too long to answer. Try again."
-            GeminiError.Server -> "Gemini is having trouble right now. Try again in a minute."
-            GeminiError.BadResponse -> "Gemini answered in a way Cove could not read. Try again."
-        }
     }
 }

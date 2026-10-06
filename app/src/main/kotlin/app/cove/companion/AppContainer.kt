@@ -4,10 +4,27 @@ import android.content.Context
 import app.cove.companion.core.Clock
 import app.cove.companion.data.auth.AuthRepository
 import app.cove.companion.data.auth.EncryptedSessionStore
-import app.cove.companion.data.insights.ForegroundTracker
+import app.cove.companion.ai.AiPolicy
+import app.cove.companion.ai.AiProviders
+import app.cove.companion.ai.AiRouter
+import app.cove.companion.ai.AiService
+import app.cove.companion.ai.DefaultAiService
+import app.cove.companion.ai.ForegroundTracker
+import app.cove.companion.ai.provider.cloud.CloudGateway
+import app.cove.companion.ai.provider.cloud.CloudProvider
+import app.cove.companion.ai.provider.cloud.EdgeFunctionGateway
+import app.cove.companion.ai.provider.cloud.GeminiConnectionCheck
+import app.cove.companion.ai.provider.cloud.GeminiDirectClient
+import app.cove.companion.ai.provider.cloud.NoCloudGateway
+import app.cove.companion.ai.provider.ondevice.AndroidSpeechProvider
+import app.cove.companion.ai.provider.ondevice.MlKitNanoClient
+import app.cove.companion.ai.provider.ondevice.MlKitSpeechProvider
+import app.cove.companion.ai.provider.ondevice.NanoProvider
+import app.cove.companion.ai.provider.ondevice.UnbundledEmbeddingProvider
+import app.cove.companion.ai.provider.rules.RuleIntentProvider
+import app.cove.companion.ai.provider.rules.RuleParser
+import app.cove.companion.ai.provider.rules.TypedSpeechProvider
 import app.cove.companion.data.insights.JournalSearch
-import app.cove.companion.data.insights.NanoInsights
-import app.cove.companion.data.insights.NoOpEmbedder
 import app.cove.companion.data.insights.SearchIndexer
 import app.cove.companion.data.local.CoveDatabase
 import app.cove.companion.feature.security.AppLock
@@ -33,11 +50,6 @@ import app.cove.companion.data.repo.TodoRepository
 import app.cove.companion.data.sync.ConflictResolver
 import app.cove.companion.data.sync.SyncManager
 import app.cove.companion.core.net.ConnectivityMonitor
-import app.cove.companion.data.ai.AiGateway
-import app.cove.companion.data.ai.GeminiDirectClient
-import app.cove.companion.data.ai.KtorAiGateway
-import app.cove.companion.data.ai.NoAiGateway
-import app.cove.companion.data.ai.SwitchingAiGateway
 import app.cove.companion.data.auth.GoogleSignIn
 import app.cove.companion.data.config.CloudServices
 import app.cove.companion.data.config.CredentialStore
@@ -173,22 +185,49 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
     val sync: SyncManager get() = cloud.sync
     val conflictResolver by lazy { ConflictResolver(database, plan, todos) { sync.requestSync() } }
 
-    private val aiProvider by lazy {
-        ServiceProvider(
+    private val geminiGateway by lazy {
+        ServiceProvider<CloudGateway>(
             credentials,
-            key = { listOf(it.geminiApiKey, it.model, it.fallbackModel, it.supabaseUrl, it.supabaseAnonKey) },
+            key = { listOf(it.geminiApiKey, it.model, it.fallbackModel) },
+            build = { c -> if (c.hasGemini) GeminiDirectClient(c.geminiApiKey, c.model, c.fallbackModel, httpClient) else NoCloudGateway },
+        )
+    }
+
+    /** The legacy Edge Function is used only when no Gemini key is set (a key always wins). */
+    private val edgeGateway by lazy {
+        ServiceProvider<CloudGateway>(
+            credentials,
+            key = { listOf(it.hasGemini, it.supabaseUrl, it.supabaseAnonKey) },
             build = { c ->
-                when {
-                    c.hasGemini -> GeminiDirectClient(c.geminiApiKey, c.model, c.fallbackModel, httpClient)
-                    c.hasSupabase -> KtorAiGateway(c.supabaseUrl, c.supabaseAnonKey, httpClient, tokenProvider = { auth.accessToken() })
-                    else -> NoAiGateway
-                }
+                if (!c.hasGemini && c.hasSupabase) EdgeFunctionGateway(c.supabaseUrl, c.supabaseAnonKey, httpClient, tokenProvider = { auth.accessToken() })
+                else NoCloudGateway
             },
         )
     }
 
-    /** Cloud language layer: Gemini with the user's key, else the legacy Edge Function, else off. Follows credential changes. */
-    val aiGateway: AiGateway by lazy { SwitchingAiGateway { aiProvider.get() } }
+    /**
+     * The AI facade: on-device first where the rules allow, cloud as fallback, never cloud for journal content.
+     * Provider order per capability is declared here; see `docs/AI.md`.
+     */
+    val ai: AiService by lazy {
+        val nano = NanoProvider(MlKitNanoClient())
+        val gemini = CloudProvider(CloudProvider.GEMINI_ID, "API key") { geminiGateway.get() }
+        val edge = CloudProvider(CloudProvider.EDGE_ID, "Supabase project") { edgeGateway.get() }
+        val typed = TypedSpeechProvider()
+        val rules = RuleParser(clock)
+        val providers = AiProviders(
+            intent = listOf(RuleIntentProvider(rules), nano, gemini, edge),
+            brief = listOf(nano, gemini, edge),
+            speech = listOf(MlKitSpeechProvider(), AndroidSpeechProvider(context.applicationContext), typed),
+            caption = listOf(nano),
+            summary = listOf(nano),
+            embedding = listOf(UnbundledEmbeddingProvider()),
+        )
+        val router = AiRouter(providers, AiPolicy(foreground) { connectivity.online.value })
+        DefaultAiService(router, providers, typed, rules, clock) { key, model ->
+            GeminiConnectionCheck.run(GeminiDirectClient(key, model, "", httpClient))
+        }
+    }
 
     /** Voice assistant services (parser, executor, TTS, undo chip). */
     val voice by lazy { VoiceKit(context.applicationContext, this) }
@@ -212,8 +251,8 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
 
     /** Google Drive storage for media and backups; inert until configured, signed in and consented. */
     val driveKit: DriveKit get() = cloud.drive
-    val journalSearch = JournalSearch(database, NoOpEmbedder)
-    val searchIndexer = SearchIndexer(database, journalSearch, NanoInsights(), NoOpEmbedder, clock, foreground)
+    val journalSearch by lazy { JournalSearch(database, ai) }
+    val searchIndexer by lazy { SearchIndexer(database, journalSearch, ai, clock) }
 
     /** Network state for the offline notice and "will sync" markers. */
     val connectivity by lazy { ConnectivityMonitor(context.applicationContext) }
@@ -229,7 +268,7 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
         val prefs = BriefPrefs(context)
         BriefGenerator(
             this, context.applicationContext, WeatherClient(prefs, clock::now), prefs, calendar,
-            aiGateway, clock,
+            ai, clock,
         )
     }
 

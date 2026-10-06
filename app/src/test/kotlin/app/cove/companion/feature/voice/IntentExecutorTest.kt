@@ -13,8 +13,8 @@ import app.cove.companion.data.local.entity.TodoEntity
 import app.cove.companion.data.local.entity.VoiceCommandEntity
 import app.cove.companion.feature.voice.exec.IntentExecutor
 import app.cove.companion.feature.voice.exec.VoiceStore
-import app.cove.companion.feature.voice.intent.TodoDraft
-import app.cove.companion.feature.voice.intent.VoiceIntent
+import app.cove.companion.ai.model.TodoDraft
+import app.cove.companion.ai.model.VoiceIntent
 import java.time.LocalDate
 import java.time.LocalDateTime
 import kotlinx.coroutines.runBlocking

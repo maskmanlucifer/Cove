@@ -1,6 +1,7 @@
 package app.cove.companion.data.insights
 
 import androidx.sqlite.db.SupportSQLiteDatabase
+import app.cove.companion.ai.AiService
 import app.cove.companion.data.local.CoveDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -9,10 +10,10 @@ import kotlinx.coroutines.withContext
 
 /**
  * On-device journal search: SQLite FTS4 over entry text plus stored insight text, fused with cosine similarity over
- * stored embeddings when a [TextEmbedder] is available. Nothing here touches the network.
+ * stored embeddings when [ai] can embed on the phone. Nothing here touches the network.
  * The FTS table lives beside Room's tables (created on first use) so the Room schema stays unchanged.
  */
-class JournalSearch(private val db: CoveDatabase, private val embedder: TextEmbedder = NoOpEmbedder) {
+class JournalSearch(private val db: CoveDatabase, private val ai: AiService) {
     private val lock = Mutex()
     private var ready = false
 
@@ -42,7 +43,7 @@ class JournalSearch(private val db: CoveDatabase, private val embedder: TextEmbe
         sql().query("SELECT entryId, content FROM journal_fts WHERE journal_fts MATCH ?", arrayOf(match)).use { c ->
             while (c.moveToNext()) keyword += c.getString(0) to SearchMath.keywordScore(c.getString(1), words)
         }
-        val semantic = embedder.embed(query)?.let { q ->
+        val semantic = ai.embed(query).valueOrNull()?.let { q ->
             db.journal().allIndex().mapNotNull { row ->
                 row.embedding?.let { row.entryId to SearchMath.cosine(q, SearchMath.fromBytes(it)) }
             }

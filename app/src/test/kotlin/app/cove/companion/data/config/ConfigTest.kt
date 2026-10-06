@@ -1,8 +1,11 @@
 package app.cove.companion.data.config
 
-import app.cove.companion.data.ai.GeminiDirectClient
-import app.cove.companion.data.ai.GeminiError
-import app.cove.companion.data.ai.GeminiReply
+import app.cove.companion.ai.provider.cloud.GeminiDirectClient
+import app.cove.companion.ai.provider.cloud.GeminiError
+import app.cove.companion.ai.NoopAi
+import app.cove.companion.ai.provider.cloud.GeminiConnectionCheck
+import app.cove.companion.ai.provider.cloud.GeminiReply
+import app.cove.companion.ai.schema.IntentSchema
 import app.cove.companion.security.Sealer
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
@@ -192,8 +195,8 @@ class GeminiDirectClientTest {
     }
 
     @Test fun rejectsUnknownIntentsLowConfidenceAndLongTranscripts() = runBlocking {
-        assertNull(GeminiDirectClient.validateIntent("""{"intents":[{"type":"launch"}]}"""))
-        assertNull(GeminiDirectClient.validateIntent("""{"intents":[{"type":"undo_last"}],"confidence":0.2}"""))
+        assertNull(IntentSchema.validateCloud("""{"intents":[{"type":"launch"}]}"""))
+        assertNull(IntentSchema.validateCloud("""{"intents":[{"type":"undo_last"}],"confidence":0.2}"""))
         assertNull(client(HttpStatusCode.OK to reply(ok)).parseIntent("x".repeat(601), "n", "z", emptyList()))
         assertTrue(seen.isEmpty())
     }
@@ -214,8 +217,8 @@ class GeminiDirectClientTest {
     }
 
     @Test fun pingResults() = runBlocking {
-        assertTrue(ConnectionTester.geminiResult(client(HttpStatusCode.OK to reply("OK")).ping()).ok)
-        val bad = ConnectionTester.geminiResult(GeminiReply.Failure(GeminiError.Offline))
+        assertTrue(GeminiConnectionCheck.result(client(HttpStatusCode.OK to reply("OK")).ping()).ok)
+        val bad = GeminiConnectionCheck.result(GeminiReply.Failure(GeminiError.Offline))
         assertFalse(bad.ok)
         assertTrue(bad.message.contains("internet"))
     }
@@ -238,7 +241,7 @@ class ConnectionTesterTest {
             if (req.url.encodedPath.endsWith("/settings") && req.url.encodedPath.contains("auth")) respond("""{"external":{"google":true}}""", HttpStatusCode.OK, h)
             else respond("""{"code":"PGRST205"}""", HttpStatusCode.NotFound, h)
         }
-        val r = ConnectionTester(HttpClient(engine)).supabase("https://a.supabase.co", JWT)
+        val r = ConnectionTester(HttpClient(engine), NoopAi.service).supabase("https://a.supabase.co", JWT)
         assertTrue(r.offerSetupSql)
     }
 }

@@ -4,7 +4,7 @@ import app.cove.companion.core.clockText
 import app.cove.companion.core.rupees
 import app.cove.companion.core.shortTime
 import app.cove.companion.core.toLocalDateTime
-import app.cove.companion.feature.voice.intent.VoiceIntent
+import app.cove.companion.ai.model.VoiceIntent
 import java.time.LocalDate
 
 private val numberWords = listOf("Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten")

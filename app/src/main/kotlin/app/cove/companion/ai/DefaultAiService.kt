@@ -1,0 +1,80 @@
+package app.cove.companion.ai
+
+import app.cove.companion.ai.model.AiError
+import app.cove.companion.ai.model.AiResult
+import app.cove.companion.ai.model.BriefInput
+import app.cove.companion.ai.model.BriefLines
+import app.cove.companion.ai.model.BriefRequest
+import app.cove.companion.ai.model.Capability
+import app.cove.companion.ai.model.CloudCheck
+import app.cove.companion.ai.model.IntentContext
+import app.cove.companion.ai.model.IntentRequest
+import app.cove.companion.ai.model.ParsedIntents
+import app.cove.companion.ai.model.Sensitivity
+import app.cove.companion.ai.model.SpeechSession
+import app.cove.companion.ai.model.Summary
+import app.cove.companion.ai.model.TypedSession
+import app.cove.companion.ai.model.VoiceIntent
+import app.cove.companion.ai.provider.rules.RuleParser
+import app.cove.companion.ai.provider.rules.TypedSpeechProvider
+import app.cove.companion.core.Clock
+import app.cove.companion.core.toLocalDateTime
+import java.io.File
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+
+/**
+ * [AiService] on top of an [AiRouter]. Builds typed requests and hands every call to the router with the
+ * [Sensitivity] its capability is allowed to have.
+ *
+ * @param typed the typed-input provider, also listed in `providers.speech` for status.
+ * @param rules used only for [guessIntents].
+ * @param cloudCheck runs "Test connection" for the cloud provider.
+ */
+class DefaultAiService(
+    private val router: AiRouter,
+    private val providers: AiProviders,
+    private val typed: TypedSpeechProvider,
+    private val rules: RuleParser,
+    private val clock: Clock,
+    private val cloudCheck: suspend (apiKey: String, model: String) -> CloudCheck,
+) : AiService {
+    override suspend fun parseIntent(transcript: String, context: IntentContext): AiResult<ParsedIntents> {
+        val text = transcript.trim()
+        if (text.isEmpty()) return AiResult.Failed(AiError.Unavailable("Nothing was heard"))
+        val now = clock.now().toLocalDateTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME).substringBeforeLast(':').take(16)
+        val request = IntentRequest(text, context, now, ZoneId.systemDefault().id)
+        return router.route(Capability.Intent, Sensitivity.Everyday, providers.intent, text.length) { it.parse(request) }
+    }
+
+    override fun guessIntents(text: String): List<VoiceIntent> = rules.guesses(text)
+
+    override suspend fun composeBriefLines(facts: BriefInput): AiResult<BriefLines> {
+        val safe = facts.facts.filterKeys { !it.contains("journal", ignoreCase = true) }
+        val intro = line(BriefRequest("intro", if (facts.name != null) safe + ("name" to facts.name) else safe))
+        val thought = line(BriefRequest("thought", safe))
+        val source = (intro as? AiResult.Ok)?.source ?: (thought as? AiResult.Ok)?.source
+            ?: return (intro as AiResult.Failed)
+        return AiResult.Ok(BriefLines(intro.valueOrNull(), thought.valueOrNull()), source)
+    }
+
+    private suspend fun line(request: BriefRequest) =
+        router.route(Capability.Brief, Sensitivity.Everyday, providers.brief) { it.line(request) }
+
+    override suspend fun openSpeech(): SpeechSession? = router.openSpeech(Sensitivity.Everyday)
+
+    override fun openTyped(): TypedSession = typed.openTyped()
+
+    override suspend fun captionImage(file: File): AiResult<String> =
+        router.route(Capability.Caption, Sensitivity.Journal, providers.caption) { it.caption(file) }
+
+    override suspend fun summarize(text: String): AiResult<Summary> =
+        router.route(Capability.Summary, Sensitivity.Journal, providers.summary) { it.summarize(text) }
+
+    override suspend fun embed(text: String): AiResult<FloatArray> =
+        router.route(Capability.Embedding, Sensitivity.Journal, providers.embedding) { it.embed(text) }
+
+    override suspend fun status(): AiStatus = router.status()
+
+    override suspend fun testCloud(apiKey: String, model: String): CloudCheck = cloudCheck(apiKey, model)
+}

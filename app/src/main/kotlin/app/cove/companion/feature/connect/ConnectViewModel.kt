@@ -41,7 +41,7 @@ data class ConnectUi(
 class ConnectViewModel(private val c: AppContainer) : ViewModel() {
     private val tests = MutableStateFlow<Map<ServiceId, TestResult>>(emptyMap())
     private val busy = MutableStateFlow<ServiceId?>(null)
-    private val tester by lazy { ConnectionTester(HttpClient(OkHttp)) }
+    private val tester by lazy { ConnectionTester(HttpClient(OkHttp), c.ai) }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val live = c.cloudChanges().flatMapLatest { cloud ->

@@ -7,11 +7,12 @@ import android.content.pm.PackageManager
 import android.location.LocationManager
 import androidx.core.content.ContextCompat
 import app.cove.companion.AppContainer
+import app.cove.companion.ai.AiService
+import app.cove.companion.ai.model.BriefInput
 import app.cove.companion.core.Clock
 import app.cove.companion.core.startOfDayMillis
 import app.cove.companion.core.toLocalDate
 import app.cove.companion.core.toLocalDateTime
-import app.cove.companion.data.ai.AiGateway
 import app.cove.companion.data.local.entity.BriefEntity
 import app.cove.companion.feature.money.MoneyMath
 import kotlinx.coroutines.flow.first
@@ -19,7 +20,7 @@ import java.time.LocalDate
 
 /**
  * Gathers the day's facts (weather, events, to-dos, calendar, money, habits) and builds the script from templates.
- * Journal content is never read. The gateway only adds an optional short intro and "one thing to read".
+ * Journal content is never read. [AiService] only adds an optional short intro and "one thing to read".
  */
 class BriefGenerator(
     private val c: AppContainer,
@@ -27,7 +28,7 @@ class BriefGenerator(
     private val weather: WeatherClient,
     private val prefs: BriefPrefs,
     private val calendar: CalendarSource,
-    private val gateway: AiGateway,
+    private val ai: AiService,
     private val clock: Clock,
 ) {
     /** Today's cached brief, generated first when none exists. */
@@ -79,10 +80,8 @@ class BriefGenerator(
             put("events_today", items.size.toString())
             put("todos_open", todos.size.toString())
         }
-        return base.copy(
-            intro = gateway.briefLine("intro", generic + ("name" to settings.displayName)),
-            thought = gateway.briefLine("thought", generic),
-        )
+        val lines = ai.composeBriefLines(BriefInput(generic, settings.displayName)).valueOrNull()
+        return base.copy(intro = lines?.intro, thought = lines?.thought)
     }
 
     @SuppressLint("MissingPermission")

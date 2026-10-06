@@ -2,7 +2,6 @@ package app.cove.companion.feature.voice
 
 import app.cove.companion.AppContainer
 import app.cove.companion.BuildConfig
-import app.cove.companion.feature.voice.intent.ParseOutcome
 
 /**
  * Debug-only hooks to drive the Voice screen into a given frame:
@@ -38,8 +37,7 @@ object VoiceDebug {
     suspend fun runSaved(c: AppContainer) {
         if (!savedRequested) return
         savedRequested = false
-        val outcome = c.voice.parser.parse(savedTranscript)
-        val intents = (outcome as? ParseOutcome.Understood)?.intents ?: return
+        val intents = c.ai.parseIntent(savedTranscript).valueOrNull()?.intents ?: return
         val r = c.voice.executor.execute(savedTranscript, intents)
         c.voice.newTodos.add(r.createdTodos)
         c.voice.feedback.show(r.summary, r.commandId)

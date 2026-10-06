@@ -29,8 +29,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.cove.companion.ai.model.Summary
 import app.cove.companion.container
-import app.cove.companion.data.insights.OnDeviceInsights
 import app.cove.companion.data.local.entity.JournalMediaEntity
 import app.cove.companion.data.media.PlaybackState
 import app.cove.companion.design.Cove
@@ -140,7 +140,7 @@ fun MoodSheet(visible: Boolean, mood: String?, canDelete: Boolean, onDismiss: ()
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { SheetHandle() }
             CoveText("How did it feel?", style = CoveType.Section)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OnDeviceInsights.MOODS.forEach { m ->
+                Summary.MOODS.forEach { m ->
                     Chip(m, onClick = { onPick(if (m == mood) null else m) }, selected = m == mood)
                 }
             }

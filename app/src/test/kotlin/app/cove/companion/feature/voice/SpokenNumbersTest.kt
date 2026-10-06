@@ -1,6 +1,6 @@
 package app.cove.companion.feature.voice
 
-import app.cove.companion.feature.voice.intent.SpokenNumbers
+import app.cove.companion.ai.provider.rules.SpokenNumbers
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

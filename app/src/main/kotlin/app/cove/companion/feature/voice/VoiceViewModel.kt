@@ -7,13 +7,12 @@ import app.cove.companion.BuildConfig
 import app.cove.companion.core.rupees
 import app.cove.companion.core.startOfDayMillis
 import app.cove.companion.core.toLocalDate
-import app.cove.companion.feature.voice.intent.ParseContext
-import app.cove.companion.feature.voice.intent.ParseOutcome
-import app.cove.companion.feature.voice.intent.VoiceIntent
-import app.cove.companion.feature.voice.speech.SpeechEngine
-import app.cove.companion.feature.voice.speech.SpeechEvent
-import app.cove.companion.feature.voice.speech.SpeechFailure
-import app.cove.companion.feature.voice.speech.TypedSpeechEngine
+import app.cove.companion.ai.model.AiResult
+import app.cove.companion.ai.model.IntentContext
+import app.cove.companion.ai.model.SpeechEvent
+import app.cove.companion.ai.model.SpeechFailure
+import app.cove.companion.ai.model.SpeechSession
+import app.cove.companion.ai.model.VoiceIntent
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,11 +49,11 @@ data class VoiceState(
 /** Drives listening, understanding, confirming and saving a voice command. */
 class VoiceViewModel(private val c: AppContainer) : ViewModel() {
     private val kit get() = c.voice
-    private val typedEngine = TypedSpeechEngine()
+    private val typed = c.ai.openTyped()
     private val _state = MutableStateFlow(VoiceState())
     val state: StateFlow<VoiceState> = _state.asStateFlow()
     private var job: Job? = null
-    private var engine: SpeechEngine? = null
+    private var session: SpeechSession? = null
     private var started = false
     private var frozen = false
 
@@ -90,10 +89,9 @@ class VoiceViewModel(private val c: AppContainer) : ViewModel() {
         kit.speaker.stop()
         _state.update { VoiceState(categories = it.categories) }
         job = viewModelScope.launch {
-            val picked = kit.engines.pick()
-            if (picked == null) return@launch micDenied()
-            engine = picked
-            _state.update { it.copy(onDevice = picked.onDevice, micOff = false) }
+            val picked = c.ai.openSpeech() ?: return@launch micDenied()
+            session = picked
+            _state.update { it.copy(onDevice = picked.source.location.isLocal, micOff = false) }
             val ticker = launch { while (true) { delay(1000); _state.update { it.copy(seconds = it.seconds + 1) } } }
             try {
                 collect(picked, showsLevel = true)
@@ -105,7 +103,7 @@ class VoiceViewModel(private val c: AppContainer) : ViewModel() {
 
     /** Stop button and Done: ask the engine for its final transcript. */
     fun finish() {
-        viewModelScope.launch { engine?.stop() }
+        viewModelScope.launch { session?.stop() }
     }
 
     /** Type instead, Type it and Edit: the text box, prefilled with what was heard. */
@@ -119,18 +117,18 @@ class VoiceViewModel(private val c: AppContainer) : ViewModel() {
 
     fun submitTyped() {
         val text = _state.value.typed.trim()
-        if (text.isNotEmpty()) typedEngine.submit(text)
+        if (text.isNotEmpty()) typed.submit(text)
     }
 
     private fun startTypedWait() {
         job?.cancel()
-        job = viewModelScope.launch { collect(typedEngine, showsLevel = false) }
+        job = viewModelScope.launch { collect(typed, showsLevel = false) }
     }
 
-    private suspend fun collect(source: SpeechEngine, showsLevel: Boolean) {
+    private suspend fun collect(source: SpeechSession, showsLevel: Boolean) {
         var final: String? = null
         var failure: SpeechFailure? = null
-        source.listen().collect { e ->
+        source.events.collect { e ->
             when (e) {
                 is SpeechEvent.Partial -> _state.update { it.copy(transcript = e.text) }
                 is SpeechEvent.Level -> if (showsLevel) _state.update { it.copy(level = e.value) }
@@ -145,17 +143,17 @@ class VoiceViewModel(private val c: AppContainer) : ViewModel() {
 
     private suspend fun understand(text: String, heardByVoice: Boolean) {
         _state.update { it.copy(busy = true, transcript = text, heardByVoice = heardByVoice, level = 0f) }
-        val ctx = ParseContext(
+        val ctx = IntentContext(
             habits = c.habits.habits.first().map { it.name },
             todoCategories = c.todos.categories.first().map { it.name },
         )
         val categories = ctx.todoCategories
         val expenseCats = c.money.categories.first().filter { it.kind == "spending" }.map { it.name }
-        when (val outcome = kit.parser.parse(text, ctx)) {
-            is ParseOutcome.Understood -> {
-                val only = outcome.intents.singleOrNull()
+        when (val outcome = c.ai.parseIntent(text, ctx)) {
+            is AiResult.Ok -> {
+                val only = outcome.value.intents.singleOrNull()
                 if (only == VoiceIntent.UndoLast || only == VoiceIntent.QueryNext) {
-                    val r = kit.executor.execute(text, outcome.intents)
+                    val r = kit.executor.execute(text, outcome.value.intents)
                     if (only == VoiceIntent.UndoLast) {
                         kit.feedback.show(r.summary, null)
                         _state.update { it.copy(busy = false, done = true) }
@@ -164,12 +162,12 @@ class VoiceViewModel(private val c: AppContainer) : ViewModel() {
                     }
                     kit.speaker.speak(r.summary)
                 } else {
-                    val hint = moneyHint(outcome.intents.singleOrNull())
-                    _state.update { it.copy(busy = false, stage = Stage.Result, drafts = outcome.intents, categories = categories, expenseCategories = expenseCats, moneyHint = hint) }
+                    val hint = moneyHint(outcome.value.intents.singleOrNull())
+                    _state.update { it.copy(busy = false, stage = Stage.Result, drafts = outcome.value.intents, categories = categories, expenseCategories = expenseCats, moneyHint = hint) }
                 }
             }
-            is ParseOutcome.Partial ->
-                _state.update { it.copy(busy = false, stage = Stage.Partial, guesses = outcome.guesses, transcript = text) }
+            is AiResult.Failed ->
+                _state.update { it.copy(busy = false, stage = Stage.Partial, guesses = c.ai.guessIntents(text), transcript = text) }
         }
     }
 
@@ -224,7 +222,7 @@ class VoiceViewModel(private val c: AppContainer) : ViewModel() {
         when (d.state) {
             "listening" -> _state.update { it.copy(stage = Stage.Listening, transcript = d.transcript, seconds = d.seconds) }
             "partial" -> _state.update {
-                it.copy(stage = Stage.Partial, transcript = d.transcript, guesses = kit.parser.guesses(d.transcript))
+                it.copy(stage = Stage.Partial, transcript = d.transcript, guesses = c.ai.guessIntents(d.transcript))
             }
             "micoff" -> {
                 _state.update { it.copy(stage = Stage.Typing, micOff = true, typed = d.transcript, heardByVoice = false) }

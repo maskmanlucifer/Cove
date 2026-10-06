@@ -9,7 +9,7 @@ import app.cove.companion.core.toLocalDateTime
 import app.cove.companion.data.local.entity.AlarmEntity
 import app.cove.companion.data.local.entity.ExpenseEntity
 import app.cove.companion.data.local.entity.JournalEntryEntity
-import app.cove.companion.feature.voice.intent.VoiceIntent
+import app.cove.companion.ai.model.VoiceIntent
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
