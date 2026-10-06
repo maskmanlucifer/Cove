@@ -166,7 +166,7 @@ fun TodayScreen(nav: Nav) {
                 "Voice, alarms and your journal work offline. Only weather and the brief’s one thing to read wait for a connection.",
                 style = CoveType.Meta.copy(lineHeight = 21.sp), color = c.muted,
             )
-        } else if (evening) {
+        } else if (state.askMood) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 CoveText("How was today?", style = CoveType.Meta, color = c.muted)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
