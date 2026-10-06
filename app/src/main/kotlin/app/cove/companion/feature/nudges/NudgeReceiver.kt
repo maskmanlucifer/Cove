@@ -9,6 +9,10 @@ import app.cove.companion.resilience.CrashHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
+
+/** Longest a receiver may wait on the database before giving up (a broken one can leave queries waiting forever). */
+private const val HANDLER_TIMEOUT_MS = 8_000L
 
 /** Handles alarm triggers for summaries and reminders, and the Done / Snooze notification actions. */
 class NudgeReceiver : BroadcastReceiver() {
@@ -18,7 +22,7 @@ class NudgeReceiver : BroadcastReceiver() {
         val pending = goAsync()
         CoroutineScope(Dispatchers.IO + CrashHandler.coroutineHandler("nudge")).launch {
             try {
-                CrashHandler.guarded("nudge") { handle(app, intent, key) }
+                CrashHandler.guarded("nudge") { withTimeout(HANDLER_TIMEOUT_MS) { handle(app, intent, key) } }
             } finally {
                 pending.finish()
             }
@@ -70,7 +74,7 @@ class NudgeBootReceiver : BroadcastReceiver() {
         val pending = goAsync()
         CoroutineScope(Dispatchers.IO + CrashHandler.coroutineHandler("nudge-boot")).launch {
             try {
-                CrashHandler.guarded("nudge-boot") { NudgeScheduler(app, app.container).syncNow() }
+                CrashHandler.guarded("nudge-boot") { withTimeout(HANDLER_TIMEOUT_MS) { NudgeScheduler(app, app.container).syncNow() } }
             } finally {
                 pending.finish()
             }

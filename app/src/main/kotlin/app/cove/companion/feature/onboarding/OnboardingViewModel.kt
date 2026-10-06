@@ -16,7 +16,11 @@ class OnboardingViewModel(private val c: AppContainer) : ViewModel() {
     val wake: StateFlow<Int> = _wake
 
     init {
-        viewModelScope.launch { _wake.value = snapWake(c.settings.settings.first().wakeMinutes) }
+        viewModelScope.launch {
+            // A wake alarm that arrived through sync wins over the default; show its time, not 6:30.
+            val synced = c.plan.alarms.first().firstOrNull { it.kind == "wake" && it.deletedAt == null }
+            _wake.value = snapWake(synced?.minutes ?: c.settings.settings.first().wakeMinutes)
+        }
     }
 
     fun setWake(minutes: Int) {
@@ -26,7 +30,8 @@ class OnboardingViewModel(private val c: AppContainer) : ViewModel() {
     /** Saves the wake time (see [saveWakeTime]), then calls [done]. */
     fun saveWake(done: () -> Unit) {
         viewModelScope.launch {
-            saveWakeTime(c, _wake.value)
+            val existing = c.plan.alarms.first().firstOrNull { it.kind == "wake" && it.deletedAt == null }
+            if (existing == null || snapWake(existing.minutes) != _wake.value) saveWakeTime(c, _wake.value) else keepExistingWake(c)
             done()
         }
     }
@@ -42,6 +47,12 @@ class OnboardingViewModel(private val c: AppContainer) : ViewModel() {
     private companion object {
         const val SETTINGS_DEFAULT = 6 * 60 + 30
     }
+}
+
+/** Onboarding found a wake alarm already (synced from another phone): keep it as is and mirror its time into settings. */
+suspend fun keepExistingWake(c: AppContainer) {
+    val existing = c.plan.alarms.first().firstOrNull { it.kind == "wake" && it.deletedAt == null } ?: return
+    c.settings.update { it.copy(wakeMinutes = existing.minutes) }
 }
 
 /** Stores [minutes] as the wake time and creates or updates the default every-day "Wake up" alarm. */

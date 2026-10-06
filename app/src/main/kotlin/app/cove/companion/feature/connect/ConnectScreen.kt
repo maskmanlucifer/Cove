@@ -30,7 +30,9 @@ import app.cove.companion.design.CoveIcon
 import app.cove.companion.design.CoveIcons
 import app.cove.companion.design.CoveShapes
 import app.cove.companion.design.CoveType
+import app.cove.companion.design.components.ButtonKind
 import app.cove.companion.design.components.CoveScreen
+import app.cove.companion.design.components.PillButton
 import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.design.components.pressable
@@ -39,10 +41,11 @@ import app.cove.companion.feature.me.SettingsGroup
 import app.cove.companion.feature.me.SettingsRow
 import app.cove.companion.navigation.DebugLaunch
 import app.cove.companion.navigation.Nav
+import app.cove.companion.navigation.Routes
 
 /** "Connect services": paste your own accounts once; everything stays encrypted on this phone. */
 @Composable
-fun ConnectScreen(nav: Nav) {
+fun ConnectScreen(nav: Nav, onboarding: Boolean = false) {
     val vm = appViewModel { ConnectViewModel(it) }
     val ui by vm.ui.collectAsState()
     var sheet by rememberSaveable { mutableStateOf(DebugLaunch.sheet?.let { s -> ConnectSheet.entries.firstOrNull { it.name.equals(s, true) } }) }
@@ -78,8 +81,24 @@ fun ConnectScreen(nav: Nav) {
                     ServiceRow(ServiceId.Gemini, ui.status(ServiceId.Gemini)) { sheet = ConnectSheet.Gemini }
                 }
             }
+            if (onboarding) OnboardingActions(ui.signedIn, onContinue = { nav.go(Routes.WakeTime) }, onSkip = { vm.skipSetup { nav.home() } })
         }
         ConnectSheets(sheet, ui, vm) { sheet = null }
+    }
+}
+
+/** Way forward when Connect was opened from "I already use Cove": skip the questions once signed in, or continue to them. */
+@Composable
+private fun OnboardingActions(signedIn: Boolean, onContinue: () -> Unit, onSkip: () -> Unit) {
+    Column(Modifier.padding(start = 20.dp, end = 20.dp, bottom = 32.dp, top = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (signedIn) {
+            CoveText(
+                "You’re signed in. Your things will arrive in a moment, so you can skip the setup questions.",
+                style = CoveType.Meta, color = Cove.colors.muted,
+            )
+            PillButton("Skip the setup questions", onSkip, Modifier.fillMaxWidth(), height = 52.dp)
+        }
+        PillButton("Continue", onContinue, Modifier.fillMaxWidth(), kind = if (signedIn) ButtonKind.Secondary else ButtonKind.Primary, height = 52.dp)
     }
 }
 

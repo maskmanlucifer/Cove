@@ -98,6 +98,7 @@ fun CoveNavHost(start: String, voiceRequest: Int = 0, briefRequest: Int = 0) {
         composable(Routes.JournalEdit, idArg) { JournalEditScreen(id(it), nav) }
         composable(Routes.SyncConflict) { SyncConflictScreen(nav) }
         composable(Routes.Connect) { ConnectScreen(nav) }
+        composable(Routes.ConnectOnboarding) { ConnectScreen(nav, onboarding = true) }
         if (BuildConfig.DEBUG) composable("debug/money-logged") { MoneyLoggedDebugScreen() }
     }
     LaunchedEffect(voiceRequest) { if (voiceRequest > 0 && start == Routes.Main) nav.go(Routes.Voice) }

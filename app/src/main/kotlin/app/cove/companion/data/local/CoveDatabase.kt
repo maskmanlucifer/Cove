@@ -5,6 +5,8 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
+import app.cove.companion.resilience.CrashHandler
+import kotlinx.coroutines.Dispatchers
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
 import app.cove.companion.data.local.dao.AlarmDao
@@ -114,6 +116,8 @@ abstract class CoveDatabase : RoomDatabase() {
         fun create(context: Context, factory: SupportSQLiteOpenHelper.Factory? = null): CoveDatabase =
             Room.databaseBuilder(context, CoveDatabase::class.java, NAME)
                 .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                // Room's own background coroutines (invalidation tracking) would crash the process on a failing database; report instead.
+                .setQueryCoroutineContext(Dispatchers.IO + CrashHandler.coroutineHandler("room"))
                 .apply { if (factory != null) openHelperFactory(factory) }
                 .build()
     }

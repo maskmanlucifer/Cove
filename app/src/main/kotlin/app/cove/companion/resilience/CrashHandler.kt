@@ -1,6 +1,7 @@
 package app.cove.companion.resilience
 
 import android.content.Context
+import android.os.Looper
 import java.io.File
 import kotlinx.coroutines.CoroutineExceptionHandler
 
@@ -22,10 +23,22 @@ object CrashHandler {
         version = versionName
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, error ->
-            record("uncaught", error, thread.name, fatal = true)
-            previous?.uncaughtException(thread, error)
+            if (survivable(thread, error)) {
+                record("background-db", error, thread.name, fatal = false)
+            } else {
+                record("uncaught", error, thread.name, fatal = true)
+                previous?.uncaughtException(thread, error)
+            }
         }
     }
+
+    /**
+     * A database failure on a background thread (for example inside Room's own coroutines, which no handler of ours can
+     * reach) must not take the process down: the startup guard already routes the user to the Recovery screen and the
+     * alarm keeps ringing from its mirror. Anything on the main thread, or not a database problem, still ends the process.
+     */
+    internal fun survivable(thread: Thread, error: Throwable): Boolean =
+        thread !== Looper.getMainLooper().thread && DatabaseGuard.classify(error).let { it != DbCheck.Ok && it != DbCheck.Unknown }
 
     /** Records a handled failure of a background component (not counted as a crash). */
     fun report(where: String, error: Throwable) = record(where, error, Thread.currentThread().name, fatal = false)
@@ -36,9 +49,8 @@ object CrashHandler {
     /** Runs [block], reporting any exception under [where] instead of throwing. Cancellation is rethrown. */
     inline fun <T> guarded(where: String, block: () -> T): T? = try {
         block()
-    } catch (e: kotlinx.coroutines.CancellationException) {
-        throw e
     } catch (t: Throwable) {
+        if (t is kotlinx.coroutines.CancellationException && t !is kotlinx.coroutines.TimeoutCancellationException) throw t
         report(where, t)
         null
     }

@@ -48,6 +48,7 @@ import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.PillButton
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.design.components.pressable
+import app.cove.companion.feature.alarms.RingingBanner
 import app.cove.companion.resilience.CrashHandler
 import app.cove.companion.resilience.RecoveryReason
 import kotlinx.coroutines.Dispatchers
@@ -63,7 +64,11 @@ private enum class Mode { Main, ConfirmFresh, ConfirmRestore }
 @Composable
 fun RecoveryScreen(reason: RecoveryReason) {
     CoveTheme(isSystemInDarkTheme()) {
-        RecoveryContent(reason)
+        Box {
+            RecoveryContent(reason)
+            // A ringing alarm must always be stoppable, even while the app itself cannot start.
+            RingingBanner(Modifier.align(Alignment.TopCenter))
+        }
     }
 }
 

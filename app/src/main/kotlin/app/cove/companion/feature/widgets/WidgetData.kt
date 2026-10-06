@@ -39,10 +39,9 @@ object WidgetData {
 
     /** Reads the current state of the database once; an unreadable database gives [Empty] and a crash note. */
     suspend fun load(c: AppContainer): WidgetSnapshot = try {
-        read(c)
-    } catch (e: kotlinx.coroutines.CancellationException) {
-        throw e
+        kotlinx.coroutines.withTimeout(8_000) { read(c) }
     } catch (e: Exception) {
+        if (e is kotlinx.coroutines.CancellationException && e !is kotlinx.coroutines.TimeoutCancellationException) throw e
         app.cove.companion.resilience.CrashHandler.report("widget-load", e)
         Empty
     }
