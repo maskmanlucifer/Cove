@@ -97,8 +97,8 @@ fun TodoRowItem(
                         shadowElevation = with(density) { 14.dp.toPx() }
                         shape = RoundedCornerShape(18.dp)
                         clip = true
-                        ambientShadowColor = Color(0x33141420)
-                        spotShadowColor = Color(0x33141420)
+                        ambientShadowColor = c.shadow
+                        spotShadowColor = c.shadow
                     }
                 },
         ) {

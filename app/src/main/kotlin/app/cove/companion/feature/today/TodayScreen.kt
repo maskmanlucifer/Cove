@@ -64,7 +64,11 @@ import app.cove.companion.design.components.BalancedText
 import app.cove.companion.design.components.ButtonKind
 import app.cove.companion.design.components.CheckCircle
 import app.cove.companion.design.components.Chip
+import app.cove.companion.design.HueName
+import app.cove.companion.design.hue
+import app.cove.companion.design.moodHue
 import app.cove.companion.design.components.CoveCard
+import app.cove.companion.design.components.easeIn
 import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.DockClearance
 import app.cove.companion.design.components.pressable
@@ -150,6 +154,7 @@ fun TodayScreen(nav: Nav) {
                 Row(
                     Modifier
                         .fillMaxWidth()
+                        .easeIn(index * 40)
                         .heightIn(min = 52.dp)
                         .toggleable(row.done, role = Role.Checkbox, onValueChange = { vm.toggle(row.id, it, row.title, index) })
                         .padding(vertical = 4.dp),
@@ -180,7 +185,9 @@ fun TodayScreen(nav: Nav) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 CoveText("How was today?", style = CoveType.Meta, color = c.muted)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("Calm", "Good", "Tired", "Low").forEach { Chip(it, onClick = { vm.setMood(it.lowercase()) }) }
+                    listOf("Calm", "Good", "Tired", "Low").forEach { mood ->
+                        Chip(mood, onClick = { vm.setMood(mood.lowercase()) }, container = c.moodHue(mood).tint)
+                    }
                 }
             }
         }
@@ -232,7 +239,7 @@ private fun NextCard(next: NextItem, actions: NextActions, modifier: Modifier = 
     val c = Cove.colors
     val context = LocalContext.current
     val time = clockText(next.minutes)
-    CoveCard(modifier) {
+    CoveCard(modifier, color = c.hue(if (next.windDown) HueName.Lilac else HueName.Sun).tint) {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             if (next.windDown) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -288,7 +295,7 @@ private fun headline(s: TodayState, offline: Boolean): String {
         return " ${numberWords.getOrElse(s.doneCount) { s.doneCount.toString() }} done. That’s enough."
     }
     val count = s.openCount
-    if (count == 0) return if (s.next != null) " Nothing else on your list." else " Nothing planned. Enjoy the quiet."
+    if (count == 0) return if (s.next != null) " Nothing else on your list." else " A quiet stretch ahead."
     val things = if (count == 1) "thing" else "things"
     val first = s.next?.event?.let { clockText(s.next.minutes) }
     if (!offline && first != null && s.next.minutes >= 180) return " Nothing before ${hourWord(s.next.minutes / 60)}."

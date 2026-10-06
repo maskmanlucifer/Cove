@@ -154,14 +154,14 @@ private fun DaysRow(mask: Int, onToggle: (Int) -> Unit) {
         "MTWTFSS".forEachIndexed { i, letter ->
             val on = (mask shr i) and 1 == 1
             Box(
-                Modifier.size(40.dp).background(if (on) c.ink else c.canvas, CoveShapes.Circle).pressable({ onToggle(i) }, role = Role.Checkbox)
+                Modifier.size(40.dp).background(if (on) c.accent else c.canvas, CoveShapes.Circle).pressable({ onToggle(i) }, role = Role.Checkbox)
                     .semantics { contentDescription = DayNames[i]; stateDescription = if (on) "On" else "Off" },
                 contentAlignment = Alignment.Center,
             ) {
                 CoveText(
                     letter.toString(),
                     style = CoveType.Meta.copy(fontWeight = if (on) FontWeight.Medium else FontWeight.Normal),
-                    color = if (on) c.onInk else c.muted,
+                    color = if (on) c.onAccent else c.muted,
                 )
             }
         }

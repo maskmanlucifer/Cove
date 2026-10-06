@@ -35,7 +35,7 @@ import app.cove.companion.design.ReducedMotionMillis
 fun CoveSheet(visible: Boolean, onDismiss: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val c = Cove.colors
     val reduce = LocalReduceMotion.current
-    val shadow = if (c.isDark) Color(0x66000000) else Color(0x1A141420)
+    val shadow = c.shadow
     AnimatedVisibility(visible, enter = fadeIn(tween(280)), exit = fadeOut(tween(200))) {
         Box(
             Modifier

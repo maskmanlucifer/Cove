@@ -75,14 +75,14 @@ class ToggleTodoAction : ActionCallback {
 
 @Composable
 private fun TasksContent(rows: List<TaskRow>, left: Int) {
-    Column(modifier = cardModifier(18).fillMaxSize()) {
+    Column(modifier = cardModifier(18, WidgetColors.leafCard).fillMaxSize()) {
         Text(
             if (left == 0) "Today · all done" else "Today · $left left",
             style = WidgetText.label,
             modifier = GlanceModifier.fillMaxWidth().clickable(openApp()),
         )
         Spacer(GlanceModifier.height(4.dp))
-        if (rows.isEmpty()) Text("Nothing on the list", style = TextStyle(fontSize = 17.sp, color = WidgetColors.muted))
+        if (rows.isEmpty()) Text("A clear list, for now", style = TextStyle(fontSize = 17.sp, color = WidgetColors.muted))
         rows.forEach { TaskLine(it) }
     }
 }
@@ -94,11 +94,11 @@ private fun TaskLine(row: TaskRow) {
             .clickable(actionRunCallback<ToggleTodoAction>(actionParametersOf(TodoIdKey to row.id, DoneKey to row.done))),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(modifier = GlanceModifier.size(22.dp).cornerRadius(11.dp).background(if (row.done) WidgetColors.ink else WidgetColors.tail), contentAlignment = Alignment.Center) {
+        Box(modifier = GlanceModifier.size(22.dp).cornerRadius(11.dp).background(if (row.done) WidgetColors.accent else WidgetColors.tail), contentAlignment = Alignment.Center) {
             if (row.done) {
-                Image(ImageProvider(R.drawable.widget_check), contentDescription = "Done", colorFilter = ColorFilter.tint(WidgetColors.onInk), modifier = GlanceModifier.size(14.dp))
+                Image(ImageProvider(R.drawable.widget_check), contentDescription = "Done", colorFilter = ColorFilter.tint(WidgetColors.onAccent), modifier = GlanceModifier.size(14.dp))
             } else {
-                Box(modifier = GlanceModifier.size(19.dp).cornerRadius(9.5.dp).background(WidgetColors.card)) {}
+                Box(modifier = GlanceModifier.size(19.dp).cornerRadius(9.5.dp).background(WidgetColors.leafCard)) {}
             }
         }
         Spacer(GlanceModifier.width(12.dp))

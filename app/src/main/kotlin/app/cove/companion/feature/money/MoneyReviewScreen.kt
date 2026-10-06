@@ -178,10 +178,10 @@ private fun ReviewItem(row: ReviewRow, categories: List<ExpenseCategoryEntity>, 
 private fun ChipButton(text: String, selected: Boolean, onClick: () -> Unit) {
     val c = Cove.colors
     Box(
-        Modifier.height(36.dp).background(if (selected) c.ink else c.well, CoveShapes.Pill).pressable(onClick).padding(horizontal = 14.dp),
+        Modifier.height(36.dp).background(if (selected) c.accent else c.well, CoveShapes.Pill).pressable(onClick).padding(horizontal = 14.dp),
         contentAlignment = Alignment.Center,
     ) {
-        CoveText(text, style = CoveType.Meta.copy(fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal), color = if (selected) c.onInk else c.ink)
+        CoveText(text, style = CoveType.Meta.copy(fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal), color = if (selected) c.onAccent else c.ink)
     }
 }
 

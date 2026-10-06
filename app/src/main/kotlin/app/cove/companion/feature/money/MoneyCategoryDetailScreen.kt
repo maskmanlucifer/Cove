@@ -106,7 +106,7 @@ fun MoneyCategoryDetailScreen(id: String, nav: Nav) {
             }
         }
         Box(Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = 112.dp)) {
-            val shadow = Color(0x1F141420)
+            val shadow = c.shadow
             Row(
                 Modifier
                     .height(52.dp)

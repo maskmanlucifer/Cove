@@ -10,7 +10,9 @@ import androidx.glance.layout.padding
 import androidx.glance.text.FontWeight
 import androidx.glance.text.TextStyle
 import app.cove.companion.design.DarkColors
+import app.cove.companion.design.HueName
 import app.cove.companion.design.LightColors
+import app.cove.companion.design.hue
 
 /** Widget colours: the app's design tokens, switching with the system theme (widgets cannot read `Cove.colors`). */
 internal object WidgetColors {
@@ -21,9 +23,17 @@ internal object WidgetColors {
     val tail = ColorProvider(day = LightColors.tail, night = DarkColors.tail)
     val placeholder = ColorProvider(day = LightColors.placeholder, night = DarkColors.placeholder)
 
+    val accent = ColorProvider(day = LightColors.accent, night = DarkColors.accent)
+    val onAccent = ColorProvider(day = LightColors.onAccent, night = DarkColors.onAccent)
+
+    /** Quiet tinted card backgrounds: Next is sun, Tasks leaf, Spent coral. */
+    val sunCard = ColorProvider(day = LightColors.hue(HueName.Sun).tint, night = DarkColors.hue(HueName.Sun).tint)
+    val leafCard = ColorProvider(day = LightColors.hue(HueName.Leaf).tint, night = DarkColors.hue(HueName.Leaf).tint)
+    val coralCard = ColorProvider(day = LightColors.hue(HueName.Coral).tint, night = DarkColors.hue(HueName.Coral).tint)
+
     /** The "Tap to talk" tile: ink in light, a raised well in dark so it stays visible on dark wallpapers. */
     val voiceCard = ColorProvider(day = LightColors.ink, night = DarkColors.wellStrong)
-    val onVoiceCard = ColorProvider(day = androidx.compose.ui.graphics.Color.White, night = DarkColors.ink)
+    val onVoiceCard = ColorProvider(day = LightColors.onInk, night = DarkColors.ink)
     val onVoiceMuted = ColorProvider(day = DarkColors.muted, night = DarkColors.muted)
 }
 

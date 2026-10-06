@@ -32,6 +32,7 @@ import app.cove.companion.core.toLocalDateTime
 import app.cove.companion.data.local.entity.JournalMediaEntity
 import app.cove.companion.data.media.PlaybackState
 import app.cove.companion.design.Cove
+import app.cove.companion.design.moodHue
 import app.cove.companion.design.CoveIcon
 import app.cove.companion.design.CoveIcons
 import app.cove.companion.design.CoveShapes
@@ -65,8 +66,8 @@ fun VoiceRow(note: JournalMediaEntity, playback: PlaybackState, onToggle: () -> 
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Box(Modifier.size(40.dp).background(c.ink, CoveShapes.Circle).pressable(onToggle, role = Role.Button).semantics { contentDescription = if (playing) "Pause voice note" else "Play voice note" }, contentAlignment = Alignment.Center) {
-            CoveIcon(if (playing) CoveIcons.Pause else CoveIcons.Play, c.onInk, size = 16.dp)
+        Box(Modifier.size(40.dp).background(c.accent, CoveShapes.Circle).pressable(onToggle, role = Role.Button).semantics { contentDescription = if (playing) "Pause voice note" else "Play voice note" }, contentAlignment = Alignment.Center) {
+            CoveIcon(if (playing) CoveIcons.Pause else CoveIcons.Play, c.onAccent, size = 16.dp)
         }
         if (stacked) {
             Column(Modifier.weight(1f).padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -94,8 +95,8 @@ private fun VoiceProgress(progress: Float, hint: String?) {
         CoveText(hint, style = CoveType.Meta, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         return
     }
-    Box(Modifier.fillMaxWidth().height(4.dp).background(if (c.isDark) c.wellStrong else Color(0xFFE0E0DD), CoveShapes.Pill)) {
-        Box(Modifier.fillMaxWidth(progress).fillMaxHeight().background(c.ink, CoveShapes.Pill))
+    Box(Modifier.fillMaxWidth().height(4.dp).background(c.wellStrong, CoveShapes.Pill)) {
+        Box(Modifier.fillMaxWidth(progress).fillMaxHeight().background(c.accent, CoveShapes.Pill))
     }
 }
 
@@ -145,7 +146,7 @@ fun MoodSheet(visible: Boolean, mood: String?, onDismiss: () -> Unit, onPick: (S
             CoveText("How did it feel?", style = CoveType.Section)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Summary.MOODS.forEach { m ->
-                    Chip(m, onClick = { onPick(if (m == mood) null else m) }, selected = m == mood)
+                    Chip(m, onClick = { onPick(if (m == mood) null else m) }, selected = m == mood, container = Cove.colors.moodHue(m).tint)
                 }
             }
             if (mood != null) CoveText("Tap it again to clear.", style = CoveType.Meta, color = Cove.colors.muted)

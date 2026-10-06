@@ -34,7 +34,7 @@ import java.time.LocalDate
 @Composable
 fun DayPill(day: LocalDate, isToday: Boolean, onShift: (Long) -> Unit, onToday: () -> Unit, modifier: Modifier = Modifier) {
     val c = Cove.colors
-    val shadow = if (c.isDark) Color(0x66000000) else Color(0x1A141420)
+    val shadow = c.shadow
     Row(
         modifier
             .height(44.dp)

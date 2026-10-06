@@ -73,11 +73,11 @@ fun DatePanel(selected: LocalDate, onPick: (LocalDate) -> Unit) {
                             Box(
                                 Modifier
                                     .size(40.dp)
-                                    .background(if (on) c.ink else Color.Transparent, CoveShapes.Circle)
+                                    .background(if (on) c.accent else Color.Transparent, CoveShapes.Circle)
                                     .pressable({ onPick(date) }),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                CoveText(day.toString(), style = CoveType.Body, color = if (on) c.onInk else c.ink)
+                                CoveText(day.toString(), style = CoveType.Body, color = if (on) c.onAccent else c.ink)
                             }
                         }
                     }
@@ -110,11 +110,11 @@ fun TimePanel(minutes: Int, onChange: (Int) -> Unit) {
                 Box(
                     Modifier
                         .size(56.dp, 40.dp)
-                        .background(if (on) c.ink else c.canvas, CoveShapes.Pill)
+                        .background(if (on) c.accent else c.canvas, CoveShapes.Pill)
                         .pressable({ if (!on) set(if (isPm) h24 + 12 else h24 - 12, m) }),
                     contentAlignment = Alignment.Center,
                 ) {
-                    CoveText(label, style = CoveType.Button.copy(fontWeight = FontWeight.Medium), color = if (on) c.onInk else c.muted)
+                    CoveText(label, style = CoveType.Button.copy(fontWeight = FontWeight.Medium), color = if (on) c.onAccent else c.muted)
                 }
             }
         }

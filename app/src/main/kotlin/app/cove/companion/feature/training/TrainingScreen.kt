@@ -21,6 +21,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.cove.companion.core.appViewModel
 import app.cove.companion.design.Cove
+import app.cove.companion.design.HueName
+import app.cove.companion.design.hue
 import app.cove.companion.design.CoveShapes
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.AccentButton
@@ -102,7 +104,7 @@ fun TrainingScreen(nav: Nav) {
 @Composable
 private fun TodayBlock(ui: TrainingUi, vm: TrainingViewModel, onOpen: (String) -> Unit, onAdd: () -> Unit, onPlan: () -> Unit) {
     val c = Cove.colors
-    CoveCard(padding = 20) {
+    CoveCard(padding = 20, color = c.hue(HueName.Leaf).tint) {
         CoveText("Today's workout", style = CoveType.Meta, color = c.muted)
         if (ui.rows.isEmpty()) {
             Column(Modifier.padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -129,7 +131,7 @@ private fun TodayBlock(ui: TrainingUi, vm: TrainingViewModel, onOpen: (String) -
 @Composable
 private fun WeightBlock(ui: TrainingUi, onAdd: () -> Unit) {
     val c = Cove.colors
-    CoveCard(padding = 20) {
+    CoveCard(padding = 20, color = c.hue(HueName.Sun).tint) {
         CoveText("Weight today", style = CoveType.Meta, color = c.muted)
         Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             val today = ui.weighedKg

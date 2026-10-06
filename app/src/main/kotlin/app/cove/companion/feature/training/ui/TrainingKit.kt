@@ -90,8 +90,8 @@ fun WeekdayChips(selected: Set<Int>, onToggle: (Int) -> Unit, disabled: Int? = n
 fun WellChip(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, selected: Boolean = false) {
     val c = Cove.colors
     Box(
-        modifier.heightIn(min = 48.dp).background(if (selected) c.ink else c.well, CoveShapes.Pill)
+        modifier.heightIn(min = 48.dp).background(if (selected) c.accent else c.well, CoveShapes.Pill)
             .pressable(onClick, role = Role.Button).semantics { this.selected = selected }.padding(horizontal = 18.dp),
         contentAlignment = Alignment.Center,
-    ) { CoveText(text, style = CoveType.Meta, color = if (selected) c.onInk else c.ink, maxLines = 1) }
+    ) { CoveText(text, style = CoveType.Meta, color = if (selected) c.onAccent else c.ink, maxLines = 1) }
 }

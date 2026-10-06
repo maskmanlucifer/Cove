@@ -229,6 +229,6 @@ private fun Orb(onVoice: () -> Unit) {
 }
 
 @Composable
-private fun shadowColor(): Color = if (Cove.colors.isDark) Color(0x4D000000) else Color(0x0F141420)
+private fun shadowColor(): Color = Cove.colors.shadow.copy(alpha = if (Cove.colors.isDark) 0.3f else 0.06f)
 
 private const val DOCK_MAX_FONT_SCALE = 1.3f

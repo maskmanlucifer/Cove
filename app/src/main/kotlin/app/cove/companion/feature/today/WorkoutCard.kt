@@ -23,6 +23,8 @@ import app.cove.companion.design.Cove
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.AccentButton
 import app.cove.companion.design.components.CheckCircle
+import app.cove.companion.design.HueName
+import app.cove.companion.design.hue
 import app.cove.companion.design.components.CoveCard
 import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.pressable
@@ -61,7 +63,7 @@ fun WorkoutCard(nav: Nav, modifier: Modifier = Modifier) {
     val c = Cove.colors
     val shown = state.rows.take(MAX_ROWS)
     val suggestion = state.rows.firstOrNull { it.advice?.actionable == true }
-    CoveCard(modifier, padding = 20) {
+    CoveCard(modifier, padding = 20, color = Cove.colors.hue(HueName.Leaf).tint) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 48.dp).pressable({ nav.go(Routes.Training) }, onClickLabel = "Open Training", role = Role.Button),

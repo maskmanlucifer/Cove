@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import app.cove.companion.design.Cove
+import app.cove.companion.design.components.LocalSurface
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.CoveText
 import kotlinx.coroutines.launch
@@ -50,11 +51,11 @@ fun SwipeRow(
 
     Box(modifier.fillMaxWidth()) {
         if (x != 0f) {
-            Box(Modifier.matchParentSize().background(if (x > 0) c.ink else c.alert)) {
+            Box(Modifier.matchParentSize().background(if (x > 0) c.accent else c.alert)) {
                 if (x > 0) {
-                    CoveText(rightLabel, Modifier.align(Alignment.CenterStart).padding(start = 20.dp), style = CoveType.MetaMedium, color = c.onInk)
+                    CoveText(rightLabel, Modifier.align(Alignment.CenterStart).padding(start = 20.dp), style = CoveType.MetaMedium, color = c.onAccent)
                 } else {
-                    CoveText(leftLabel, Modifier.align(Alignment.CenterEnd).padding(end = 20.dp), style = CoveType.MetaMedium, color = if (c.isDark) c.onInk else Color.White)
+                    CoveText(leftLabel, Modifier.align(Alignment.CenterEnd).padding(end = 20.dp), style = CoveType.MetaMedium, color = if (c.isDark) c.onInk else c.card)
                 }
             }
         }
@@ -63,7 +64,7 @@ fun SwipeRow(
                 .offset { IntOffset(x.roundToInt(), 0) }
                 .fillMaxWidth()
                 .background(
-                    c.card,
+                    LocalSurface.current ?: c.card,
                     when {
                         x > 0 -> RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp)
                         x < 0 -> RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp)

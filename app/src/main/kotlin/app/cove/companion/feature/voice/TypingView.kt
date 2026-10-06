@@ -83,7 +83,7 @@ fun TypingView(s: VoiceState, onClose: () -> Unit, onChange: (String) -> Unit, o
 
 @Composable
 private fun Link(text: String, onClick: () -> Unit) {
-    val line = if (Cove.colors.isDark) Color(0xFF4A4C52) else Color(0xFFC2C4C8)
+    val line = Cove.colors.quiet
     Box(
         Modifier.pressable(onClick).drawBehind {
             val y = size.height - 1.dp.toPx()

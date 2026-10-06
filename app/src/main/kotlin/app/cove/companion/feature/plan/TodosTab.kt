@@ -16,7 +16,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
+import app.cove.companion.design.CoveShapes
+import app.cove.companion.design.components.LocalSurface
+import app.cove.companion.design.hueFor
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
@@ -122,12 +128,13 @@ private fun CollapsedCard(group: CategoryGroup, drag: TodoDragState, onClick: ()
     val dragging = drag.id != null
     val hovered = drag.hover == group.category.id
     val shape = RoundedCornerShape(24.dp)
+    val hue = c.hueFor(group.category.id)
     Row(
         Modifier
             .fillMaxWidth()
             .onGloballyPositioned { drag.recordCard(group.category.id, it.boundsInRoot()) }
             .heightIn(min = 60.dp)
-            .background(c.card, shape)
+            .background(hue.tint, shape)
             .let { if (hovered) it.border(1.5.dp, c.ink, shape) else it }
             .pressable(onClick, onClickLabel = "Expand", role = Role.Button)
             .semantics(mergeDescendants = true) {}
@@ -135,6 +142,7 @@ private fun CollapsedCard(group: CategoryGroup, drag: TodoDragState, onClick: ()
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        Box(Modifier.size(10.dp).background(hue.strong, CoveShapes.Circle))
         CoveText(group.category.name, Modifier.weight(1f), style = CoveType.BodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
         CoveText(if (dragging) "Drop here" else countText(group), style = CoveType.Meta, color = c.muted)
     }
@@ -165,13 +173,15 @@ private fun ExpandedCard(
     val visibleOpen = if (showAll) group.open else group.open.take(VISIBLE_OPEN_LIMIT)
     val empty = group.isEmpty
     val lifted = drag.id != null && drag.id in openIds
+    val hue = c.hueFor(id)
 
+    CompositionLocalProvider(LocalSurface provides hue.tint) {
     Column(
         Modifier
             .fillMaxWidth()
             .zIndex(if (lifted) 1f else 0f)
             .onGloballyPositioned { drag.recordCard(id, it.boundsInRoot()) }
-            .background(c.card, RoundedCornerShape(28.dp))
+            .background(hue.tint, RoundedCornerShape(28.dp))
             .padding(top = if (empty) 18.dp else 4.dp, bottom = 8.dp),
     ) {
         Row(
@@ -183,6 +193,7 @@ private fun ExpandedCard(
                 .padding(horizontal = 20.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            Box(Modifier.padding(top = 8.dp).size(10.dp).background(hue.strong, CoveShapes.Circle))
             CoveText(group.category.name, Modifier.weight(1f), style = Heading)
             CoveText(countText(group), Modifier.offset(y = CountOffset), style = CoveType.Meta, color = c.muted)
         }
@@ -210,6 +221,7 @@ private fun ExpandedCard(
             if (doneOpen) group.doneEarlier.forEach { todo -> DoneRow(todo, id, actions) }
         }
         AddRow(group.category.name, adding, addText, empty, onStartAdd, onAddText, onCommitAdd, onStopAdd)
+    }
     }
 }
 

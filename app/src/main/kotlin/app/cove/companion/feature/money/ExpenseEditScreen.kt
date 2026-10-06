@@ -224,7 +224,7 @@ private fun Chip(text: String, selected: Boolean, onClick: () -> Unit) {
     Box(
         Modifier
             .heightIn(min = 40.dp)
-            .background(if (selected) c.ink else c.card, CoveShapes.Pill)
+            .background(if (selected) c.accent else c.card, CoveShapes.Pill)
             .pressable(onClick)
             .semantics { this.selected = selected }
             .padding(horizontal = 16.dp),
@@ -233,7 +233,7 @@ private fun Chip(text: String, selected: Boolean, onClick: () -> Unit) {
         CoveText(
             text,
             style = CoveType.Button.copy(fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal),
-            color = if (selected) c.onInk else c.ink,
+            color = if (selected) c.onAccent else c.ink,
             maxLines = 1,
         )
     }

@@ -109,7 +109,7 @@ fun Sparkline(values: List<Double>, summary: String, modifier: Modifier = Modifi
         fun x(i: Int) = pad + i * (size.width - 2 * pad) / (values.size - 1)
         fun y(v: Double) = (pad + (1 - (v - lo) / span) * (size.height - 2 * pad)).toFloat()
         val path = Path().apply { values.forEachIndexed { i, v -> if (i == 0) moveTo(x(i), y(v)) else lineTo(x(i), y(v)) } }
-        drawPath(path, c.ink, style = Stroke(1.75.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
-        drawCircle(c.ink, 3.5.dp.toPx(), Offset(x(values.lastIndex), y(values.last())))
+        drawPath(path, c.accent, style = Stroke(1.75.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+        drawCircle(c.accent, 3.5.dp.toPx(), Offset(x(values.lastIndex), y(values.last())))
     }
 }

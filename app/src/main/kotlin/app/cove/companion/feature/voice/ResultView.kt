@@ -111,7 +111,7 @@ fun CategoryChip(name: String, options: List<String>, height: Int = 34, onPick: 
             Popup(alignment = Alignment.TopEnd, offset = IntOffset(0, below), onDismissRequest = { open = false }) {
                 Column(
                     Modifier
-                        .shadow(24.dp, RoundedCornerShape(20.dp), ambientColor = Color(0x33141420), spotColor = Color(0x33141420))
+                        .shadow(24.dp, RoundedCornerShape(20.dp), ambientColor = c.shadow, spotColor = c.shadow)
                         .background(c.card, RoundedCornerShape(20.dp))
                         .padding(vertical = 6.dp)
                         .width(168.dp),

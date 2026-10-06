@@ -27,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cove.companion.core.clockText
 import app.cove.companion.design.Cove
+import app.cove.companion.design.HueName
+import app.cove.companion.design.hue
 import app.cove.companion.design.CoveShapes
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.CoveText
@@ -95,7 +97,7 @@ private fun NowLine(minutes: Int) {
     val c = Cove.colors
     Row(Modifier.fillMaxWidth().heightIn(min = 20.dp), verticalAlignment = Alignment.CenterVertically) {
         CoveText(clockText(minutes).digits, Modifier.widthIn(min = TimeColumn).padding(end = 8.dp), style = NowLabel)
-        Box(Modifier.weight(1f).height(1.5.dp).background(c.ink, RoundedCornerShape(1.dp)))
+        Box(Modifier.weight(1f).height(1.5.dp).background(c.accent, RoundedCornerShape(1.dp)))
     }
 }
 
@@ -108,7 +110,7 @@ private fun EventCard(row: TimelineRow.Entry, onOpen: (String) -> Unit) {
         Column(
             Modifier
                 .weight(1f)
-                .background(c.card, RoundedCornerShape(24.dp))
+                .background(c.hue(HueName.Sun).tint, RoundedCornerShape(24.dp))
                 .padding(horizontal = 20.dp, vertical = 18.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
