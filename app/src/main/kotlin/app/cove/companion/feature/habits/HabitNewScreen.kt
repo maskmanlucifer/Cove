@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.InputTransformation
@@ -27,6 +26,16 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import app.cove.companion.feature.plan.TITLE_MAX
+import app.cove.companion.feature.plan.OptionList
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -71,6 +80,8 @@ fun HabitNewScreen(nav: Nav, id: String = "new") {
     val c = Cove.colors
     val focus = remember { FocusRequester() }
     var picking by rememberSaveable { mutableStateOf(false) }
+    var pickingShow by rememberSaveable { mutableStateOf(false) }
+    var confirmDelete by rememberSaveable { mutableStateOf(false) }
     val blank = vm.name.text.isBlank()
     val submit: () -> Unit = { scope.launch { if (vm.save()) nav.back() } }
     LaunchedEffect(Unit) { if (s.isNew) focus.requestFocus() }
@@ -81,7 +92,7 @@ fun HabitNewScreen(nav: Nav, id: String = "new") {
             Modifier.fillMaxSize().background(if (c.isDark) c.scrim else c.scrim.copy(alpha = 0.18f))
                 .clickable(remember { MutableInteractionSource() }, indication = null, onClick = nav.back),
         )
-        Box(Modifier.fillMaxSize().imePadding(), contentAlignment = Alignment.BottomCenter) {
+        Box(Modifier.fillMaxSize().statusBarsPadding().imePadding(), contentAlignment = Alignment.BottomCenter) {
             Column(
                 Modifier
                     .padding(8.dp)
@@ -89,6 +100,7 @@ fun HabitNewScreen(nav: Nav, id: String = "new") {
                     .shadow(24.dp, CoveShapes.SheetFloating, ambientColor = Color(0x1A141420), spotColor = Color(0x1A141420))
                     .background(c.card, CoveShapes.SheetFloating)
                     .clickable(remember { MutableInteractionSource() }, indication = null) {}
+                    .verticalScroll(rememberScrollState())
                     .padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
@@ -102,7 +114,10 @@ fun HabitNewScreen(nav: Nav, id: String = "new") {
                         cursorBrush = SolidColor(c.ink),
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
                         onKeyboardAction = { submit() },
-                        inputTransformation = InputTransformation { if (asCharSequence().contains('\n')) revertAllChanges() },
+                        inputTransformation = InputTransformation {
+                            if (asCharSequence().contains('\n')) revertAllChanges()
+                            else if (length > TITLE_MAX) replace(TITLE_MAX, length, "")
+                        },
                         decorator = { inner ->
                             Box {
                                 if (vm.name.text.isEmpty()) CoveText("Name", style = NameStyle, color = c.placeholder)
@@ -134,7 +149,8 @@ fun HabitNewScreen(nav: Nav, id: String = "new") {
                             )
                         }
                     }
-                    SheetRow("Show on Today", s.show.label, onClick = vm::cycleShow)
+                    SheetRow("Show on Today", s.show.label, onClick = { pickingShow = !pickingShow })
+                    if (pickingShow) OptionList(ShowMode.entries.map { it to it.label }, s.show) { vm.setShow(it); pickingShow = false }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     PillButton(
@@ -142,13 +158,25 @@ fun HabitNewScreen(nav: Nav, id: String = "new") {
                         Modifier.weight(1f).graphicsLayerAlpha(if (blank) 0.4f else 1f),
                         height = 56.dp, textStyle = ButtonText,
                     )
-                    PillButton("Cancel", nav.back, Modifier.width(104.dp), kind = ButtonKind.Secondary, height = 56.dp, container = c.canvas, textStyle = ButtonText)
+                    PillButton("Cancel", nav.back, Modifier.widthIn(min = 104.dp), kind = ButtonKind.Secondary, height = 56.dp, container = c.canvas, textStyle = ButtonText)
                 }
-                if (!s.isNew) {
+                if (!s.isNew && !confirmDelete) {
                     PillButton(
-                        "Delete habit", { scope.launch { vm.delete(); nav.back() } },
+                        "Delete habit", { confirmDelete = true },
                         Modifier.align(Alignment.CenterHorizontally), kind = ButtonKind.Destructive,
                     )
+                }
+                if (!s.isNew && confirmDelete) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        CoveText("Delete this habit and its history?", style = CoveType.Meta, color = c.muted)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            PillButton("Keep it", { confirmDelete = false }, Modifier.weight(1f), height = 48.dp, textStyle = ButtonText)
+                            PillButton(
+                                "Delete", { scope.launch { vm.delete(); nav.back() } }, Modifier.widthIn(min = 104.dp),
+                                kind = ButtonKind.Destructive, height = 48.dp, textStyle = ButtonText,
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -165,7 +193,11 @@ private fun DayCircles(mask: Int, onToggle: (Int) -> Unit) {
                 Modifier
                     .size(40.dp)
                     .background(if (on) c.ink else c.canvas, CoveShapes.Circle)
-                    .pressable({ onToggle(maskBit(day)) }),
+                    .pressable({ onToggle(maskBit(day)) }, role = Role.Checkbox)
+                    .semantics {
+                        contentDescription = day.getDisplayName(TextStyle.FULL, Locale.ENGLISH)
+                        stateDescription = if (on) "On" else "Off"
+                    },
                 contentAlignment = Alignment.Center,
             ) {
                 CoveText(

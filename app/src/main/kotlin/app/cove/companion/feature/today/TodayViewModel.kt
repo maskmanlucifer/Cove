@@ -13,6 +13,7 @@ import app.cove.companion.data.local.entity.EventEntity
 import app.cove.companion.core.clockText
 import app.cove.companion.feature.alarms.nextFireMillis
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -50,6 +51,10 @@ data class TodayState(
     val habitsDone: Int = 0,
     val habitsTotal: Int = 0,
     val doneCount: Int = 0,
+    /** Open to-dos for today, including those beyond the three rows shown. */
+    val openCount: Int = 0,
+    val moreCount: Int = 0,
+    val lateNight: Boolean = false,
     val remainingBeforeNoon: Boolean = false,
     val oneThingMode: Boolean = false,
 )
@@ -59,6 +64,7 @@ private data class Aux(
     val habits: List<app.cove.companion.data.local.entity.HabitEntity>,
     val logs: List<app.cove.companion.data.local.entity.HabitLogEntity>,
     val newIds: Set<String>,
+    val pinned: Map<String, Int>,
     val hiddenUntil: Long,
 )
 
@@ -82,6 +88,15 @@ class NextCardMemory(context: Context) {
     }
 }
 
+/** A to-do ticked on Today that can still be undone. */
+data class Completed(val id: String, val title: String)
+
+/** How long a ticked to-do stays listed with its Undo offer. */
+const val UNDO_MILLIS = 5000L
+
+/** Hours before this count as late night for the greeting. */
+const val LATE_NIGHT_END_HOUR = 5
+
 /** Builds [TodayState] from settings, events, alarms, to-dos, spending and habits. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class TodayViewModel(private val c: AppContainer) : ViewModel() {
@@ -89,15 +104,21 @@ class TodayViewModel(private val c: AppContainer) : ViewModel() {
     private val dayStart = today.startOfDayMillis()
     private val dayEnd = today.plusDays(1).startOfDayMillis() - 1
 
+    private val pinned = MutableStateFlow<Map<String, Int>>(emptyMap())
+    private var pinJob: Job? = null
+
+    /** The to-do just ticked on Today, offered for Undo until it lapses. */
+    val completed = MutableStateFlow<Completed?>(null)
+
     val state: StateFlow<TodayState> = combine(
         c.settings.settings,
         c.plan.eventsOn(today),
         c.plan.alarms,
         c.todos.todos,
-        combine(c.money.expenses(dayStart, dayEnd), c.habits.habits, c.habits.logs(today, today), c.voice.newTodos.ids, hiddenFlow()) { e, h, l, n, hidden ->
-            Aux(e, h, l, n, hidden)
+        combine(c.money.expenses(dayStart, dayEnd), c.habits.habits, c.habits.logs(today, today), combine(c.voice.newTodos.ids, pinned) { n, p -> n to p }, hiddenFlow()) { e, h, l, np, hidden ->
+            Aux(e, h, l, np.first, np.second, hidden)
         },
-    ) { settings, events, alarms, todos, (expenses, habits, logs, newIds, hiddenUntil) ->
+    ) { settings, events, alarms, todos, (expenses, habits, logs, newIds, pinnedRows, hiddenUntil) ->
         val now = c.clock.now().toLocalDateTime()
         val phase = dayPhase(now.hour)
         val nowMin = now.hour * 60 + now.minute
@@ -120,11 +141,8 @@ class TodayViewModel(private val c: AppContainer) : ViewModel() {
             }
             else -> null
         }
-        val rows = todos
-            .filter { it.dueAt == null || it.dueAt in dayStart..dayEnd || it.done }
-            .sortedByDescending { it.id in newIds }
-            .take(3)
-            .map { TodoRow(it.id, it.title, it.dueAt?.toLocalDateTime(), it.done, isNew = it.id in newIds) }
+        val picked = todayRows(todos, newIds, pinnedRows, phase == DayPhase.Evening, dayStart, dayEnd)
+        val rows = picked.rows.map { TodoRow(it.id, it.title, it.dueAt?.toLocalDateTime(), it.done, isNew = it.id in newIds) }
         val shown = habits.filter { it.showOnToday }
         TodayState(
             name = settings.displayName,
@@ -137,6 +155,9 @@ class TodayViewModel(private val c: AppContainer) : ViewModel() {
             habitsDone = shown.count { h -> logs.any { it.habitId == h.id } },
             habitsTotal = shown.size,
             doneCount = todos.count { it.done },
+            openCount = picked.openCount,
+            moreCount = picked.more,
+            lateNight = now.hour < LATE_NIGHT_END_HOUR,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TodayState())
 
@@ -194,8 +215,30 @@ class TodayViewModel(private val c: AppContainer) : ViewModel() {
         viewModelScope.launch { c.plan.saveEvent(event.copy(deletedAt = null)) }
     }
 
-    fun toggle(id: String, done: Boolean) {
+    /**
+     * Ticks or unticks a to-do. A ticked row stays in place at [index] with an Undo offer for [UNDO_MILLIS]
+     * instead of vanishing and being replaced at once.
+     */
+    fun toggle(id: String, done: Boolean, title: String = "", index: Int = 0) {
         viewModelScope.launch { c.todos.setDone(id, done) }
+        pinJob?.cancel()
+        if (!done) {
+            pinned.value = pinned.value - id
+            completed.value = null
+            return
+        }
+        pinned.value = pinned.value + (id to index)
+        completed.value = Completed(id, title)
+        pinJob = viewModelScope.launch {
+            delay(UNDO_MILLIS)
+            pinned.value = emptyMap()
+            completed.value = null
+        }
+    }
+
+    /** Takes back the last tick. */
+    fun undoComplete() {
+        completed.value?.let { toggle(it.id, false) }
     }
 
     /** The "New" tag fades once the user has seen it. */

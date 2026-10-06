@@ -37,6 +37,13 @@ fun rupees(paise: Long, decimals: Boolean = false): String {
     return "₹$grouped" + if (decimals || frac != 0L) ".${frac.toString().padStart(2, '0')}" else ""
 }
 
+/** Amount for screen readers: "1,200 rupees" or "840 rupees 50 paise" (a bare "₹" is read inconsistently). */
+fun rupeesSpoken(paise: Long): String {
+    val whole = rupees(paise - paise % 100).removePrefix("₹")
+    val frac = paise % 100
+    return "$whole rupees" + if (frac != 0L) " $frac paise" else ""
+}
+
 private val longDate = DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.ENGLISH)
 
 /** "Tuesday, 6 October". */

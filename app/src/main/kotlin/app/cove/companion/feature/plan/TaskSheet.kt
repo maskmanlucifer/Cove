@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -18,6 +18,8 @@ import androidx.compose.ui.unit.sp
 import app.cove.companion.data.local.entity.TodoCategoryEntity
 import app.cove.companion.data.local.entity.TodoEntity
 import app.cove.companion.design.CoveType
+import app.cove.companion.design.components.CoveText
+import app.cove.companion.design.Cove
 import app.cove.companion.design.components.ButtonKind
 import app.cove.companion.design.components.CoveSwitch
 import app.cove.companion.design.components.PillButton
@@ -42,7 +44,7 @@ fun TaskSheet(
     var page by rememberSaveable { mutableStateOf(TaskPage.Main) }
     var discard by rememberSaveable { mutableStateOf(false) }
 
-    fun edited() = todo.copy(title = title.trim().ifEmpty { todo.title }, categoryId = categoryId, dueAt = dueAt, remind = remind)
+    fun edited() = todo.copy(title = title.trim().ifEmpty { todo.title }, categoryId = categoryId, dueAt = dueAt, remind = remind && dueAt != null)
     fun commit() {
         if (!discard && edited() != todo) onSave(edited())
     }
@@ -57,7 +59,10 @@ fun TaskSheet(
                     SheetRow("Category", categories.firstOrNull { it.id == categoryId }?.name ?: "None", { page = TaskPage.Category })
                     val whenText = whenParts(dueAt, now)
                     SheetRow("When", whenText?.first ?: "Not set", { page = TaskPage.When }, whenText?.second, placeholder = whenText == null)
-                    SheetControlRow("Remind me") { CoveSwitch(remind, { remind = it }) }
+                    SheetControlRow("Remind me") {
+                        if (dueAt == null) CoveText("Set a time first", style = CoveType.Meta, color = Cove.colors.muted)
+                        CoveSwitch(remind && dueAt != null, { remind = it }, label = "Remind me", enabled = dueAt != null)
+                    }
                 }
                 val text = CoveType.Button.copy(fontSize = 16.sp)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -68,7 +73,7 @@ fun TaskSheet(
                     )
                     PillButton(
                         "Delete", { onDelete(todo); discard = true; close() },
-                        Modifier.width(104.dp), kind = ButtonKind.Destructive, height = 56.dp, textStyle = text,
+                        Modifier.widthIn(min = 104.dp), kind = ButtonKind.Destructive, height = 56.dp, textStyle = text,
                     )
                 }
             }

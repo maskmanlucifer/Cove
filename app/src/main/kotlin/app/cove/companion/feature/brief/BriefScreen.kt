@@ -26,6 +26,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -88,7 +91,7 @@ private fun Header(s: PlayerState, offline: Boolean, nav: Nav) {
     val c = Cove.colors
     val label = "Brief · " + BriefTiming.minutesLabel(s.fixed?.second ?: BriefTiming.totalSeconds(s.segments)) + if (offline) " · saved for offline" else ""
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-        Box(Modifier.size(44.dp).background(c.card, CoveShapes.Circle).pressable(nav.back), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(44.dp).background(c.card, CoveShapes.Circle).pressable(nav.back, role = Role.Button).semantics { contentDescription = "Close brief" }, contentAlignment = Alignment.Center) {
             CoveIcon(CoveIcons.ChevronDown, c.ink, size = 18.dp)
         }
         CoveText(label, style = CoveType.Meta, color = c.muted)
@@ -150,18 +153,19 @@ private fun Controls(s: PlayerState, player: BriefPlayer, textMode: Boolean, onT
     val oval = GenericShape { size, _ -> addOval(Rect(0f, 0f, size.width, size.height)) }
     val speed = if (s.speed == 1f) "1×" else "${s.speed}×"
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
-        Cell(player::cycleSpeed) { CoveText(speed, style = CoveType.Meta, color = c.muted) }
-        Cell(player::previous) { CoveIcon(CoveIcons.Previous, c.ink) }
+        Cell(player::cycleSpeed, label = "Speed $speed") { CoveText(speed, style = CoveType.Meta, color = c.muted) }
+        Cell(player::previous, label = "Previous") { CoveIcon(CoveIcons.Previous, c.ink) }
         Box(
-            Modifier.size(61.5.dp, 76.dp).clip(oval).background(c.ink).pressable(player::toggle),
+            Modifier.size(61.5.dp, 76.dp).clip(oval).background(c.ink).pressable(player::toggle, role = Role.Button)
+                .semantics { contentDescription = if (s.playing) "Pause" else "Play" },
             contentAlignment = Alignment.Center,
         ) { CoveIcon(if (s.playing) CoveIcons.Pause else CoveIcons.Play, c.onInk) }
-        Cell(player::next) { CoveIcon(CoveIcons.Next, c.ink) }
+        Cell(player::next, label = "Next") { CoveIcon(CoveIcons.Next, c.ink) }
         Cell(onText) { CoveText("Text", style = CoveType.Meta, color = if (textMode) c.ink else c.muted) }
     }
 }
 
 @Composable
-private fun Cell(onClick: () -> Unit, width: Dp = 42.1.dp, content: @Composable () -> Unit) {
-    Box(Modifier.size(width, 52.dp).pressable(onClick), contentAlignment = Alignment.Center) { content() }
+private fun Cell(onClick: () -> Unit, width: Dp = 42.1.dp, label: String? = null, content: @Composable () -> Unit) {
+    Box(Modifier.size(width, 52.dp).pressable(onClick, role = Role.Button).semantics { if (label != null) contentDescription = label }, contentAlignment = Alignment.Center) { content() }
 }

@@ -23,6 +23,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -59,24 +67,27 @@ fun PlanScreen(nav: Nav) {
     val todos = segment == 1
 
     Box(Modifier.fillMaxSize()) {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .imePadding()
-                .coveTopInset()
-                .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = DockClearance + 56.dp),
-            verticalArrangement = Arrangement.spacedBy(if (todos) 14.dp else 24.dp),
-        ) {
+        val header: @Composable () -> Unit = {
             Row(
                 Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, bottom = if (todos) 8.dp else 0.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                CoveText("Plan", style = CoveType.Title)
+                CoveText("Plan", style = CoveType.Title, modifier = Modifier.semantics { heading() })
                 Segmented(listOf("Schedule", "To-dos"), segment, { segment = it }, height = 40.dp)
             }
-            if (todos) {
+        }
+        if (todos) {
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .imePadding()
+                    .coveTopInset()
+                    .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = DockClearance + 56.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                header()
                 TodosTab(
                     state.groups, state.now, drag,
                     TodosActions(
@@ -89,17 +100,24 @@ fun PlanScreen(nav: Nav) {
                         voice = { nav.go(Routes.Voice) },
                     ),
                 )
-            } else {
-                Box(Modifier.padding(horizontal = 4.dp)) { ScheduleTab(state.timeline, { sheet = TASK + it }, { sheet = EVENT + it }) }
+            }
+        } else {
+            LazyColumn(
+                Modifier.fillMaxSize().imePadding().coveTopInset(),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 20.dp, bottom = DockClearance + 56.dp),
+            ) {
+                item { header(); Spacer(Modifier.height(24.dp)) }
+                scheduleRows(state.timeline, { sheet = TASK + it }, { sheet = EVENT + it }, { nav.go(Routes.alarmEdit(it)) })
             }
         }
-        if (drag.id == null) AddButton({ sheet = if (todos) ADD_TODO else ADD_EVENT }, Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = 112.dp))
+        if (!todos && drag.id == null) DayPill(state.day, state.isToday, vm::shiftDay, vm::showToday, Modifier.align(Alignment.BottomStart).padding(start = 20.dp, bottom = 112.dp))
+        if (drag.id == null) AddButton(if (todos) "Add to-do" else "Add event", { sheet = if (todos) ADD_TODO else ADD_EVENT }, Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = 112.dp))
         undo?.let { notice ->
             LaunchedEffect(notice.id) {
                 delay(6000)
                 vm.expireUndo(notice.id)
             }
-            PlanUndoBar(notice.message, vm::undoLast, Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = 112.dp))
+            PlanUndoBar(notice.message, vm::undoLast, action = notice.action, modifier = Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = 112.dp))
         }
     }
 
@@ -107,7 +125,7 @@ fun PlanScreen(nav: Nav) {
 }
 
 @Composable
-private fun AddButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun AddButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val c = Cove.colors
     val shadow = if (c.isDark) Color(0x66000000) else Color(0x1A141420)
     Box(
@@ -115,7 +133,8 @@ private fun AddButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
             .size(44.dp)
             .shadow(8.dp, CoveShapes.Circle, ambientColor = shadow, spotColor = shadow)
             .background(c.card, CoveShapes.Circle)
-            .pressable(onClick),
+            .pressable(onClick, role = Role.Button)
+            .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) { CoveIcon(PlanIcons.AddSmall, c.muted, size = 20.dp) }
 }
@@ -140,7 +159,7 @@ private fun PlanSheets(sheet: String?, state: PlanState, vm: PlanViewModel, dism
         sheet.startsWith(EVENT) -> {
             val id = sheet.removePrefix(EVENT)
             val event = remember(id, state.events.isEmpty()) { state.events.firstOrNull { it.id == id } }
-            if (event != null) EventEditSheet(event, state.now, onSave = vm::addEvent, onDelete = vm::deleteEvent, onDismiss = dismiss)
+            if (event != null) EventEditSheet(event, state.now, onSave = vm::saveEvent, onDelete = vm::deleteEvent, onDismiss = dismiss)
         }
         sheet.startsWith(TASK) -> {
             val key = sheet.removePrefix(TASK)

@@ -41,6 +41,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -193,7 +196,7 @@ private fun bodyColor(): Color = lerp(Cove.colors.ink, Cove.colors.muted, 0.28f)
 private fun TopBar(status: SaveStatus, onBack: () -> Unit, onDone: () -> Unit) {
     val c = Cove.colors
     Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(44.dp).pressable(onBack), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(44.dp).pressable(onBack, role = Role.Button).semantics { contentDescription = "Back" }, contentAlignment = Alignment.Center) {
             CoveIcon(CoveIcons.ChevronLeft, c.muted, size = 22.dp)
         }
         Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {

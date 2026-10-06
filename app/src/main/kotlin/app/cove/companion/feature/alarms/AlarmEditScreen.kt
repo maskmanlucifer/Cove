@@ -11,11 +11,15 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import app.cove.companion.core.clockText
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -26,6 +30,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -52,9 +61,10 @@ import app.cove.companion.navigation.Nav
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-private enum class Page { Main, Label, Sound }
+private enum class Page { Main, Label, Sound, ConfirmDelete }
 
 private val sounds = listOf("Soft rise", "Chime", "Ringtone").map { it to it }
+private val DayNames = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 private val snoozeOptions = listOf(5, 9, 10, 15)
 
 /** Edit alarm sheet over the dimmed alarms list: time drum, days, label, sound, gentle wake, save and delete. */
@@ -86,14 +96,15 @@ fun AlarmEditScreen(id: String, nav: Nav) {
         )
         // The design sits the sheet 8dp from the physical bottom edge, over the gesture bar.
         Box(Modifier.fillMaxSize().consumeWindowInsets(WindowInsets.navigationBars).imePadding()) {
-            CoveSheet(shown && draft != null, close) {
+            CoveSheet(shown && draft != null, close, Modifier.statusBarsPadding()) {
                 val alarm = draft ?: return@CoveSheet
-                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { SheetHandle() }
                     when (page) {
                         Page.Main -> MainPage(alarm, vm, close, { page = it })
                         Page.Label -> LabelPage(alarm, vm) { page = Page.Main }
                         Page.Sound -> SoundPage(alarm, vm) { page = Page.Main }
+                        Page.ConfirmDelete -> ConfirmDelete(alarm, { page = Page.Main }) { scope.launch { vm.delete(); close() } }
                     }
                 }
             }
@@ -113,7 +124,7 @@ private fun MainPage(alarm: AlarmEntity, vm: AlarmEditViewModel, close: () -> Un
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         ActionButton("Save", Modifier.weight(1f), primary = true) { scope.launch { vm.save(); close() } }
-        if (vm.existing) ActionButton("Delete", Modifier.width(104.dp), primary = false) { scope.launch { vm.delete(); close() } }
+        if (vm.existing) ActionButton("Delete", Modifier.widthIn(min = 104.dp), primary = false) { open(Page.ConfirmDelete) }
     }
 }
 
@@ -121,13 +132,14 @@ private fun MainPage(alarm: AlarmEntity, vm: AlarmEditViewModel, close: () -> Un
 private fun ActionButton(text: String, modifier: Modifier, primary: Boolean, onClick: () -> Unit) {
     val c = Cove.colors
     Box(
-        modifier.height(56.dp).background(if (primary) c.ink else androidx.compose.ui.graphics.Color.Transparent, CoveShapes.Pill).pressable(onClick),
+        modifier.heightIn(min = 56.dp).background(if (primary) c.ink else androidx.compose.ui.graphics.Color.Transparent, CoveShapes.Pill).pressable(onClick, role = Role.Button).padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center,
     ) {
         CoveText(
             text,
             style = CoveType.Body.copy(fontSize = 16.sp, fontWeight = FontWeight.Medium),
             color = if (primary) c.onInk else c.alert,
+            maxLines = 1,
         )
     }
 }
@@ -139,7 +151,8 @@ private fun DaysRow(mask: Int, onToggle: (Int) -> Unit) {
         "MTWTFSS".forEachIndexed { i, letter ->
             val on = (mask shr i) and 1 == 1
             Box(
-                Modifier.size(40.dp).background(if (on) c.ink else c.canvas, CoveShapes.Circle).pressable({ onToggle(i) }),
+                Modifier.size(40.dp).background(if (on) c.ink else c.canvas, CoveShapes.Circle).pressable({ onToggle(i) }, role = Role.Checkbox)
+                    .semantics { contentDescription = DayNames[i]; stateDescription = if (on) "On" else "Off" },
                 contentAlignment = Alignment.Center,
             ) {
                 CoveText(
@@ -157,15 +170,15 @@ private fun GentleRow(on: Boolean, onChange: (Boolean) -> Unit) {
     val c = Cove.colors
     Hairline()
     Row(
-        Modifier.fillMaxWidth().height(56.dp),
+        Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(vertical = 4.dp).semantics(mergeDescendants = true) {},
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             CoveText("Gentle wake", style = CoveType.Body.copy(fontSize = 16.sp), color = c.muted)
-            CoveText("Volume rises over 2 min", style = CoveType.Body.copy(fontSize = 13.sp, lineHeight = 17.55.sp), color = c.tail)
+            CoveText("Volume rises over 2 min", style = CoveType.Body.copy(fontSize = 13.sp, lineHeight = 17.55.sp), color = c.muted)
         }
-        CoveSwitch(on, onChange)
+        CoveSwitch(on, onChange, label = "Gentle wake")
     }
 }
 
@@ -191,4 +204,17 @@ private fun SoundPage(alarm: AlarmEntity, vm: AlarmEditViewModel, back: () -> Un
         )
     }
     PillButton("Done", back, height = 48.dp, modifier = Modifier.fillMaxWidth())
+}
+
+@Composable
+private fun ConfirmDelete(alarm: AlarmEntity, keep: () -> Unit, delete: () -> Unit) {
+    val time = clockText(alarm.minutes).let { it.digits + " " + it.suffix.trim() }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        CoveText("Delete this alarm?", style = CoveType.Heading, modifier = Modifier.semantics { heading() })
+        CoveText("$time, ${alarm.label.ifBlank { "Alarm" }}. It will stop ringing.", style = CoveType.Meta, color = Cove.colors.muted)
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        ActionButton("Keep it", Modifier.weight(1f), primary = true, onClick = keep)
+        ActionButton("Delete", Modifier.widthIn(min = 104.dp), primary = false, onClick = delete)
+    }
 }

@@ -1,7 +1,10 @@
 package app.cove.companion.feature.today
 
+import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
@@ -31,6 +35,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import app.cove.companion.core.rupeesSpoken
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import app.cove.companion.core.DayPhase
@@ -106,30 +115,40 @@ fun TodayScreen(nav: Nav) {
         }
         if (suggestion != null) SuggestionCard(suggestion, sug.detail, suggest)
         else if (!offline) state.next?.let { NextCard(it, actions) }
-        if (offline) OfflineTodos(state.todos, sug.pendingTodoIds, vm::toggle)
+        if (offline) OfflineTodos(state.todos, sug.pendingTodoIds) { id, d -> vm.toggle(id, d) }
         else Column {
-            state.todos.forEach { row ->
+            state.todos.forEachIndexed { index, row ->
                 Row(
-                    Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 52.dp)
+                        .toggleable(row.done, role = Role.Checkbox, onValueChange = { vm.toggle(row.id, it, row.title, index) })
+                        .padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    CheckCircle(row.done, onToggle = { vm.toggle(row.id, !row.done) })
+                    CheckCircle(row.done, onToggle = null)
                     CoveText(
                         row.title,
                         Modifier.weight(1f),
-                        color = if (row.done) c.tail else c.ink,
+                        color = if (row.done) c.muted else c.ink,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
                     )
                     if (row.isNew) CoveText("New", style = CoveType.MetaMedium, color = c.saved)
                     else if (!row.done) row.time?.let { CoveText(shortTime(it), style = CoveType.Meta, color = c.muted) }
                 }
             }
+            if (state.moreCount > 0) CoveText("+ ${state.moreCount} more in Plan", style = CoveType.Meta, color = c.muted, modifier = Modifier.padding(top = 4.dp))
+        }
+        if (!offline && suggestion == null && state.todos.isEmpty() && state.next == null) {
+            CoveText("Add something in Plan, or just say it.", style = CoveType.Meta, color = c.muted)
         }
         if (suggestion != null) {
             CoveText("One suggestion at a time. Ignored ones disappear at noon.", style = CoveType.Meta, color = c.muted)
         } else if (offline) {
             CoveText(
-                "Voice, alarms and your journal work offline. Only weather and the brief's one thing to read wait for a connection.",
+                "Voice, alarms and your journal work offline. Only weather and the brief’s one thing to read wait for a connection.",
                 style = CoveType.Meta.copy(lineHeight = 21.sp), color = c.muted,
             )
         } else if (evening) {
@@ -141,12 +160,16 @@ fun TodayScreen(nav: Nav) {
             }
         } else {
             Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-                Stat("Spent today") { CoveText(rupees(state.spentTodayPaise), style = CoveType.Value) }
+                Stat("Spent today") { CoveText(rupees(state.spentTodayPaise), Modifier.semantics { contentDescription = rupeesSpoken(state.spentTodayPaise) }, style = CoveType.Value) }
                 Stat("Habits") {
                     CoveText("${state.habitsDone}", " of ${state.habitsTotal}", style = CoveType.Value)
                 }
             }
         }
+    }
+    val done by vm.completed.collectAsState()
+    done?.let { d ->
+        PlanUndoBar("Done “${d.title}”", vm::undoComplete, Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = 112.dp))
     }
     undo?.let { gone ->
         LaunchedEffect(gone.id) {
@@ -199,11 +222,8 @@ private fun NextCard(next: NextItem, actions: NextActions) {
                     PillButton("Start now", actions.startWindDown)
                     PillButton("Later", actions.later, kind = ButtonKind.Secondary, horizontalPadding = 16.dp)
                 } else {
-                    PillButton("Directions", {
-                        next.event?.place?.let {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0?q=" + Uri.encode(it))).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                        }
-                    })
+                    val place = next.event?.place?.takeIf { it.isNotBlank() }
+                    if (place != null) PillButton("Directions", { openDirections(context, place) })
                     PillButton("Move", { next.event?.let(actions.move) }, kind = ButtonKind.Secondary, container = c.canvas)
                 }
             }
@@ -211,9 +231,19 @@ private fun NextCard(next: NextItem, actions: NextActions) {
     }
 }
 
+/** Opens a maps app at [place]; says so calmly when the phone has none. */
+private fun openDirections(context: Context, place: String) {
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0?q=" + Uri.encode(place))).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    try {
+        context.startActivity(intent)
+    } catch (_: ActivityNotFoundException) {
+        Toast.makeText(context, "No maps app found on this phone.", Toast.LENGTH_SHORT).show()
+    }
+}
+
 private fun greeting(s: TodayState): String {
     val word = when (s.phase) {
-        DayPhase.Morning -> "Morning"
+        DayPhase.Morning -> if (s.lateNight) "Late night" else "Morning"
         DayPhase.Afternoon -> "Afternoon"
         DayPhase.Evening -> "Evening"
     }
@@ -224,7 +254,8 @@ private fun headline(s: TodayState): String {
     if (s.phase == DayPhase.Evening && s.doneCount > 0) {
         return " ${numberWords.getOrElse(s.doneCount) { s.doneCount.toString() }} done. That’s enough."
     }
-    val count = s.todos.size
+    val count = s.openCount
+    if (count == 0) return if (s.next != null) " Nothing else on your list." else " Nothing planned. Enjoy the quiet."
     val things = if (count == 1) "thing" else "things"
     val first = s.next?.event?.let { clockText(s.next.minutes) }
     val tail = if (first != null && s.next.minutes >= 180) ", nothing before ${hourWord(s.next.minutes / 60)}" else ""

@@ -21,6 +21,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setProgress
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -69,8 +77,20 @@ fun DrumPicker(minutes: Int, onChange: (Int) -> Unit, modifier: Modifier = Modif
     val shown = Math.floorMod(raw.roundToInt(), 1440)
     val faded = lerp(c.card, c.tail, 0.55f)
 
+    val spoken = clockText(shown).let { it.digits + " " + it.suffix.trim() }
     Column(
-        modifier.fillMaxWidth().draggable(
+        modifier.fillMaxWidth().semantics {
+            contentDescription = "Alarm time"
+            stateDescription = spoken
+            progressBarRangeInfo = ProgressBarRangeInfo(shown.toFloat(), 0f..1439f)
+            setProgress("Set time") { v -> raw = v.roundToInt().toFloat(); publish(); true }
+            customActions = listOf(
+                CustomAccessibilityAction("15 minutes later") { step(STEP); true },
+                CustomAccessibilityAction("15 minutes earlier") { step(-STEP); true },
+                CustomAccessibilityAction("1 minute later") { step(1); true },
+                CustomAccessibilityAction("1 minute earlier") { step(-1); true },
+            )
+        }.draggable(
             state, Orientation.Vertical,
             onDragStarted = { fling[0]?.cancel() },
             onDragStopped = { velocity ->
@@ -99,7 +119,10 @@ fun DrumPicker(minutes: Int, onChange: (Int) -> Unit, modifier: Modifier = Modif
 
 @Composable
 private fun Side(minutes: Int, color: androidx.compose.ui.graphics.Color, onClick: () -> Unit) {
-    Box(Modifier.fillMaxWidth().height(40.dp).pressable(onClick), contentAlignment = Alignment.Center) {
+    Box(
+        Modifier.fillMaxWidth().height(40.dp).pressable(onClick, onClickLabel = "Set ${clockText(minutes).let { it.digits + " " + it.suffix.trim() }}").semantics { contentDescription = "${clockText(minutes).let { it.digits + " " + it.suffix.trim() }}" },
+        contentAlignment = Alignment.Center,
+    ) {
         CoveText(clockText(minutes).digits, style = SideStyle, color = color)
     }
 }

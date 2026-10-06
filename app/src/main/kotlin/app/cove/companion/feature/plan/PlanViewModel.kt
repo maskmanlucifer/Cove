@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import app.cove.companion.AppContainer
 import app.cove.companion.core.newId
 import app.cove.companion.core.toLocalDate
+import java.time.LocalDate
 import app.cove.companion.core.toLocalDateTime
 import app.cove.companion.data.local.entity.EventEntity
 import app.cove.companion.data.local.entity.TodoCategoryEntity
@@ -32,10 +33,13 @@ data class PlanState(
     val events: List<EventEntity> = emptyList(),
     /** Epoch millis of "now", used for relative labels. */
     val now: Long = 0,
+    /** The day the Schedule shows. */
+    val day: LocalDate = LocalDate.now(),
+    val isToday: Boolean = true,
 )
 
 /** A reversible change shown in the Undo bar for six seconds. */
-data class UndoNotice(val id: Long, val message: String, val restore: () -> Unit)
+data class UndoNotice(val id: Long, val message: String, val action: String = "Undo", val restore: () -> Unit)
 
 /** Builds the schedule and to-do lists and applies every edit made on the Plan tab. */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -47,16 +51,48 @@ class PlanViewModel(private val c: AppContainer) : ViewModel() {
         }
     }
 
-    private val events = ticker.map { it.toLocalDate() }.distinctUntilChanged().flatMapLatest { day ->
+    private val selectedDay = MutableStateFlow<LocalDate?>(null)
+
+    /** Schedule day; null follows today. */
+    private val shownDay = combine(ticker.map { it.toLocalDate() }.distinctUntilChanged(), selectedDay) { today, sel -> sel?.takeIf { it != today } }
+        .distinctUntilChanged()
+
+    /** Moves the Schedule by [delta] days. */
+    fun shiftDay(delta: Long) {
+        val today = c.clock.now().toLocalDate()
+        selectedDay.value = ((selectedDay.value ?: today).plusDays(delta)).takeIf { it != today }
+    }
+
+    /** Shows [day] on the Schedule. */
+    fun showDay(day: LocalDate) {
+        selectedDay.value = day.takeIf { it != c.clock.now().toLocalDate() }
+    }
+
+    /** Back to today. */
+    fun showToday() {
+        selectedDay.value = null
+    }
+
+    private val events = combine(ticker.map { it.toLocalDate() }.distinctUntilChanged(), shownDay) { today, sel -> sel ?: today }.distinctUntilChanged().flatMapLatest { day ->
         combine(c.plan.eventsOn(day), c.plan.repeatingEvents(day)) { once, repeating -> (once + repeating).distinctBy { it.id } }
     }
 
     val state: StateFlow<PlanState> = combine(
-        ticker, events, c.plan.alarms, c.todos.todos, c.todos.categories,
-    ) { now, events, alarms, todos, categories ->
+        ticker, events, combine(c.plan.alarms, shownDay) { a, d -> a to d }, c.todos.todos, c.todos.categories,
+    ) { now, events, (alarms, picked), todos, categories ->
         val at = now.toLocalDateTime()
-        val items = scheduleItems(at.toLocalDate(), events, alarms, todos)
-        PlanState(buildTimeline(items, at.hour * 60 + at.minute), groupTodos(categories, todos, now), todos.filter { it.deletedAt == null }, events, now)
+        val today = at.toLocalDate()
+        val day = picked ?: today
+        val items = scheduleItems(day, events, alarms, todos)
+        val nowMin = when {
+            day == today -> at.hour * 60 + at.minute
+            day < today -> 24 * 60
+            else -> -1
+        }
+        PlanState(
+            buildTimeline(items, nowMin, showNow = day == today), groupTodos(categories, todos, now),
+            todos.filter { it.deletedAt == null }, events, now, day, day == today,
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), PlanState())
 
     private val _undo = MutableStateFlow<UndoNotice?>(null)
@@ -66,8 +102,8 @@ class PlanViewModel(private val c: AppContainer) : ViewModel() {
 
     private var undoSeq = 0L
 
-    private fun offerUndo(message: String, restore: suspend () -> Unit) {
-        _undo.value = UndoNotice(++undoSeq, message) { viewModelScope.launch { restore() } }
+    private fun offerUndo(message: String, action: String = "Undo", restore: suspend () -> Unit) {
+        _undo.value = UndoNotice(++undoSeq, message, action) { viewModelScope.launch { restore() } }
     }
 
     /** Hides the Undo bar if it still shows notice [id]. */
@@ -84,13 +120,13 @@ class PlanViewModel(private val c: AppContainer) : ViewModel() {
     /** Ticks or un-ticks [todo], saving [edited] (its unsaved edits) on the way; ticking offers Undo. */
     fun setDone(todo: TodoEntity, done: Boolean, edited: TodoEntity = todo) = viewModelScope.launch {
         c.todos.save(edited.copy(done = done, doneAt = if (done) c.clock.now() else null))
-        if (done) offerUndo("Finished “${todo.title}”") { c.todos.save(todo) }
+        if (done) offerUndo("Finished “${todo.title.ellipsize()}”") { c.todos.save(todo) }
     }
 
     /** Soft-deletes [todo] with Undo. */
     fun delete(todo: TodoEntity) = viewModelScope.launch {
         c.todos.delete(todo.id)
-        offerUndo("Deleted “${todo.title}”") { c.todos.save(todo.copy(deletedAt = null)) }
+        offerUndo("Deleted “${todo.title.ellipsize()}”") { c.todos.save(todo.copy(deletedAt = null)) }
     }
 
     fun save(todo: TodoEntity) = viewModelScope.launch { c.todos.save(todo) }
@@ -100,7 +136,9 @@ class PlanViewModel(private val c: AppContainer) : ViewModel() {
         val clean = title.trim()
         if (clean.isEmpty()) return@launch
         val next = state.value.groups.firstOrNull { it.category.id == categoryId }?.open?.maxOfOrNull { it.sort }?.plus(1) ?: 0
-        c.todos.save(TodoEntity(newId(), categoryId, clean, dueAt, remind, sort = next))
+        val todo = TodoEntity(newId(), categoryId, clean, dueAt, remind, sort = next)
+        c.todos.save(todo)
+        offerUndo("Added “${clean.ellipsize()}”") { c.todos.delete(todo.id) }
     }
 
     /** Drops [id] at [index] among the open to-dos of [categoryId]. */
@@ -109,12 +147,24 @@ class PlanViewModel(private val c: AppContainer) : ViewModel() {
         c.todos.saveAll(moveTodo(all, id, categoryId, index))
     }
 
-    fun addEvent(event: EventEntity) = viewModelScope.launch { c.plan.saveEvent(event) }
+    /** Saves an edited event without a notice. */
+    fun saveEvent(event: EventEntity) = viewModelScope.launch { c.plan.saveEvent(event) }
+
+    /** Saves a new event and confirms; for another day the notice offers "View" to go there. */
+    fun addEvent(event: EventEntity) = viewModelScope.launch {
+        c.plan.saveEvent(event)
+        val day = event.startAt.toLocalDate()
+        if (day != state.value.day) {
+            offerUndo("Added for ${day.dayLabel()}", "View") { showDay(day) }
+        } else {
+            offerUndo("Added “${event.title.ellipsize()}”") { c.plan.saveEvent(event.copy(deletedAt = c.clock.now())) }
+        }
+    }
 
     /** Soft-deletes [event] with Undo. */
     fun deleteEvent(event: EventEntity) = viewModelScope.launch {
         c.plan.saveEvent(event.copy(deletedAt = c.clock.now()))
-        offerUndo("Deleted “${event.title}”") { c.plan.saveEvent(event.copy(deletedAt = null)) }
+        offerUndo("Deleted “${event.title.ellipsize()}”") { c.plan.saveEvent(event.copy(deletedAt = null)) }
     }
 
     /** Creates a category at the end and returns its id. */
@@ -149,3 +199,5 @@ class PlanViewModel(private val c: AppContainer) : ViewModel() {
         c.todos.saveCategory(category.copy(deletedAt = c.clock.now()))
     }
 }
+
+private fun String.ellipsize(max: Int = 28) = if (length > max) take(max - 1).trimEnd() + "…" else this

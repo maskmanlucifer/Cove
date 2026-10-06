@@ -74,7 +74,7 @@ class HabitEditViewModel(private val c: AppContainer, private val id: String) : 
 
     fun setReminder(minutes: Int?) = _state.update { it.copy(remindMinutes = minutes) }
 
-    fun cycleShow() = _state.update { it.copy(show = ShowMode.entries[(it.show.ordinal + 1) % ShowMode.entries.size]) }
+    fun setShow(mode: ShowMode) = _state.update { it.copy(show = mode) }
 
     /** Saves the habit; false when the name is blank. */
     suspend fun save(): Boolean {

@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
@@ -107,7 +107,7 @@ fun AddToPlanSheet(
                 )
                 Column {
                     if (isEvent) {
-                        SheetRow("Day", day.dayLabel(), { page = AddPage.Day })
+                        SheetRow("Day", day.dayLabel(), { page = AddPage.Day }, if (day < now.toLocalDate()) " · past" else null)
                         SheetRow("Time", rangeText(start, end), { page = AddPage.Time })
                         SheetRow("Repeat", RepeatOptions.first { it.first == repeat }.second, { page = AddPage.Repeat })
                         SheetRow("Remind me", remindText(remindBefore), { page = AddPage.Remind })
@@ -117,26 +117,35 @@ fun AddToPlanSheet(
                         val whenText = whenParts(dueAt, now)
                         SheetRow("When", whenText?.first ?: "Not set", { page = AddPage.When }, whenText?.second, placeholder = whenText == null)
                         Hairline()
-                        ValueRow("Remind me", trailing = { CoveSwitch(remind, { remind = it }) })
+                        ValueRow("Remind me", trailing = {
+                            if (dueAt == null) CoveText("Set a time first", style = CoveType.Meta, color = Cove.colors.muted)
+                            CoveSwitch(remind && dueAt != null, { remind = it }, label = "Remind me", enabled = dueAt != null)
+                        })
                     }
                 }
                 val text = CoveType.Button.copy(fontSize = 16.sp)
                 val ready = title.isNotBlank()
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val primary: @Composable (Modifier) -> Unit = { m ->
                     PillButton(
                         if (editing != null) "Save" else "Add",
                         {
                             if (!ready) return@PillButton
-                            if (isEvent) onAddEvent(buildEvent(editing, title.trim(), day, start, end, repeat, remindBefore, place.trim())) else onAddTodo(title, categoryId, dueAt, remind)
+                            if (isEvent) onAddEvent(buildEvent(editing, title.trim(), day, start, end, repeat, remindBefore, place.trim())) else onAddTodo(title.trim(), categoryId, dueAt, remind && dueAt != null)
                             close()
                         },
-                        Modifier.weight(1f).alpha(if (ready) 1f else 0.4f), height = 56.dp, textStyle = text,
+                        m.alpha(if (ready) 1f else 0.4f), height = 56.dp, textStyle = text,
                     )
-                    if (editing != null) PillButton(
-                        "Delete", { onDeleteEvent(editing); close() }, Modifier.width(104.dp),
-                        kind = ButtonKind.Destructive, height = 56.dp, textStyle = text,
-                    ) else PillButton(
-                        "Cancel", close, Modifier.width(104.dp), kind = ButtonKind.Secondary,
+                }
+                if (editing != null) {
+                    primary(Modifier.fillMaxWidth())
+                    PillButton(
+                        "Delete event", { onDeleteEvent(editing); close() }, Modifier.fillMaxWidth(),
+                        kind = ButtonKind.Destructive, height = 48.dp, textStyle = text,
+                    )
+                } else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    primary(Modifier.weight(1f))
+                    PillButton(
+                        "Cancel", close, Modifier.widthIn(min = 104.dp), kind = ButtonKind.Secondary,
                         container = Cove.colors.canvas, height = 56.dp, textStyle = text.copy(fontWeight = FontWeight.Medium),
                     )
                 }

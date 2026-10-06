@@ -15,6 +15,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -102,15 +108,23 @@ fun TodoRowItem(
                 onSwipeLeft = onDelete,
             ) {
                 Row(
-                    Modifier.fillMaxWidth().heightIn(min = 52.dp).pressable(onOpen).padding(horizontal = 20.dp),
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 52.dp)
+                        .pressable(onOpen, onClickLabel = "Edit", role = Role.Button)
+                        .semantics(mergeDescendants = true) {
+                            stateDescription = if (todo.done) "Done" else "Not done"
+                            customActions = rowActions(todo, categoryId, openIds, due, onToggle, onDelete, onDrop)
+                        }
+                        .padding(horizontal = 20.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    CheckCircle(todo.done, onToggle = {
+                    CheckCircle(todo.done, label = todo.title, onToggle = {
                         haptic.performHapticFeedback(HapticFeedbackType.ToggleOn)
                         onToggle(!todo.done)
                     })
-                    CoveText(todo.title, Modifier.weight(1f), color = if (todo.done) c.tail else c.ink)
+                    CoveText(todo.title, Modifier.weight(1f), color = if (todo.done) c.muted else c.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     if (lifted) {
                         CoveIcon(CoveIcons.Grip, c.tail, size = 18.dp)
                     } else if (due != null && !todo.done) {
@@ -119,5 +133,24 @@ fun TodoRowItem(
                 }
             }
         }
+    }
+}
+
+/** Screen-reader alternatives to the circle, the swipes and the drag: tick, delete and move up or down. */
+private fun rowActions(
+    todo: TodoEntity,
+    categoryId: String?,
+    openIds: List<String>,
+    due: String?,
+    onToggle: (Boolean) -> Unit,
+    onDelete: () -> Unit,
+    onDrop: (DropTarget) -> Unit,
+): List<CustomAccessibilityAction> {
+    val index = openIds.indexOf(todo.id)
+    return buildList {
+        add(CustomAccessibilityAction(if (todo.done) "Mark not done" else "Mark done") { onToggle(!todo.done); true })
+        add(CustomAccessibilityAction("Delete") { onDelete(); true })
+        if (index > 0) add(CustomAccessibilityAction("Move up") { onDrop(DropTarget(categoryId, index - 1)); true })
+        if (index in 0 until openIds.lastIndex) add(CustomAccessibilityAction("Move down") { onDrop(DropTarget(categoryId, index + 1)); true })
     }
 }

@@ -11,6 +11,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -55,18 +59,29 @@ fun SettingsRow(
 ) {
     val c = Cove.colors
     val tap = onClick ?: if (checked != null && onCheck != null) ({ onCheck(!checked) }) else null
+    val stacked = value != null && LocalDensity.current.fontScale > 1.3f
+    val valueStyle = CoveType.Button.copy(fontWeight = FontWeight.Normal)
     Row(
         modifier
             .fillMaxWidth()
             .heightIn(min = 52.dp)
-            .let { if (tap != null) it.pressable(tap) else it },
+            .let { if (tap != null) it.pressable(tap, role = if (checked != null) Role.Switch else Role.Button) else it }
+            .semantics(mergeDescendants = true) { if (checked != null) stateDescription = if (checked) "On" else "Off" }
+            .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        CoveText(label, Modifier.weight(1f), style = Body16)
+        if (stacked) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                CoveText(label, style = Body16)
+                CoveText(value.orEmpty(), style = valueStyle, color = c.muted)
+            }
+        } else {
+            CoveText(label, Modifier.weight(1f), style = Body16)
+        }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            if (value != null) CoveText(value, style = CoveType.Button.copy(fontWeight = FontWeight.Normal), color = c.muted)
-            if (checked != null) CoveSwitch(checked, { onCheck?.invoke(it) })
+            if (value != null && !stacked) CoveText(value, style = valueStyle, color = c.muted)
+            if (checked != null) CoveSwitch(checked, { onCheck?.invoke(it) }, label = label)
             else if (onClick != null) CoveIcon(CoveIcons.ChevronRight, c.tail, size = 14.dp)
         }
     }
@@ -85,7 +100,7 @@ fun SheetHeading(text: String) = CoveText(text, style = CoveType.Section.copy(li
 fun ConflictBanner(title: String, onReview: () -> Unit) {
     val c = Cove.colors
     Row(
-        Modifier.fillMaxWidth().background(c.card, RoundedCornerShape(24.dp)).pressable(onReview).padding(horizontal = 20.dp, vertical = 14.dp),
+        Modifier.fillMaxWidth().background(c.card, RoundedCornerShape(24.dp)).pressable(onReview, role = Role.Button).semantics(mergeDescendants = true) {}.padding(horizontal = 20.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {

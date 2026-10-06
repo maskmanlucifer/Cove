@@ -17,6 +17,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyColumn
+import app.cove.companion.core.rupeesSpoken
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -56,16 +62,16 @@ fun MoneyCategoryDetailScreen(id: String, nav: Nav) {
                 actionStrong = false,
             )
             if (cat != null) {
-                Column(
-                    Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())
-                        .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 176.dp),
+                LazyColumn(
+                    Modifier.weight(1f).fillMaxWidth(),
+                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 176.dp),
                     verticalArrangement = Arrangement.spacedBy(20.dp),
                 ) {
-                    Hero(s)
+                    item { Hero(s) }
                     if (s.groups.isEmpty()) {
-                        CoveText("Nothing here yet this month.", Modifier.padding(horizontal = 4.dp), style = MoneyType.Note, color = c.muted)
+                        item { CoveText("Nothing here yet this month.", Modifier.padding(horizontal = 4.dp), style = MoneyType.Note, color = c.muted) }
                     }
-                    s.groups.forEach { group ->
+                    items(s.groups, key = { it.label }) { group ->
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             CoveText(group.label, Modifier.padding(start = 4.dp), style = CoveType.Meta, color = c.muted)
                             RowsCard(radius = 24.dp, vertical = 0.dp) {
@@ -80,7 +86,7 @@ fun MoneyCategoryDetailScreen(id: String, nav: Nav) {
                                             CoveText(e.note.ifBlank { cat.name }, style = CoveType.Body)
                                             CoveText(MoneyMath.methodLine(e), style = MoneyType.Small, color = c.muted)
                                         }
-                                        CoveText((if (e.kind == "received") "+" else "") + rupees(e.amountPaise), style = CoveType.Body)
+                                        CoveText((if (e.kind == "received") "+" else "") + rupees(e.amountPaise), Modifier.semantics { contentDescription = (if (e.kind == "received") "received " else "") + rupeesSpoken(e.amountPaise) }, style = CoveType.Body)
                                     }
                                 }
                             }

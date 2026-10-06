@@ -18,6 +18,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import app.cove.companion.core.rupeesSpoken
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
 import app.cove.companion.core.appViewModel
 import app.cove.companion.core.rupees
@@ -59,7 +62,7 @@ fun MoneyScreen(nav: Nav) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 CoveText("Spent so far · ${s.month}", style = CoveType.Meta, color = c.muted)
                 val figure = rupees(s.spent, decimals = true)
-                CoveText(figure.substringBefore('.'), "." + figure.substringAfter('.'), style = CoveType.Figure)
+                CoveText(figure.substringBefore('.'), "." + figure.substringAfter('.'), Modifier.semantics { contentDescription = rupeesSpoken(s.spent) }, style = CoveType.Figure)
                 CoveText(summaryLine(s), style = MoneyType.Sub, color = c.muted)
             }
             DailyBars(s.bars)
