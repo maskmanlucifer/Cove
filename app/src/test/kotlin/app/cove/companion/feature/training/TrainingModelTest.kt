@@ -117,7 +117,7 @@ class TrainingModelTest {
         assertEquals("60", p.topSets.first { it.name == "Bench press" }.now)
         val week = ProgressModel.build(snap(history, historySets), ProgressRange.Week)
         assertEquals(7, week.bars.size)
-        assertEquals(1, ProgressModel.build(snap(history, historySets), ProgressRange.Year).bars.map { it.value }.last().coerceAtLeast(1))
+        assertEquals(listOf(1, 2), ProgressModel.build(snap(history, historySets), ProgressRange.Year).bars.map { it.value }.takeLast(2))
     }
 
     @Test fun summaryRowsShowSessionDateAndUnit() {
