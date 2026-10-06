@@ -69,16 +69,17 @@ fun CheckCircle(checked: Boolean, onToggle: (() -> Unit)?, modifier: Modifier = 
 
 /** 46x28 on/off switch from the design (ink track, white thumb); [label] names what it controls for screen readers. */
 @Composable
-fun CoveSwitch(checked: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier = Modifier, label: String? = null) {
+fun CoveSwitch(checked: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier = Modifier, label: String? = null, enabled: Boolean = true) {
     val c = Cove.colors
     val x by animateDpAsState(if (checked) 21.dp else 3.dp, tween(200), label = "thumb")
     val track by animateColorAsState(if (checked) c.ink else c.switchOff, tween(200), label = "track")
     Box(
         modifier
             .size(46.dp, 28.dp)
+            .graphicsLayerAlpha(if (enabled) 1f else 0.4f)
             .clip(RoundedCornerShape(14.dp))
             .background(track)
-            .pressable({ onChange(!checked) }, role = Role.Switch)
+            .pressable({ onChange(!checked) }, enabled = enabled, role = Role.Switch)
             .semantics {
                 stateDescription = if (checked) "On" else "Off"
                 if (label != null) contentDescription = label

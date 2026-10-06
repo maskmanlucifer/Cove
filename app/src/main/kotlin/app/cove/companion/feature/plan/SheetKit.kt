@@ -9,7 +9,13 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -23,6 +29,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -83,9 +94,9 @@ fun PlanSheet(
             }
         }
         Box(Modifier.fillMaxSize().imePadding()) {
-            CoveSheet(shown, close, modifier) {
+            CoveSheet(shown, close, modifier.statusBarsPadding()) {
                 Column(
-                    Modifier.fillMaxWidth().let { if (fillHeight) it.fillMaxHeight() else it },
+                    Modifier.fillMaxWidth().let { if (fillHeight) it.fillMaxHeight() else it.verticalScroll(rememberScrollState()) },
                     verticalArrangement = Arrangement.spacedBy(gap.dp),
                 ) {
                     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { SheetHandle() }
@@ -119,7 +130,16 @@ fun SheetControlRow(label: String, control: @Composable () -> Unit) {
     ValueRow(label, trailing = control)
 }
 
-/** Title-sized text field. */
+/** Longest title any sheet accepts; longer input is cut. */
+const val TITLE_MAX = 120
+
+/** Characters left before the title counter shows. */
+private const val TITLE_COUNTER_FROM = 100
+
+/**
+ * Title-sized text field that behaves as one logical line: the Done key (or a pasted line break) ends
+ * editing instead of inserting a newline, input is cut at [TITLE_MAX] and a counter appears near the limit.
+ */
 @Composable
 fun TitleField(
     value: String,
@@ -131,19 +151,39 @@ fun TitleField(
 ) {
     val c = Cove.colors
     val focus = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
     if (autofocus) LaunchedEffect(Unit) { focus.requestFocus() }
-    Box(modifier.fillMaxWidth()) {
-        if (value.isEmpty()) CoveText(placeholder, style = SheetTitleStyle, color = c.placeholder)
-        BasicTextField(
-            value, onChange,
-            Modifier.fillMaxWidth().focusRequester(focus),
-            textStyle = SheetTitleStyle.copy(color = c.ink),
-            cursorBrush = SolidColor(c.ink),
-            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { onDone() }),
-        )
+    val finish = {
+        keyboard?.hide()
+        focusManager.clearFocus()
+        onDone()
+    }
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Box(Modifier.fillMaxWidth()) {
+            if (value.isEmpty()) CoveText(placeholder, style = SheetTitleStyle, color = c.placeholder)
+            BasicTextField(
+                value,
+                { raw ->
+                    onChange(titleInput(raw))
+                    if (raw.contains('\n')) finish()
+                },
+                Modifier.fillMaxWidth().focusRequester(focus),
+                textStyle = SheetTitleStyle.copy(color = c.ink),
+                cursorBrush = SolidColor(c.ink),
+                maxLines = 4,
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { finish() }),
+            )
+        }
+        if (value.length >= TITLE_COUNTER_FROM) {
+            CoveText("${value.length} / $TITLE_MAX", style = CoveType.Meta, color = if (value.length >= TITLE_MAX) c.alert else c.muted)
+        }
     }
 }
+
+/** Input rule for titles: line breaks removed, leading spaces dropped, capped at [TITLE_MAX]. */
+fun titleInput(raw: String): String = raw.replace("\n", "").replace("\r", "").trimStart().take(TITLE_MAX)
 
 /** Single-line field used for inline adds and renames; calls [onFocusLost] when it loses focus after having it. */
 @Composable
@@ -183,7 +223,7 @@ fun InlineField(
 @Composable
 fun SubPageHeader(title: String, onBack: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().pressable(onBack),
+        Modifier.fillMaxWidth().pressable(onBack, onClickLabel = "Back", role = Role.Button).semantics { heading() },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -201,7 +241,7 @@ fun <T> OptionList(options: List<Pair<T, String>>, selected: T?, onPick: (T) -> 
         options.forEach { (value, label) ->
             Hairline()
             Row(
-                Modifier.fillMaxWidth().height(56.dp).pressable({ onPick(value) }),
+                Modifier.fillMaxWidth().heightIn(min = 56.dp).pressable({ onPick(value) }, role = Role.RadioButton).semantics { this.selected = value == selected },
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {

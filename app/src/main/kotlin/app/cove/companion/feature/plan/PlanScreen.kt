@@ -23,6 +23,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -90,16 +93,17 @@ fun PlanScreen(nav: Nav) {
                     ),
                 )
             } else {
-                Box(Modifier.padding(horizontal = 4.dp)) { ScheduleTab(state.timeline, { sheet = TASK + it }, { sheet = EVENT + it }) }
+                Box(Modifier.padding(horizontal = 4.dp)) { ScheduleTab(state.timeline, { sheet = TASK + it }, { sheet = EVENT + it }, { nav.go(Routes.alarmEdit(it)) }) }
             }
         }
-        if (drag.id == null) AddButton({ sheet = if (todos) ADD_TODO else ADD_EVENT }, Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = 112.dp))
+        if (!todos && drag.id == null) DayPill(state.day, state.isToday, vm::shiftDay, vm::showToday, Modifier.align(Alignment.BottomStart).padding(start = 20.dp, bottom = 112.dp))
+        if (drag.id == null) AddButton(if (todos) "Add to-do" else "Add event", { sheet = if (todos) ADD_TODO else ADD_EVENT }, Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = 112.dp))
         undo?.let { notice ->
             LaunchedEffect(notice.id) {
                 delay(6000)
                 vm.expireUndo(notice.id)
             }
-            PlanUndoBar(notice.message, vm::undoLast, Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = 112.dp))
+            PlanUndoBar(notice.message, vm::undoLast, action = notice.action, modifier = Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = 112.dp))
         }
     }
 
@@ -107,7 +111,7 @@ fun PlanScreen(nav: Nav) {
 }
 
 @Composable
-private fun AddButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun AddButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val c = Cove.colors
     val shadow = if (c.isDark) Color(0x66000000) else Color(0x1A141420)
     Box(
@@ -115,7 +119,8 @@ private fun AddButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
             .size(44.dp)
             .shadow(8.dp, CoveShapes.Circle, ambientColor = shadow, spotColor = shadow)
             .background(c.card, CoveShapes.Circle)
-            .pressable(onClick),
+            .pressable(onClick, role = Role.Button)
+            .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) { CoveIcon(PlanIcons.AddSmall, c.muted, size = 20.dp) }
 }
@@ -140,7 +145,7 @@ private fun PlanSheets(sheet: String?, state: PlanState, vm: PlanViewModel, dism
         sheet.startsWith(EVENT) -> {
             val id = sheet.removePrefix(EVENT)
             val event = remember(id, state.events.isEmpty()) { state.events.firstOrNull { it.id == id } }
-            if (event != null) EventEditSheet(event, state.now, onSave = vm::addEvent, onDelete = vm::deleteEvent, onDismiss = dismiss)
+            if (event != null) EventEditSheet(event, state.now, onSave = vm::saveEvent, onDelete = vm::deleteEvent, onDismiss = dismiss)
         }
         sheet.startsWith(TASK) -> {
             val key = sheet.removePrefix(TASK)

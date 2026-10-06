@@ -21,6 +21,7 @@ data class ScheduleItem(
     val done: Boolean = false,
     val todoId: String? = null,
     val eventId: String? = null,
+    val alarmId: String? = null,
 )
 
 /** A row of the schedule list. */
@@ -69,7 +70,7 @@ fun scheduleItems(
         ScheduleItem(ItemKind.Event, startMin, len?.let { startMin + it }, e.title, e.notes ?: e.place, eventId = e.id)
     }
     val fromAlarms = alarms.filter { alarmRingsOn(it, day) }.map {
-        ScheduleItem(ItemKind.Alarm, it.minutes, null, if (it.kind == "bedtime") "Wind down" else it.label)
+        ScheduleItem(ItemKind.Alarm, it.minutes, null, if (it.kind == "bedtime") "Wind down" else it.label, alarmId = it.id)
     }
     val fromTodos = todos.filter { it.deletedAt == null && it.dueAt != null && it.dueAt >= start && it.dueAt < end }
         .mapNotNull { t ->
@@ -82,9 +83,9 @@ fun scheduleItems(
 
 /**
  * Lays [items] out for the schedule at [nowMinutes]: finished items are marked past, the next event
- * becomes the card and the now marker sits before the first item that has not started yet.
+ * becomes the card and the now marker (omitted unless [showNow]) sits before the first item that has not started yet.
  */
-fun buildTimeline(items: List<ScheduleItem>, nowMinutes: Int): List<TimelineRow> {
+fun buildTimeline(items: List<ScheduleItem>, nowMinutes: Int, showNow: Boolean = true): List<TimelineRow> {
     val sorted = items.sortedBy { it.minutes }
     val cardIndex = sorted.indexOfFirst { it.kind == ItemKind.Event && (it.endMinutes ?: it.minutes) > nowMinutes }
     val rows = mutableListOf<TimelineRow>()
@@ -103,7 +104,7 @@ fun buildTimeline(items: List<ScheduleItem>, nowMinutes: Int): List<TimelineRow>
         rows += TimelineRow.Entry(item, past, card, detailFor(item, card))
     }
     if (!nowPlaced) rows += TimelineRow.Now(nowMinutes)
-    return rows
+    return if (showNow) rows else rows.filterNot { it is TimelineRow.Now }
 }
 
 private fun detailFor(item: ScheduleItem, card: Boolean): String? {
