@@ -44,6 +44,7 @@ import app.cove.companion.feature.alarms.RingingBanner
 import app.cove.companion.feature.recovery.RecoveryScreen
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import app.cove.companion.resilience.RecoveryReason
 import app.cove.companion.resilience.StartupState
 import app.cove.companion.security.DebugSecurity
