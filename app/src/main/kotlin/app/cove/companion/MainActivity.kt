@@ -218,7 +218,9 @@ class MainActivity : FragmentActivity() {
         }
         val voiceState = intent.getStringExtra("voiceState")
         VoiceDebug.set(voiceState, intent.getStringExtra("transcript"), intent.getIntExtra("voiceSeconds", 7))
-        if (voiceState != null && voiceState != "saved") voiceRequest.intValue++
+        val voiceFail = intent.getStringExtra("voiceFail")
+        if (voiceFail != null) app.cove.companion.ai.speech.SpeechDebug.mode = voiceFail.takeIf { it != "off" }
+        if (voiceFail != null || (voiceState != null && voiceState != "saved")) voiceRequest.intValue++
         app.cove.companion.data.DebugTraining.skip = intent.getBooleanExtra("noTraining", false)
         val seed = intent.getBooleanExtra("seed", false)
         if (seed || voiceState == "saved") {

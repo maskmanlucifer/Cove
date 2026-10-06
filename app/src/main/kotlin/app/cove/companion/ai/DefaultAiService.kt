@@ -11,9 +11,12 @@ import app.cove.companion.ai.model.CategorySuggestion
 import app.cove.companion.ai.model.CloudCheck
 import app.cove.companion.ai.model.IntentContext
 import app.cove.companion.ai.model.IntentRequest
+import app.cove.companion.ai.model.Location
 import app.cove.companion.ai.model.ParsedIntents
 import app.cove.companion.ai.model.Sensitivity
+import app.cove.companion.ai.model.SpeechEngineInfo
 import app.cove.companion.ai.model.SpeechSession
+import app.cove.companion.ai.speech.SpeechDebug
 import app.cove.companion.ai.model.Summary
 import app.cove.companion.ai.model.TypedSession
 import app.cove.companion.ai.model.VoiceIntent
@@ -21,6 +24,7 @@ import app.cove.companion.ai.provider.rules.RuleParser
 import app.cove.companion.ai.provider.rules.TypedSpeechProvider
 import app.cove.companion.core.Clock
 import app.cove.companion.core.toLocalDateTime
+import kotlinx.coroutines.CancellationException
 import java.io.File
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -63,7 +67,13 @@ class DefaultAiService(
     private suspend fun line(request: BriefRequest) =
         router.route(Capability.Brief, Sensitivity.Everyday, providers.brief) { it.line(request) }
 
-    override suspend fun openSpeech(): SpeechSession? = router.openSpeech(Sensitivity.Everyday)
+    override suspend fun openSpeech(): SpeechSession = SpeechDebug.session() ?: router.openSpeech(Sensitivity.Everyday)
+
+    override suspend fun speechEngines(): List<SpeechEngineInfo> = providers.speech.filter { it.location != Location.Rules }.map { p ->
+        SpeechEngineInfo(p.ref, p.availability(), try { p.details() } catch (e: CancellationException) { throw e } catch (e: Exception) { emptyList() })
+    }
+
+    override fun openSpeechEngine(id: String): SpeechSession? = providers.speech.firstOrNull { it.id == id && it.location != Location.Rules }?.open()
 
     override fun openTyped(): TypedSession = typed.openTyped()
 

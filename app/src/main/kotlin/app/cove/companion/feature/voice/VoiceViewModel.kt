@@ -18,6 +18,7 @@ import app.cove.companion.feature.training.TrainingFocus
 import app.cove.companion.feature.training.voice.PreviewSet
 import app.cove.companion.feature.training.voice.SetsPreview
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,7 +30,7 @@ import kotlinx.coroutines.launch
 private val numberStarts = setOf("one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety", "hundred")
 
 /** Which of the voice frames is showing. */
-enum class Stage { Listening, Result, Partial, Typing, Answer }
+enum class Stage { Listening, Result, Partial, Typing, Answer, Trouble }
 
 /** Everything the Voice screen draws. */
 data class VoiceState(
@@ -38,8 +39,13 @@ data class VoiceState(
     val seconds: Int = 0,
     val level: Float = 0f,
     val onDevice: Boolean = true,
+    /** An engine is capturing audio: the person can speak now. */
+    val ready: Boolean = false,
     /** Voice cannot be used (permission denied or no recognizer); the typing UI explains it. */
     val micOff: Boolean = false,
+    /** Why listening failed, for [Stage.Trouble]; [troubleCode] is the engine's error code (0 if none). */
+    val trouble: SpeechFailure? = null,
+    val troubleCode: Int = 0,
     val typed: String = "",
     val drafts: List<VoiceIntent> = emptyList(),
     val guesses: List<VoiceIntent> = emptyList(),
@@ -66,6 +72,7 @@ class VoiceViewModel(private val c: AppContainer) : ViewModel() {
     private var session: SpeechSession? = null
     private var started = false
     private var frozen = false
+    private val gate = ListenGate()
 
     /** Starts listening once; debug builds may instead jump to a frame via [VoiceDebug]. */
     fun begin() {
@@ -75,50 +82,67 @@ class VoiceViewModel(private val c: AppContainer) : ViewModel() {
         if (debug != null) { frozen = true; applyDebug(debug) } else listen()
     }
 
+    /** The permission was just granted: start (first time) or retry after the permission explanation. */
+    fun micGranted() {
+        if (!started) begin() else if (_state.value.trouble == SpeechFailure.PermissionDenied) listen()
+    }
+
     /** Re-checks after the app returns to the foreground. */
     fun resume(micGranted: Boolean) {
         val s = _state.value
         if (frozen) return
-        if (s.micOff && micGranted) listen()
+        if (s.trouble == SpeechFailure.PermissionDenied && micGranted) listen()
         else if (s.stage == Stage.Listening && job?.isActive != true && started && !s.busy) listen()
     }
 
     /** Stops the microphone when the app leaves the foreground. */
     fun pause() {
-        if (_state.value.stage == Stage.Listening) job?.cancel()
+        if (_state.value.stage == Stage.Listening) { job?.cancel(); gate.abort() }
     }
 
-    fun micDenied() {
-        job?.cancel()
-        _state.update { it.copy(stage = Stage.Typing, micOff = true, heardByVoice = false) }
-        startTypedWait()
+    /** The microphone permission was refused (or is off): explain it and offer the right next step. */
+    fun micDenied() = trouble(SpeechFailure.PermissionDenied, 0)
+
+    private fun trouble(reason: SpeechFailure, code: Int) {
+        _state.update { it.copy(stage = Stage.Trouble, trouble = reason, troubleCode = code, ready = false, level = 0f, busy = false, heardByVoice = false) }
     }
 
+    /**
+     * Starts one listening run. Ignored while a run is starting or listening (double taps, recompositions, a second
+     * QuickListen); a previous run is fully closed before the next recognizer is created.
+     */
     fun listen() {
-        job?.cancel()
+        val token = gate.tryStart() ?: return
+        val previous = job
         kit.speaker.stop()
         _state.update { VoiceState(categories = it.categories) }
         job = viewModelScope.launch {
-            val picked = c.ai.openSpeech() ?: return@launch micDenied()
-            session = picked
-            _state.update { it.copy(onDevice = picked.source.location.isLocal, micOff = false) }
-            val ticker = launch { while (true) { delay(1000); _state.update { it.copy(seconds = it.seconds + 1) } } }
             try {
-                collect(picked, showsLevel = true)
+                previous?.cancelAndJoin()
+                val picked = c.ai.openSpeech()
+                session = picked
+                val ticker = launch { while (true) { delay(1000); _state.update { it.copy(seconds = it.seconds + 1) } } }
+                try {
+                    collect(picked, showsLevel = true)
+                } finally {
+                    ticker.cancel()
+                }
             } finally {
-                ticker.cancel()
+                gate.end(token)
             }
         }
     }
 
-    /** Stop button and Done: ask the engine for its final transcript. */
+    /** Stop button and Done: ask the engine for its final transcript (ignored until it is ready). */
     fun finish() {
+        if (!_state.value.ready) return
         viewModelScope.launch { session?.stop() }
     }
 
     /** Type instead, Type it and Edit: the text box, prefilled with what was heard. */
     fun typeInstead() {
         job?.cancel()
+        gate.abort()
         _state.update { it.copy(stage = Stage.Typing, typed = it.transcript, heardByVoice = false) }
         startTypedWait()
     }
@@ -137,17 +161,21 @@ class VoiceViewModel(private val c: AppContainer) : ViewModel() {
 
     private suspend fun collect(source: SpeechSession, showsLevel: Boolean) {
         var final: String? = null
-        var failure: SpeechFailure? = null
+        var failure: SpeechEvent.Failure? = null
         source.events.collect { e ->
             when (e) {
+                is SpeechEvent.Ready -> _state.update { it.copy(ready = true, onDevice = e.source.location.isLocal) }
+                SpeechEvent.Began -> Unit
                 is SpeechEvent.Partial -> _state.update { it.copy(transcript = e.text) }
                 is SpeechEvent.Level -> if (showsLevel) _state.update { it.copy(level = e.value) }
                 is SpeechEvent.Final -> final = e.text
-                is SpeechEvent.Failure -> failure = e.reason
+                is SpeechEvent.Failure -> failure = e
             }
         }
-        if (failure == SpeechFailure.PermissionDenied) return micDenied()
         val text = (final ?: _state.value.transcript).trim()
+        val failed = failure
+        if (showsLevel && failed != null && (failed.reason == SpeechFailure.PermissionDenied || text.isEmpty())) return trouble(failed.reason, failed.code)
+        if (showsLevel && text.isEmpty()) return trouble(SpeechFailure.NoMatch, 0)
         understand(text, heardByVoice = showsLevel)
     }
 
@@ -284,6 +312,7 @@ class VoiceViewModel(private val c: AppContainer) : ViewModel() {
                 _state.update { it.copy(stage = Stage.Typing, micOff = true, typed = d.transcript, heardByVoice = false) }
                 startTypedWait()
             }
+            "ready" -> _state.update { it.copy(stage = Stage.Listening, ready = true, transcript = d.transcript, seconds = d.seconds, level = 0.5f) }
             else -> viewModelScope.launch { understand(d.transcript, heardByVoice = true) }
         }
     }

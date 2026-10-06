@@ -92,6 +92,8 @@ fun MeScreen(nav: Nav) {
             RowDivider()
             SettingsRow("Spoken replies", value = onOff(settings.spokenReplies), onClick = { sheet = MeSheet.Spoken })
             RowDivider()
+            SettingsRow("Voice check", onClick = { sheet = MeSheet.VoiceCheck })
+            RowDivider()
             SettingsRow("Reduce motion", value = settings.reduceMotion.replaceFirstChar { it.uppercase() }, onClick = { sheet = MeSheet.Motion })
         }
         SettingsGroup("More") {

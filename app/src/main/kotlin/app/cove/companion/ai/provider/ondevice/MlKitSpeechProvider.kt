@@ -28,6 +28,11 @@ class MlKitSpeechProvider : SpeechProvider {
     override val id = "mlkit-speech"
     override val location = Location.Native
 
+    override suspend fun details(): List<Pair<String, String>> = listOf(
+        "Mode" to "ML Kit GenAI speech (alpha), locale ${Locale.ENGLISH.toLanguageTag()}",
+        "Feature status" to try { recognizer.checkStatus().toString() } catch (e: CancellationException) { throw e } catch (e: Throwable) { "unavailable (${e.javaClass.simpleName})" },
+    )
+
     override suspend fun availability(): Availability = try {
         if (recognizer.checkStatus() == FeatureStatus.AVAILABLE) Availability.Available
         else Availability.Unavailable("The on-device speech model is not ready")
@@ -45,6 +50,7 @@ class MlKitSpeechProvider : SpeechProvider {
 
     private fun listen(): Flow<SpeechEvent> = flow {
         var last = ""
+        emit(SpeechEvent.Ready(ref))
         try {
             recognizer.startRecognition(speechRecognizerRequest { audioSource = AudioSource.fromMic() }).collect { r ->
                 when (r) {

@@ -31,7 +31,7 @@ import app.cove.companion.feature.security.LockUnavailableSheet
 import app.cove.companion.feature.plan.TitleField
 
 /** Which Me sheet is open. */
-enum class MeSheet { Name, Wake, Brief, OneThing, Spoken, Nudges, Motion, Look, Privacy, PhotoQuality, Backup, Restore, LockAfter, LockUnavailable }
+enum class MeSheet { Name, Wake, Brief, OneThing, Spoken, Nudges, Motion, Look, Privacy, PhotoQuality, Backup, Restore, LockAfter, LockUnavailable, VoiceCheck }
 
 /** Hosts whichever sheet [sheet] names, reading and writing through [vm]. */
 @Composable
@@ -51,6 +51,7 @@ fun MeSheets(sheet: MeSheet?, s: SettingsEntity, vm: MeViewModel, briefPlay: () 
             OnOffSegment(s.oneThingMode) { on -> vm.update { it.copy(oneThingMode = on, oneThingUntil = 0) } }
             SheetCaption("Today shows only the next thing to do, nothing else.")
         }
+        MeSheet.VoiceCheck -> app.cove.companion.feature.voice.VoiceCheckSheet(onDismiss)
         MeSheet.Spoken -> PlanSheet(onDismiss, gap = 16) {
             SheetHeading("Spoken replies")
             OnOffSegment(s.spokenReplies) { on -> vm.update { it.copy(spokenReplies = on) } }
