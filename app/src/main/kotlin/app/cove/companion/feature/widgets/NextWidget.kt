@@ -38,19 +38,17 @@ class NextWidgetReceiver : GlanceAppWidgetReceiver() {
 @androidx.compose.runtime.Composable
 private fun NextContent(next: NextCard?) {
     Column(
-        modifier = cardModifier(20).fillMaxSize().clickable(openApp()),
+        modifier = cardModifier(20, vertical = 14).fillMaxSize().clickable(openApp()),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(if (next == null) "Next" else "Next · ${next.inText}", style = WidgetText.label)
-        Spacer(GlanceModifier.height(6.dp))
         if (next == null) {
             Text("A clear day", style = TextStyle(fontSize = 28.sp, color = WidgetColors.ink))
         } else {
             Row(verticalAlignment = Alignment.Bottom) {
-                Text(next.digits, style = TextStyle(fontSize = 40.sp, color = WidgetColors.ink))
-                Text(next.suffix, style = TextStyle(fontSize = 40.sp, color = WidgetColors.tail))
+                Text(next.digits, style = TextStyle(fontSize = 36.sp, color = WidgetColors.ink))
+                Text(next.suffix, style = TextStyle(fontSize = 36.sp, color = WidgetColors.tail))
             }
-            Spacer(GlanceModifier.height(6.dp))
             Text(next.title, maxLines = 1, style = TextStyle(fontSize = 17.sp, fontWeight = FontWeight.Medium, color = WidgetColors.ink))
         }
     }

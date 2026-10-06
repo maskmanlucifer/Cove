@@ -37,7 +37,7 @@ import app.cove.companion.feature.voice.listenIntent
  * Tapping only opens the app in listening; no inference runs in the widget.
  */
 class VoiceWidget : GlanceAppWidget() {
-    override val sizeMode = SizeMode.Responsive(setOf(DpSize(110.dp, 110.dp), DpSize(250.dp, 56.dp)))
+    override val sizeMode = SizeMode.Responsive(setOf(DpSize(110.dp, 110.dp), DpSize(180.dp, 40.dp)))
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val open = actionStartActivity(listenIntent(context))

@@ -30,7 +30,7 @@ class SpentWidget : GlanceAppWidget() {
                 Spacer(GlanceModifier.defaultWeight())
                 Text(rupees(snapshot.spentTodayPaise), style = TextStyle(fontSize = 30.sp, fontWeight = FontWeight.Medium, color = WidgetColors.ink))
                 snapshot.leftThisMonthPaise?.let {
-                    Text("${rupees(it)} left this month", maxLines = 1, style = TextStyle(fontSize = 13.sp, color = WidgetColors.muted))
+                    Text("${rupees((it + 50) / 100 * 100)} left this month", maxLines = 2, style = TextStyle(fontSize = 12.sp, color = WidgetColors.muted))
                 }
             }
         }

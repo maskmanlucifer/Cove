@@ -34,8 +34,8 @@ internal object WidgetText {
 }
 
 /** The rounded card every widget sits on (28dp radius as in the frame). */
-internal fun cardModifier(padding: Int, color: androidx.glance.unit.ColorProvider = WidgetColors.card): GlanceModifier =
-    GlanceModifier.cornerRadius(28.dp).background(color).padding(padding.dp)
+internal fun cardModifier(padding: Int, color: androidx.glance.unit.ColorProvider = WidgetColors.card, vertical: Int = padding): GlanceModifier =
+    GlanceModifier.cornerRadius(28.dp).background(color).padding(horizontal = padding.dp, vertical = vertical.dp)
 
 /** Tap action that opens the app. */
 @androidx.compose.runtime.Composable

@@ -7,7 +7,6 @@ import app.cove.companion.core.dayPhase
 import app.cove.companion.core.inText
 import app.cove.companion.core.startOfDayMillis
 import app.cove.companion.core.toLocalDate
-import app.cove.companion.core.toLocalDateTime
 import app.cove.companion.data.local.entity.AlarmEntity
 import app.cove.companion.data.local.entity.EventEntity
 import app.cove.companion.data.local.entity.ExpenseCategoryEntity
@@ -90,7 +89,7 @@ object WidgetData {
         }
         val todo = open.filter { it.dueAt != null && it.dueAt >= now }.map { it.dueAt!! to it.title }
         val (at, title) = (event + todo).minByOrNull { it.first } ?: return null
-        val t = at.toLocalDateTime()
+        val t = Instant.ofEpochMilli(at).atZone(zone).toLocalDateTime()
         val c = clockText(t.hour * 60 + t.minute)
         return NextCard(inText((at - now + 59_999) / 60_000), c.digits, c.suffix, title)
     }
