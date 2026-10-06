@@ -66,6 +66,7 @@ Release builds ignore all of these. Debug builds also log StrictMode violations 
 - `PLAN.md`: product and architecture plan, decisions, phases.
 - `docs/CONTRIBUTING.md`: how features are built and verified.
 - `docs/CATEGORIZATION.md`: how expenses are filed (rules, learning, Review, optional AI cross-check).
+- `docs/SMS_IMPORT.md`: Money > Import from messages: parsing, dedupe, privacy, how to add a bank format.
 - `docs/TRAINING.md`: workout tracking, progression rules, voice phrases.
 - `docs/SECURITY.md`: database encryption and app lock.
 - `docs/RESILIENCE.md`: what happens when the database, key or app fails, and what the user sees.

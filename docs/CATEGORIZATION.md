@@ -23,3 +23,6 @@ A quiet "N in Other · Review" row appears on Money when at least 3 spent expens
 - **Cross-check this month** asks about filed expenses of the last 30 days and lists only those where AI disagrees; nothing changes until the user taps.
 
 Both are manual only, call `AiService.suggestCategories` in batches of at most 40 (one call each), and show "On-device" or "Cloud" plus plain-language errors. See `docs/AI.md` for routing and privacy: only scrubbed note text (no amounts) and category names are sent, as everyday (never journal) data.
+
+## Imported messages
+`Import from messages` (`docs/SMS_IMPORT.md`) suggests each imported payment's category with `ExpenseCategorizer` on the cleaned merchant name, and teaches the memory only when the user changes a category by hand; undoing the import forgets what it taught.

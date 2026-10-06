@@ -71,7 +71,7 @@ fun MoneyImportScreen(nav: Nav) {
 
     CoveScreen {
         Column(Modifier.fillMaxSize().coveTopInset()) {
-            MoneyTopBar("Import from messages", "Close", nav.back, nav.back, actionStrong = false)
+            MoneyTopBar("Import", "Close", nav.back, nav.back, actionStrong = false)
             when (s.stage) {
                 ImportStage.Intro -> IntroStage(s.message, step, deniedBefore, { launcher.launch(READ_SMS) }, { openFix(context, FixTarget.AppSettings) }, vm::openPaste)
                 ImportStage.Range -> RangeStage(s, vm::setRange, vm::scanInbox, vm::openPaste)

@@ -24,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -61,7 +62,7 @@ internal fun ReviewStage(s: ImportState, vm: ImportViewModel, importing: Boolean
             contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 140.dp),
         ) {
             item(key = "head") {
-                Column(Modifier.padding(horizontal = 4.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(Modifier.padding(horizontal = 4.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     CoveText(
                         if (s.rows.isEmpty()) "No new transactions found." else "${fresh.size} new" + if (dups.isNotEmpty()) " · ${dups.size} possible duplicate${if (dups.size == 1) "" else "s"}" else "",
                         style = CoveType.Section,
@@ -140,6 +141,7 @@ private fun ImportRowItem(row: ImportRow, today: java.time.LocalDate, cats: List
     val c = Cove.colors
     val tx = row.item.candidate.tx
     var picking by remember { mutableStateOf(false) }
+    val stacked = LocalDensity.current.fontScale > 1.3f
     val note = tx.merchant ?: if (row.kind == "received") "Money received" else "Payment"
     val account = listOfNotNull(tx.bank, tx.last4?.let { "··$it" }).joinToString(" ").ifBlank { null }
     val meta = listOfNotNull(MoneyMath.dayLabel(tx.at.toLocalDate(), today), account, tx.paidWith).joinToString(" · ")
@@ -152,15 +154,13 @@ private fun ImportRowItem(row: ImportRow, today: java.time.LocalDate, cats: List
             CheckCircle(row.checked, null, Modifier.padding(top = 2.dp), size = 24)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 CoveText(note, style = CoveType.Body, maxLines = 2)
+                if (stacked) AmountText(tx.amountPaise, row.kind)
                 CoveText(meta, style = MoneyType.Small, color = c.muted)
                 row.item.match?.let { m ->
                     CoveText("Possible duplicate: already added \"${m.note.ifBlank { "an expense" }} ${rupees(m.amountPaise)}\"", style = MoneyType.Small, color = c.alert)
                 }
             }
-            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                CoveText(rupees(tx.amountPaise), style = CoveType.Body)
-                if (row.kind == "received") CoveText("Received", style = MoneyType.Small, color = c.saved)
-            }
+            if (!stacked) Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) { AmountText(tx.amountPaise, row.kind) }
         }
         FlowRow(Modifier.fillMaxWidth().padding(start = 38.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (row.kind == "spent") {
@@ -177,6 +177,13 @@ private fun ImportRowItem(row: ImportRow, today: java.time.LocalDate, cats: List
             }
         }
     }
+}
+
+/** Amount in ink (never red), with a green "Received" label for income. */
+@Composable
+private fun AmountText(paise: Long, kind: String) {
+    CoveText(rupees(paise), style = CoveType.Body)
+    if (kind == "received") CoveText("Received", style = MoneyType.Small, color = Cove.colors.saved)
 }
 
 @Composable
