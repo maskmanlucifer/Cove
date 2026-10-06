@@ -16,6 +16,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -43,10 +46,10 @@ fun DatePanel(selected: LocalDate, onPick: (LocalDate) -> Unit) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(Modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically) {
             CoveText(month.format(monthTitle), Modifier.weight(1f), style = CoveType.BodyMedium)
-            Box(Modifier.size(44.dp).pressable({ month = month.minusMonths(1) }), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(44.dp).pressable({ month = month.minusMonths(1) }, role = Role.Button).semantics { contentDescription = "Previous month" }, contentAlignment = Alignment.Center) {
                 CoveIcon(CoveIcons.ChevronLeft, c.ink, size = 20.dp)
             }
-            Box(Modifier.size(44.dp).pressable({ month = month.plusMonths(1) }), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(44.dp).pressable({ month = month.plusMonths(1) }, role = Role.Button).semantics { contentDescription = "Next month" }, contentAlignment = Alignment.Center) {
                 CoveIcon(CoveIcons.ChevronRight, c.ink, size = 20.dp)
             }
         }
@@ -122,13 +125,13 @@ fun TimePanel(minutes: Int, onChange: (Int) -> Unit) {
 private fun Stepper(value: String, onUp: () -> Unit, onDown: () -> Unit) {
     val c = Cove.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(56.dp, 44.dp).pressable(onUp), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(56.dp, 44.dp).pressable(onUp, role = Role.Button).semantics { contentDescription = "Increase" }, contentAlignment = Alignment.Center) {
             CoveIcon(PlanIcons.ChevronUp, c.muted, size = 24.dp)
         }
         Box(Modifier.width(72.dp).height(56.dp), contentAlignment = Alignment.Center) {
             CoveText(value, style = CoveType.Hero)
         }
-        Box(Modifier.size(56.dp, 44.dp).pressable(onDown), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(56.dp, 44.dp).pressable(onDown, role = Role.Button).semantics { contentDescription = "Decrease" }, contentAlignment = Alignment.Center) {
             CoveIcon(CoveIcons.ChevronDown, c.muted, size = 24.dp)
         }
     }

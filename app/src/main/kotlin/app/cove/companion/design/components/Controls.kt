@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import app.cove.companion.design.Cove
 import app.cove.companion.design.CoveIcon
 import app.cove.companion.design.CoveIcons
+import app.cove.companion.design.LocalReduceMotion
 import app.cove.companion.design.CoveShapes
 import app.cove.companion.design.CoveType
 
@@ -45,7 +46,7 @@ import app.cove.companion.design.CoveType
 @Composable
 fun CheckCircle(checked: Boolean, onToggle: (() -> Unit)?, modifier: Modifier = Modifier, size: Int = 22, label: String? = null) {
     val c = Cove.colors
-    val bg by animateColorAsState(if (checked) c.ink else Color.Transparent, tween(200), label = "check")
+    val bg by animateColorAsState(if (checked) c.ink else Color.Transparent, tween(if (LocalReduceMotion.current) 0 else 200), label = "check")
     Box(
         modifier
             .size(size.dp)
@@ -71,8 +72,9 @@ fun CheckCircle(checked: Boolean, onToggle: (() -> Unit)?, modifier: Modifier = 
 @Composable
 fun CoveSwitch(checked: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier = Modifier, label: String? = null, enabled: Boolean = true) {
     val c = Cove.colors
-    val x by animateDpAsState(if (checked) 21.dp else 3.dp, tween(200), label = "thumb")
-    val track by animateColorAsState(if (checked) c.ink else c.switchOff, tween(200), label = "track")
+    val ms = if (LocalReduceMotion.current) 0 else 200
+    val x by animateDpAsState(if (checked) 21.dp else 3.dp, tween(ms), label = "thumb")
+    val track by animateColorAsState(if (checked) c.ink else c.switchOff, tween(ms), label = "track")
     Box(
         modifier
             .size(46.dp, 28.dp)

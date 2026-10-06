@@ -18,6 +18,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
@@ -94,7 +97,7 @@ fun TodosTab(groups: List<CategoryGroup>, now: Long, drag: TodoDragState, action
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
             Row(
-                Modifier.height(44.dp).pressable(actions.editCategories).padding(horizontal = 16.dp),
+                Modifier.heightIn(min = 44.dp).pressable(actions.editCategories, role = Role.Button).padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) { CoveText("Edit categories", style = CoveType.Button.copy(fontWeight = FontWeight.Normal), color = Cove.colors.muted) }
         }
@@ -116,12 +119,13 @@ private fun CollapsedCard(group: CategoryGroup, drag: TodoDragState, onClick: ()
             .heightIn(min = 60.dp)
             .background(c.card, shape)
             .let { if (hovered) it.border(1.5.dp, c.ink, shape) else it }
-            .pressable(onClick)
-            .padding(horizontal = 20.dp),
+            .pressable(onClick, onClickLabel = "Expand", role = Role.Button)
+            .semantics(mergeDescendants = true) {}
+            .padding(horizontal = 20.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        CoveText(group.category.name, Modifier.weight(1f), style = CoveType.BodyMedium)
+        CoveText(group.category.name, Modifier.weight(1f), style = CoveType.BodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
         CoveText(if (dragging) "Drop here" else countText(group), style = CoveType.Meta, color = c.muted)
     }
 }
@@ -162,8 +166,9 @@ private fun ExpandedCard(
         Row(
             Modifier
                 .fillMaxWidth()
-                .let { if (empty) it else it.height(56.dp).padding(top = 18.dp) }
-                .pressable(onCollapse)
+                .let { if (empty) it else it.heightIn(min = 56.dp).padding(top = 18.dp) }
+                .pressable(onCollapse, onClickLabel = "Collapse", role = Role.Button)
+                .semantics(mergeDescendants = true) {}
                 .padding(horizontal = 20.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -215,7 +220,7 @@ private val InertDrag = TodoDragState()
 private fun FooterRow(text: String, open: Boolean, onClick: () -> Unit) {
     val c = Cove.colors
     Row(
-        Modifier.fillMaxWidth().height(44.dp).pressable(onClick).padding(horizontal = 20.dp),
+        Modifier.fillMaxWidth().heightIn(min = 44.dp).pressable(onClick, role = Role.Button).padding(horizontal = 20.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
@@ -242,7 +247,7 @@ private fun AddRow(
         Modifier
             .fillMaxWidth()
             .heightIn(min = if (divider) 52.dp else 48.dp)
-            .let { if (adding) it else it.pressable(onStart) }
+            .let { if (adding) it else it.pressable(onStart, role = Role.Button) }
             .padding(horizontal = 20.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -251,7 +256,7 @@ private fun AddRow(
         if (adding) {
             InlineField(text, onText, "Add to $name", onCommit, Modifier.weight(1f), style, onFocusLost = onStop)
         } else {
-            CoveText("Add to $name", style = style, color = c.tail)
+            CoveText("Add to $name", style = style, color = c.muted)
         }
     }
 }

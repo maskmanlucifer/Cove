@@ -11,6 +11,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -35,6 +38,7 @@ fun AmountKeypad(onKey: (Char) -> Unit, onBack: () -> Unit, onClear: () -> Unit,
                         Modifier
                             .weight(1f)
                             .height(56.dp)
+                            .semantics { if (ch == '⌫') contentDescription = "Backspace" else if (ch == '.') contentDescription = "Decimal point" }
                             .combinedClickable(
                                 interactionSource = null,
                                 indication = null,

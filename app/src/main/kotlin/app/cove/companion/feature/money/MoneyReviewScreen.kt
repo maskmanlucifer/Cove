@@ -20,6 +20,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import app.cove.companion.core.rupeesSpoken
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.cove.companion.core.appViewModel
@@ -111,7 +114,7 @@ private fun ReviewItem(row: ReviewRow, categories: List<ExpenseCategoryEntity>, 
                 CoveText(e.note.ifBlank { "No note" }, style = CoveType.Body)
                 CoveText(MoneyMath.dayLabel(e.spentAt.toLocalDate(), today), style = MoneyType.Small, color = c.muted)
             }
-            CoveText(rupees(e.amountPaise), style = CoveType.Body)
+            CoveText(rupees(e.amountPaise), Modifier.semantics { contentDescription = rupeesSpoken(e.amountPaise) }, style = CoveType.Body)
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ChipButton(target?.name ?: "Pick a category", selected = target != null) { picking = !picking }

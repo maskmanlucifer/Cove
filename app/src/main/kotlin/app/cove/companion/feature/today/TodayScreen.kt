@@ -35,6 +35,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import app.cove.companion.core.rupeesSpoken
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalContext
@@ -157,7 +160,7 @@ fun TodayScreen(nav: Nav) {
             }
         } else {
             Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-                Stat("Spent today") { CoveText(rupees(state.spentTodayPaise), style = CoveType.Value) }
+                Stat("Spent today") { CoveText(rupees(state.spentTodayPaise), Modifier.semantics { contentDescription = rupeesSpoken(state.spentTodayPaise) }, style = CoveType.Value) }
                 Stat("Habits") {
                     CoveText("${state.habitsDone}", " of ${state.habitsTotal}", style = CoveType.Value)
                 }

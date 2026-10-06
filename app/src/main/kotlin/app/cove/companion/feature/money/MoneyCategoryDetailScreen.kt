@@ -17,6 +17,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import app.cove.companion.core.rupeesSpoken
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -80,7 +83,7 @@ fun MoneyCategoryDetailScreen(id: String, nav: Nav) {
                                             CoveText(e.note.ifBlank { cat.name }, style = CoveType.Body)
                                             CoveText(MoneyMath.methodLine(e), style = MoneyType.Small, color = c.muted)
                                         }
-                                        CoveText((if (e.kind == "received") "+" else "") + rupees(e.amountPaise), style = CoveType.Body)
+                                        CoveText((if (e.kind == "received") "+" else "") + rupees(e.amountPaise), Modifier.semantics { contentDescription = (if (e.kind == "received") "received " else "") + rupeesSpoken(e.amountPaise) }, style = CoveType.Body)
                                     }
                                 }
                             }

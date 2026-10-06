@@ -21,6 +21,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -60,7 +63,7 @@ fun PhotoStrip(photos: List<JournalMediaEntity>, onRemove: (JournalMediaEntity) 
                 }
                 Box(
                     Modifier.align(Alignment.TopEnd).padding(6.dp).size(24.dp)
-                        .background(Cove.colors.scrim, CoveShapes.Circle).pressable({ onRemove(photo) }),
+                        .background(Cove.colors.scrim, CoveShapes.Circle).pressable({ onRemove(photo) }, role = Role.Button).semantics { contentDescription = "Remove photo" },
                     contentAlignment = Alignment.Center,
                 ) { CoveIcon(CoveIcons.Close, Color.White, size = 12.dp) }
             }
@@ -89,12 +92,12 @@ fun VoiceRow(note: JournalMediaEntity, playback: PlaybackState, onToggle: () -> 
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Box(Modifier.size(36.dp).background(c.ink, CoveShapes.Circle).pressable(onToggle), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(36.dp).background(c.ink, CoveShapes.Circle).pressable(onToggle, role = Role.Button).semantics { contentDescription = if (playing) "Pause voice note" else "Play voice note" }, contentAlignment = Alignment.Center) {
             CoveIcon(if (playing) CoveIcons.Pause else CoveIcons.Play, c.onInk, size = 16.dp)
         }
         CoveText(hint ?: "Voice note", Modifier.weight(1f), style = CoveType.Body.copy(fontSize = 16.sp), color = if (hint != null) c.muted else c.ink)
         CoveText(formatDuration(if (playing) playback.positionMs else note.durationMs ?: 0), style = CoveType.Meta, color = c.muted)
-        Box(Modifier.size(44.dp).pressable(onRemove), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(44.dp).pressable(onRemove, role = Role.Button).semantics { contentDescription = "Remove voice note" }, contentAlignment = Alignment.Center) {
             CoveIcon(CoveIcons.Close, c.tail, size = 14.dp)
         }
     }

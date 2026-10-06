@@ -20,6 +20,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -49,7 +52,7 @@ fun ConnectScreen(nav: Nav) {
     CoveScreen {
         Column(Modifier.fillMaxSize().coveTopInset()) {
             Box(Modifier.padding(horizontal = 16.dp).heightIn(min = 56.dp), contentAlignment = Alignment.CenterStart) {
-                Box(Modifier.size(44.dp).pressable(nav.back), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(44.dp).pressable(nav.back, role = Role.Button).semantics { contentDescription = "Back" }, contentAlignment = Alignment.Center) {
                     CoveIcon(CoveIcons.ChevronLeft, Cove.colors.muted, size = 22.dp)
                 }
             }

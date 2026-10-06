@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import app.cove.companion.core.rupeesSpoken
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.cove.companion.core.rupees
@@ -65,7 +68,7 @@ fun ExpenseDraftCard(
         draft.quote?.let { CoveText("“$it”", style = MoneyType.Quote, color = c.muted) }
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             val figure = rupees(draft.amountPaise, decimals = true)
-            CoveText(figure.substringBefore('.'), "." + figure.substringAfter('.'), style = MoneyType.Big)
+            CoveText(figure.substringBefore('.'), "." + figure.substringAfter('.'), Modifier.semantics { contentDescription = rupeesSpoken(draft.amountPaise) }, style = MoneyType.Big)
             CoveText(draft.title, style = CoveType.Body)
         }
         RowsCard {
