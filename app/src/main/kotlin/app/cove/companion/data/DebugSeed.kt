@@ -33,7 +33,7 @@ import java.time.temporal.TemporalAdjusters
 object DebugSeed {
     suspend fun load(c: AppContainer, dark: Boolean, evening: Boolean, plan: String? = null, moneyLogged: Boolean = false) {
         c.settings.update {
-            it.copy(displayName = "Maya", onboarded = true, theme = if (dark) "dark" else "light", wakeMinutes = 6 * 60 + 30)
+            it.copy(displayName = "Maya", onboarded = true, theme = if (dark) "dark" else "light", wakeMinutes = 6 * 60 + 30, spokenReplies = false)
         }
         seedBrief(c)
         if (c.database.todos().categoryCount() > 0) return

@@ -67,18 +67,23 @@ fun MeScreen(nav: Nav) {
         Header(settings.displayName) { sheet = MeSheet.Name }
         conflictTitle?.let { ConflictBanner(it) { nav.go(Routes.SyncConflict) } }
         SettingsGroup("Day") {
-            SettingsRow("Wake-up time", value = clockLabel(settings.wakeMinutes), onClick = { sheet = MeSheet.Wake })
+            SettingsRow("Alarms", value = alarmSummary(alarms.map { it.minutes }), onClick = { nav.go(Routes.Alarms) })
             RowDivider()
-            SettingsRow("Morning brief", checked = settings.briefOn, onCheck = { v -> vm.update { it.copy(briefOn = v) } }, onClick = { nav.go(Routes.Brief) })
+            SettingsRow("Morning brief", value = onOff(settings.briefOn), onClick = { sheet = MeSheet.Brief })
             RowDivider()
             SettingsRow("Nudges", value = nudgeLabel(settings.nudgeMode), onClick = { sheet = MeSheet.Nudges })
         }
         SettingsGroup("Calm") {
-            SettingsRow("One-thing mode", checked = settings.oneThingMode, onCheck = { v -> vm.update { it.copy(oneThingMode = v) } })
+            SettingsRow("One-thing mode", value = onOff(settings.oneThingMode), onClick = { sheet = MeSheet.OneThing })
             RowDivider()
-            SettingsRow("Spoken replies", checked = settings.spokenReplies, onCheck = { v -> vm.update { it.copy(spokenReplies = v) } })
+            SettingsRow("Spoken replies", value = onOff(settings.spokenReplies), onClick = { sheet = MeSheet.Spoken })
             RowDivider()
             SettingsRow("Reduce motion", value = settings.reduceMotion.replaceFirstChar { it.uppercase() }, onClick = { sheet = MeSheet.Motion })
+        }
+        SettingsGroup("More") {
+            SettingsRow("Look and text size", value = lookSummary(settings.theme, settings.textScale), onClick = { sheet = MeSheet.Look })
+            RowDivider()
+            SettingsRow("Privacy and data", value = "On this phone", onClick = { sheet = MeSheet.Privacy })
         }
         SettingsGroup("Photos and backup") {
             SettingsRow("Photo quality", value = PhotoQuality.label(settings.photoQuality), onClick = { vm.resetBackup(); sheet = MeSheet.PhotoQuality })
@@ -104,14 +109,10 @@ fun MeScreen(nav: Nav) {
             onLockAfter = { sheet = MeSheet.LockAfter },
             onHideInRecents = { v -> vm.update { it.copy(hideInRecents = v) } },
         )
-        SettingsGroup("More") {
-            SettingsRow("Look and text size", value = lookSummary(settings.theme, settings.textScale), onClick = { sheet = MeSheet.Look })
-            RowDivider()
-            SettingsRow("Alarms", value = alarmSummary(alarms.map { it.minutes }), onClick = { nav.go(Routes.Alarms) })
+        SettingsGroup("Also") {
+            SettingsRow("Wake-up time", value = clockLabel(settings.wakeMinutes), onClick = { sheet = MeSheet.Wake })
             RowDivider()
             SettingsRow("Habits", onClick = { nav.go(Routes.Habits) })
-            RowDivider()
-            SettingsRow("Privacy and data", value = "Your own space", onClick = { sheet = MeSheet.Privacy })
             RowDivider()
             SettingsRow("Sync", value = sync.label, onClick = when {
                 sync.canSignIn -> ({ SignIn.launcher.signIn(context) {} })
@@ -123,7 +124,7 @@ fun MeScreen(nav: Nav) {
             SettingsRow("Version", value = BuildConfig.VERSION_NAME)
         }
     }
-    MeSheets(sheet, settings, vm) { sheet = null }
+    MeSheets(sheet, settings, vm, briefPlay = { nav.go(Routes.Brief) }) { sheet = null }
 }
 
 @Composable
@@ -144,7 +145,7 @@ private fun Header(name: String, onEdit: () -> Unit) {
         Column {
             if (name.isBlank()) CoveText("Add your name", style = CoveType.Section.copy(lineHeight = 32.sp), color = c.placeholder)
             else CoveText(name, style = CoveType.Section.copy(lineHeight = 32.sp))
-            CoveText("Everything stays in your own space", style = CoveType.Meta, color = c.muted)
+            CoveText("Everything stored on this phone", style = CoveType.Meta, color = c.muted)
         }
     }
 }

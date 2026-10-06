@@ -7,6 +7,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.BaselineShift
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
@@ -16,7 +17,8 @@ import app.cove.companion.design.components.rememberLineBox
 
 /**
  * A clock time such as "6:30 am" whose am/pm suffix is smaller and greyed, as in the alarm frames.
- * [gap] is the extra space before the suffix in sp-equivalent width.
+ * [gap] is the extra space before the suffix in sp-equivalent width; [suffixShift] raises it by that fraction of the line's font size
+ * (the drum's design centres the suffix in the row instead of sitting on the baseline).
  */
 @Composable
 fun TimeLabel(
@@ -27,12 +29,13 @@ fun TimeLabel(
     color: Color = Cove.colors.ink,
     suffixColor: Color = Cove.colors.tail,
     gap: TextUnit = 0.sp,
+    suffixShift: Float = 0f,
 ) {
     val t = clockText(minutes)
     val text = buildAnnotatedString {
         append(t.digits)
         withStyle(SpanStyle(fontSize = if (gap.value > 0) gap else suffixSize, letterSpacing = 0.sp)) { append(" ") }
-        withStyle(SpanStyle(fontSize = suffixSize, letterSpacing = 0.sp, color = suffixColor)) { append(t.suffix.trim()) }
+        withStyle(SpanStyle(fontSize = suffixSize, letterSpacing = 0.sp, color = suffixColor, baselineShift = BaselineShift(suffixShift))) { append(t.suffix.trim()) }
     }
     val box = rememberLineBox(style)
     BasicText(

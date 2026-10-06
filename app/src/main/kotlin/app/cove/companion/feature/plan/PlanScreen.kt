@@ -109,15 +109,15 @@ fun PlanScreen(nav: Nav) {
 @Composable
 private fun AddButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     val c = Cove.colors
-    val shadow = if (c.isDark) Color(0x66000000) else Color(0x33141420)
+    val shadow = if (c.isDark) Color(0x66000000) else Color(0x1A141420)
     Box(
         modifier
-            .size(48.dp)
-            .shadow(16.dp, CoveShapes.Circle, ambientColor = shadow, spotColor = shadow)
-            .background(c.ink, CoveShapes.Circle)
+            .size(44.dp)
+            .shadow(8.dp, CoveShapes.Circle, ambientColor = shadow, spotColor = shadow)
+            .background(c.card, CoveShapes.Circle)
             .pressable(onClick),
         contentAlignment = Alignment.Center,
-    ) { CoveIcon(PlanIcons.AddSmall, c.onInk, size = 22.dp) }
+    ) { CoveIcon(PlanIcons.AddSmall, c.muted, size = 20.dp) }
 }
 
 @Composable
