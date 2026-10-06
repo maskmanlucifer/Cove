@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -108,8 +109,8 @@ fun JournalEditScreen(id: String, nav: Nav) {
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 CoveText(s.day.longLabel() + (s.mood?.let { " · $it" } ?: ""), style = CoveType.Meta, color = c.muted)
-                EntryField(vm.title, "Title", CoveType.Title, titleFocus, singleLine = true, onNext = { bodyFocus.requestFocus() })
-                EntryField(vm.body, "Write whatever is on your mind.", BodyStyle, bodyFocus, bodyColor(), Modifier.heightIn(min = 160.dp))
+                EntryField(vm.title, "Title", CoveType.Title, titleFocus, Modifier.offset(y = (-2).dp), singleLine = true, onNext = { bodyFocus.requestFocus() })
+                EntryField(vm.body, "Write whatever is on your mind.", BodyStyle, bodyFocus, Modifier.offset(y = (-3).dp).heightIn(min = 160.dp), bodyColor())
                 val photos = s.media.filter { it.kind == "photo" }
                 if (photos.isNotEmpty()) PhotoStrip(photos) { vm.removeMedia(it) }
                 s.media.filter { it.kind == "voice" }.forEach { note ->
@@ -194,8 +195,8 @@ private fun EntryField(
     placeholder: String,
     style: TextStyle,
     focus: FocusRequester,
-    color: Color = Cove.colors.ink,
     modifier: Modifier = Modifier,
+    color: Color = Cove.colors.ink,
     singleLine: Boolean = false,
     onNext: () -> Unit = {},
 ) {
