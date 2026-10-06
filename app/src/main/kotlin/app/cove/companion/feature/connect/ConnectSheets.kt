@@ -166,6 +166,7 @@ private fun GeminiSheet(ui: ConnectUi, vm: ConnectViewModel, onDismiss: () -> Un
         "Gemini", "Helps with trickier voice commands and writes the lines of your morning brief. Only short, non-journal text is ever sent.",
         onDismiss,
     ) {
+        ui.ai?.let { AiStatusLines(it) }
         Steps(
             listOf(
                 "Open Google AI Studio and sign in.",

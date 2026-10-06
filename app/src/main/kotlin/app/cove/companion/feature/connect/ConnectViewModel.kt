@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.cove.companion.AppContainer
+import app.cove.companion.ai.AiStatus
 import app.cove.companion.data.auth.AuthState
 import app.cove.companion.data.config.ConnectionTester
 import app.cove.companion.data.config.CredentialField
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -32,6 +34,7 @@ data class ConnectUi(
     val driveConnected: Boolean = false,
     val tests: Map<ServiceId, TestResult> = emptyMap(),
     val busy: ServiceId? = null,
+    val ai: AiStatus? = null,
 ) {
     /** Status of [service]. */
     fun status(service: ServiceId) = statusOf(service, ConnectFacts(credentials, signedIn, driveConnected, tests))
@@ -43,14 +46,17 @@ class ConnectViewModel(private val c: AppContainer) : ViewModel() {
     private val busy = MutableStateFlow<ServiceId?>(null)
     private val tester by lazy { ConnectionTester(HttpClient(OkHttp), c.ai) }
 
+    /** What AI can do on this phone, refreshed when the credentials change. */
+    private val aiStatus = c.credentials.map { runCatching { c.ai.status() }.getOrNull() }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     private val live = c.cloudChanges().flatMapLatest { cloud ->
         combine(cloud.auth.state, cloud.drive.connected) { auth, drive -> auth to drive }
     }
 
     /** Current state for the screen. */
-    val ui: StateFlow<ConnectUi> = combine(c.credentials, live, tests, busy) { creds, (auth, drive), results, working ->
-        ConnectUi(creds, auth is AuthState.SignedIn, (auth as? AuthState.SignedIn)?.email, drive, results, working)
+    val ui: StateFlow<ConnectUi> = combine(c.credentials, live, tests, busy, aiStatus) { creds, (auth, drive), results, working, ai ->
+        ConnectUi(creds, auth is AuthState.SignedIn, (auth as? AuthState.SignedIn)?.email, drive, results, working, ai)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ConnectUi(c.credentials.value))
 
     /**

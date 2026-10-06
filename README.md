@@ -12,7 +12,8 @@ All code is in `app/src/main/kotlin/app/cove/companion/`:
 | `design/` | Colour tokens, Geist type scale, shapes, icons, `CoveTheme`, shared components (`CoveText`, `CoveSheet`, dock, orb) |
 | `navigation/` | Routes, nav host, tab host |
 | `security/` | SQLCipher open helper, Keystore-wrapped key, plaintext-to-encrypted migration |
-| `data/` | Room (`local/`), repositories, sync (Supabase over Ktor), auth, Drive, media, backup, AI gateway, search |
+| `ai/` | The AI layer: `AiService` facade, `AiRouter` + `AiPolicy`, providers (on-device, cloud, rules), prompts, schemas. See `docs/AI.md` |
+| `data/` | Room (`local/`), repositories, sync (Supabase over Ktor), auth, Drive, media, backup, journal search |
 | `feature/` | One package per screen area: onboarding, today, plan, habits, money, journal, me, alarms, voice, brief, suggest, nudges, widgets, security, sync |
 
 More detail: `PLAN.md` section 4. Backend: `supabase/` (`setup.sql`, migrations, optional `ai-gateway` Edge Function).

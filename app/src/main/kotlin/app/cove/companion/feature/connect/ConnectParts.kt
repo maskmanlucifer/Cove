@@ -33,6 +33,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.cove.companion.ai.AiStatus
 import app.cove.companion.data.config.TestResult
 import app.cove.companion.design.Cove
 import app.cove.companion.design.CoveShapes
@@ -153,5 +154,21 @@ fun ResultLine(result: TestResult?, busy: Boolean) {
             Box(Modifier.padding(top = 6.dp).size(8.dp).clip(CoveShapes.Circle).background(if (result.ok) c.saved else c.alert))
             CoveText(result.message, Modifier.weight(1f), style = CoveType.Meta.copy(lineHeight = 20.sp, fontWeight = FontWeight.Normal))
         }
+    }
+}
+
+/** Where AI runs for this phone: "On this phone" (Gemini Nano) and "Cloud" (the key above), from [AiService.status]. */
+@Composable
+fun AiStatusLines(status: AiStatus) {
+    AiStatusLine("On this phone", status.onDeviceReady, if (status.onDeviceReady) "AI available" else status.onDevice.replaceFirstChar(Char::uppercase))
+    AiStatusLine("Cloud", status.cloudReady, if (status.cloudReady) "Key set" else status.cloud.replaceFirstChar(Char::uppercase))
+}
+
+@Composable
+private fun AiStatusLine(label: String, ready: Boolean, value: String) {
+    val c = Cove.colors
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Box(Modifier.padding(top = 6.dp).size(8.dp).clip(CoveShapes.Circle).background(if (ready) c.saved else c.tail))
+        CoveText("$label: $value", Modifier.weight(1f), style = CoveType.Meta.copy(lineHeight = 20.sp, fontWeight = FontWeight.Normal))
     }
 }

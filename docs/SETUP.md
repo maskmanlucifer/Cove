@@ -7,7 +7,7 @@ Cove runs fully on its own with nothing configured: alarms, to-dos, habits, mone
 | Supabase | Sync between devices | Free Supabase project |
 | Google sign-in | Proves the data is yours | Google Cloud project (free) and Supabase |
 | Google Drive | Photos, voice notes, monthly backup | Google Cloud project, sign-in |
-| Gemini | Trickier voice commands, brief wording | Google AI Studio API key |
+| Gemini | Trickier voice commands, brief wording (see `docs/AI.md`) | Google AI Studio API key |
 | Weather (Open-Meteo) | Brief weather | Nothing |
 
 Shortcut: once you have the values, `tools/make-setup-code.py` turns them into one `cove-setup:1:...` line. In the app tap **Connect services > Paste setup code** to fill everything at once. Treat the code like a password.

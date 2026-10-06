@@ -223,6 +223,8 @@ Postgres: index `(user_id, updated_at)` on every synced table (sync cursor); RLS
 | Bank SMS → expense (optional) | `READ_SMS` + local regex | Free | Sideloaded app only (Play restricts SMS permission). On-device, never uploaded |
 | Auth | Supabase Auth + Google Sign-In | Free | |
 
+> **As built:** feature code calls one facade, `AiService` (`ai/`), and never an ML Kit or Gemini class. `AiRouter` walks an ordered provider list per capability and `AiPolicy` holds the rules below in one place (journal never to cloud, Nano only in the foreground, cloud only online with a key). Details, provider order and how to add a provider: `docs/AI.md`.
+
 ### AI routing rule (`AiRouter`)
 ```
 if content is journal (text, photo, voice note) → on-device only: Nano / on-device speech / on-device embedder

@@ -21,6 +21,12 @@ data class AiStatus(val capabilities: List<CapabilityStatus>) {
     /** Language-model providers (intent parsing stands for all text capabilities) at [location]. */
     private fun states(location: Location) = of(Capability.Intent).providers.filter { it.ref.location == location }
 
+    /** True when a language model on the phone could answer now (app state aside). */
+    val onDeviceReady: Boolean get() = states(Location.Native).any { it.availability == Availability.Available }
+
+    /** True when a cloud language model is configured. */
+    val cloudReady: Boolean get() = states(Location.Cloud).any { it.availability == Availability.Available }
+
     /** "available", or the first reason the on-device model cannot run, e.g. "Gemini Nano unavailable on this device". */
     val onDevice: String get() = summarize(states(Location.Native), "available")
 
