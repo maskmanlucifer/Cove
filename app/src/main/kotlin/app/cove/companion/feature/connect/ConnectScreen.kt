@@ -20,6 +20,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
@@ -61,7 +62,7 @@ fun ConnectScreen(nav: Nav) {
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 Column(Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    CoveText("Connect services", style = CoveType.Title)
+                    CoveText("Connect services", style = CoveType.Title, modifier = Modifier.semantics { heading() })
                     CoveText(
                         "Cove works fully on its own. Add your own accounts to sync, back up photos and understand trickier commands. " +
                             "Everything you paste is stored encrypted on this phone only.",
@@ -91,7 +92,7 @@ fun ConnectScreen(nav: Nav) {
 private fun ServiceRow(service: ServiceId, status: ServiceStatus, onClick: () -> Unit) {
     val c = Cove.colors
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 64.dp).pressable(onClick),
+        Modifier.fillMaxWidth().heightIn(min = 64.dp).pressable(onClick, role = Role.Button).semantics(mergeDescendants = true) {}.padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -101,7 +102,7 @@ private fun ServiceRow(service: ServiceId, status: ServiceStatus, onClick: () ->
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Box(Modifier.size(8.dp).clip(CoveShapes.Circle).background(dotColor(status)))
-            CoveText(status.label, style = CoveType.Meta, color = if (status == ServiceStatus.NeedsAttention) c.alert else c.muted)
+            CoveText(status.label, style = CoveType.Meta, color = if (status == ServiceStatus.NeedsAttention) c.alert else c.muted, maxLines = 2)
             CoveIcon(CoveIcons.ChevronRight, c.tail, size = 14.dp)
         }
     }

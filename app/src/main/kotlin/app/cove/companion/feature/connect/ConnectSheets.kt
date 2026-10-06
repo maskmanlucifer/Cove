@@ -3,20 +3,19 @@ package app.cove.companion.feature.connect
 import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import app.cove.companion.data.config.CredentialField
@@ -48,13 +47,10 @@ fun ConnectSheets(sheet: ConnectSheet?, ui: ConnectUi, vm: ConnectViewModel, onD
 
 @Composable
 internal fun ScrollingSheetContent(title: String, purpose: String, onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
-    val max = (LocalConfiguration.current.screenHeightDp * 0.78f).dp
     PlanSheet(onDismiss, gap = 16) {
-        Column(Modifier.heightIn(max = max).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            SheetHeading(title)
-            SheetCaption(purpose)
-            content()
-        }
+        SheetHeading(title)
+        SheetCaption(purpose)
+        content()
     }
 }
 
@@ -198,6 +194,10 @@ private fun SaveAndTest(
     onNote: (String?) -> Unit,
     context: Context,
 ) {
+    val requester = remember { BringIntoViewRequester() }
+    val result = ui.tests[service]
+    LaunchedEffect(result, ui.busy) { if (result != null || ui.busy == service) requester.bringIntoView() }
+    Box(Modifier.bringIntoViewRequester(requester)) { ResultLine(result, ui.busy == service) }
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
         PillButton(
             "Save", { val e = vm.save(drafts); onErrors(e); onNote(if (e.isEmpty()) "Saved." else null) },
@@ -208,5 +208,4 @@ private fun SaveAndTest(
             Modifier.weight(1f), height = 48.dp,
         )
     }
-    ResultLine(ui.tests[service], ui.busy == service)
 }

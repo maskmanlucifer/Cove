@@ -6,6 +6,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -97,7 +100,10 @@ fun CoveSwitch(checked: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier
     }
 }
 
-/** Two-to-four way segmented control on a tinted track. */
+/**
+ * Two-to-four way segmented control on a tinted track. When the labels cannot fit in one row
+ * (large text sizes) the options stack as full-width rows instead of breaking words.
+ */
 @Composable
 fun Segmented(
     options: List<String>,
@@ -109,18 +115,21 @@ fun Segmented(
 ) {
     val c = Cove.colors
     val base = if (height < 44.dp) CoveType.Meta else CoveType.Button
-    Row(
-        modifier
-            .height(height)
-            .background(c.wellStrong, CoveShapes.Pill)
-            .padding(4.dp),
-    ) {
-        options.forEachIndexed { i, label ->
+    val measurer = rememberTextMeasurer()
+    BoxWithConstraints(modifier) {
+        val pad = with(LocalDensity.current) { 20.dp.toPx() }
+        val trackPad = with(LocalDensity.current) { 8.dp.toPx() }
+        val each = options.map { measurer.measure(it, base.copy(fontWeight = FontWeight.Medium)).size.width + pad.toInt() }
+        val needed = each.sum() + trackPad
+        val uneven = constraints.hasBoundedWidth && each.any { it > (constraints.maxWidth - trackPad) / options.size }
+        val stacked = constraints.hasBoundedWidth && needed > constraints.maxWidth
+        val shape = if (stacked) RoundedCornerShape(24.dp) else CoveShapes.Pill
+        val track = Modifier.then(if (stacked || fillWidth) Modifier.fillMaxWidth() else Modifier)
+        fun Modifier.tinted() = this.background(c.wellStrong, shape).padding(4.dp)
+        val item: @Composable (Int, String, Modifier) -> Unit = { i, label, m ->
             val on = i == selected
             Box(
-                Modifier
-                    .let { if (fillWidth) it.weight(1f) else it }
-                    .fillMaxHeight()
+                m
                     .clip(CoveShapes.Pill)
                     .background(if (on) c.card else Color.Transparent)
                     .pressable({ onSelect(i) }, role = Role.RadioButton)
@@ -132,9 +141,20 @@ fun Segmented(
                     label,
                     style = base.copy(fontWeight = if (on) FontWeight.Medium else FontWeight.Normal),
                     color = if (on) c.ink else c.muted,
-                    maxLines = 1,
+                    maxLines = if (stacked) Int.MAX_VALUE else 1,
                     overflow = TextOverflow.Visible,
                 )
+            }
+        }
+        if (stacked) {
+            Column(track.tinted(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                options.forEachIndexed { i, label -> item(i, label, Modifier.fillMaxWidth().heightIn(min = height)) }
+            }
+        } else {
+            Row(track.height(height).tinted()) {
+                options.forEachIndexed { i, label ->
+                    item(i, label, Modifier.let { if (fillWidth) it.weight(if (uneven) each[i].toFloat() else 1f) else it }.fillMaxHeight())
+                }
             }
         }
     }
