@@ -44,6 +44,7 @@ Send with `adb shell am start -n app.cove.companion/.MainActivity <extras>`.
 | `--es setupCode cove-setup:1:...`, `--ez forgetCredentials true`, `--es sheet supabase\|google\|drive\|gemini\|code` (with `--es route connect`) | Fill or wipe stored credentials; open a Connect services sheet |
 | `--ez offline true` | Force the offline look |
 | `--es voiceState listening\|result\|partial\|saved\|micoff --es transcript "..." --ei voiceSeconds N` | Open the Voice screen in that state |
+| `--es voiceFail permission\|busy\|noservice\|network\|silence\|noactivity\|failover\|listen\|off` | Replace speech engines by scripted fakes to show each Voice guidance screen (`docs/VOICE_DEBUG.md`) |
 | `--ez trainingDone true`, `--ez trainingStart true`, `--ez trainingProgress true`, `--ei restLeft N`, `--ez noTraining true` | Training: today's finished session, start it, log sets, show a rest, show setup (see `docs/TRAINING.md`) |
 | `--ez fakeDrive true --ez driveRun true` | Folder-backed fake Drive with a pending photo; `driveRun` uploads and backs up |
 | `--ei alarm_in_min N` | Add a one-time test alarm N minutes from now |

@@ -23,13 +23,13 @@ fun TroubleView(s: VoiceState, guidance: Guidance, onAction: (FixAction) -> Unit
     Box(Modifier.fillMaxSize()) {
         ResultFrame(
             s,
-            headline = { BalancedText(guidance.head, guidance.tail, CoveType.Title) },
+            headline = { Box(Modifier.padding(end = 56.dp)) { BalancedText(guidance.head, guidance.tail, CoveType.Title) } },
             body = {},
             actions = {
                 Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
                     Hint(guidance.hint)
                     if (s.troubleCode != 0) Hint("Code ${s.troubleCode}: ${SpeechErrors.describe(s.troubleCode)}")
-                    ActionPair(guidance.primary.label, { onAction(guidance.primary) }, guidance.secondary.label, 148) { onAction(guidance.secondary) }
+                    ActionPair(guidance.primary.label, { onAction(guidance.primary) }, guidance.secondary.label, 124) { onAction(guidance.secondary) }
                 }
             },
         )
