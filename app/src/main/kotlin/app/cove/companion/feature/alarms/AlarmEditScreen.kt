@@ -122,7 +122,7 @@ private fun MainPage(alarm: AlarmEntity, vm: AlarmEditViewModel, close: () -> Un
     DaysRow(alarm.daysMask) { i -> vm.edit { it.copy(daysMask = AlarmDays.flip(it.daysMask, i)) } }
     Column {
         SheetRow("Label", alarm.label.ifBlank { "None" }, { open(Page.Label) })
-        SheetRow("Sound", alarm.sound, { open(Page.Sound) })
+        SheetRow("Sound and snooze", alarm.sound, { open(Page.Sound) })
         GentleRow(alarm.gentleRise) { on -> vm.edit { it.copy(gentleRise = on) } }
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -194,7 +194,7 @@ private fun LabelPage(alarm: AlarmEntity, vm: AlarmEditViewModel, back: () -> Un
 
 @Composable
 private fun SoundPage(alarm: AlarmEntity, vm: AlarmEditViewModel, back: () -> Unit) {
-    SubPageHeader("Sound", back)
+    SubPageHeader("Sound and snooze", back)
     OptionList(sounds, alarm.sound) { s -> vm.edit { it.copy(sound = s) } }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         CoveText("Snooze", style = CoveType.Meta, color = Cove.colors.muted)

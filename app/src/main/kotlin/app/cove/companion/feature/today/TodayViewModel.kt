@@ -24,6 +24,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -57,6 +59,8 @@ data class TodayState(
     val lateNight: Boolean = false,
     val remainingBeforeNoon: Boolean = false,
     val oneThingMode: Boolean = false,
+    /** Whether "How was today?" is offered right now. */
+    val askMood: Boolean = false,
 )
 
 private data class Aux(
@@ -66,6 +70,7 @@ private data class Aux(
     val newIds: Set<String>,
     val pinned: Map<String, Int>,
     val hiddenUntil: Long,
+    val answeredMood: java.time.LocalDate?,
 )
 
 /**
@@ -115,10 +120,10 @@ class TodayViewModel(private val c: AppContainer) : ViewModel() {
         c.plan.eventsOn(today),
         c.plan.alarms,
         c.todos.todos,
-        combine(c.money.expenses(dayStart, dayEnd), c.habits.habits, c.habits.logs(today, today), combine(c.voice.newTodos.ids, pinned) { n, p -> n to p }, hiddenFlow()) { e, h, l, np, hidden ->
-            Aux(e, h, l, np.first, np.second, hidden)
+        combine(c.money.expenses(dayStart, dayEnd), c.habits.habits, c.habits.logs(today, today), combine(c.voice.newTodos.ids, pinned) { n, p -> n to p }, combine(hiddenFlow(), c.moodMemory.answered, minuteTick()) { hidden, mood, _ -> hidden to mood }) { e, h, l, np, hm ->
+            Aux(e, h, l, np.first, np.second, hm.first, hm.second)
         },
-    ) { settings, events, alarms, todos, (expenses, habits, logs, newIds, pinnedRows, hiddenUntil) ->
+    ) { settings, events, alarms, todos, (expenses, habits, logs, newIds, pinnedRows, hiddenUntil, answeredMood) ->
         val now = c.clock.now().toLocalDateTime()
         val phase = dayPhase(now.hour)
         val nowMin = now.hour * 60 + now.minute
@@ -158,8 +163,9 @@ class TodayViewModel(private val c: AppContainer) : ViewModel() {
             openCount = picked.openCount,
             moreCount = picked.more,
             lateNight = now.hour < LATE_NIGHT_END_HOUR,
+            askMood = MoodPrompt.visible(now, answeredMood),
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TodayState())
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TodayState())
 
     /** Emits the hide deadline, then 0 once it has passed so the card reappears without a refresh. */
     private fun hiddenFlow(): Flow<Long> = c.nextCard.hiddenUntil.flatMapLatest { until ->
@@ -246,10 +252,21 @@ class TodayViewModel(private val c: AppContainer) : ViewModel() {
         c.voice.newTodos.markSeen(state.value.todos.filter { it.isNew }.map { it.id })
     }
 
+    /** Writes [mood] into the day's journal entry and hides the question for the rest of the day. */
     fun setMood(mood: String) {
+        val day = MoodPrompt.dayKey(c.clock.now().toLocalDateTime())
+        c.moodMemory.answer(day)
         viewModelScope.launch {
-            val entry = c.journal.newEntry().copy(mood = mood)
+            val entry = c.journal.newEntry(day).copy(mood = mood)
             c.journal.save(entry)
+        }
+    }
+
+    /** Ticks every minute so time-based bits (the night mood question) appear without other changes. */
+    private fun minuteTick(): Flow<Unit> = flow {
+        while (true) {
+            emit(Unit)
+            delay(60_000L)
         }
     }
 }

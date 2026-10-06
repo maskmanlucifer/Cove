@@ -1,11 +1,17 @@
 package app.cove.companion.navigation
 
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
-import androidx.compose.animation.Crossfade
+import androidx.compose.runtime.setValue
+import androidx.compose.animation.core.Animatable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.layout.fillMaxSize
+import app.cove.companion.design.LocalReduceMotion
+import app.cove.companion.design.ReducedMotionMillis
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import app.cove.companion.design.Cove
 import androidx.compose.ui.platform.LocalDensity
@@ -28,7 +34,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.cove.companion.design.components.CoveDock
 import app.cove.companion.design.components.CoveScreen
-import app.cove.companion.design.components.DockFloatBottom
 import app.cove.companion.design.components.Tab
 import app.cove.companion.feature.journal.JournalScreen
 import app.cove.companion.feature.me.MeScreen
@@ -39,15 +44,23 @@ import app.cove.companion.feature.voice.UndoToastHost
 
 private val DockFadeHeight = 112.dp
 
-/** The five dock destinations. Each tab screen draws its own content and leaves room for the dock. */
+/**
+ * Shows only the current tab (the others are not composed), keeps each tab's saved state (scroll, selections) in a
+ * [androidx.compose.runtime.saveable.SaveableStateHolder] so coming back does not reset it, and fades the new one in.
+ */
 @Composable
-fun MainScreen(nav: Nav) {
-    val container = LocalContext.current.container
-    var tab by rememberSaveable { mutableStateOf(Tab.entries.firstOrNull { it.name.equals(DebugLaunch.tab, true) } ?: Tab.Today) }
-    val oneThing by remember(container) { container.settings.settings.map { it.oneThingMode } }.collectAsState(false)
-    CoveScreen {
-        Crossfade(tab, animationSpec = tween(150), label = "tab") { current ->
-            when (current) {
+private fun TabHost(tab: Tab, nav: Nav) {
+    val holder = rememberSaveableStateHolder()
+    val reduce = LocalReduceMotion.current
+    val first = remember { booleanArrayOf(true) }
+    key(tab) {
+        val alpha = remember { Animatable(if (first[0]) 1f else 0f).also { first[0] = false } }
+        LaunchedEffect(Unit) {
+            alpha.animateTo(1f, tween(if (reduce) ReducedMotionMillis else NavMotion.TAB_MS, easing = NavMotion.Ease))
+        }
+        Box(Modifier.fillMaxSize().graphicsLayer { this.alpha = alpha.value }) {
+        holder.SaveableStateProvider(tab.name) {
+            when (tab) {
                 Tab.Today -> TodayScreen(nav)
                 Tab.Plan -> PlanScreen(nav)
                 Tab.Money -> MoneyScreen(nav)
@@ -55,6 +68,18 @@ fun MainScreen(nav: Nav) {
                 Tab.Me -> MeScreen(nav)
             }
         }
+        }
+    }
+}
+
+/** The five dock destinations. Each tab screen draws its own content and leaves room for the dock. */
+@Composable
+fun MainScreen(nav: Nav) {
+    val container = LocalContext.current.container
+    var tab by rememberSaveable { mutableStateOf(Tab.entries.firstOrNull { it.name.equals(DebugLaunch.tab, true) } ?: Tab.Today) }
+    val oneThing by remember(container) { container.settings.settings.map { it.oneThingMode } }.collectAsState(false)
+    CoveScreen {
+        TabHost(tab, nav)
         // Keeps scrolled content from running under the clock; invisible at rest because it matches the canvas.
         val topInset = with(LocalDensity.current) { WindowInsets.statusBars.getTop(this).toDp() }
         Box(
@@ -69,6 +94,6 @@ fun MainScreen(nav: Nav) {
             )
         }
         if (!(oneThing && tab == Tab.Today)) CoveDock(tab, onSelect = { tab = it }, onVoice = { nav.go(Routes.Voice) })
-        UndoToastHost(Modifier.align(Alignment.BottomCenter).padding(bottom = DockFloatBottom))
+        UndoToastHost(Modifier.align(Alignment.TopCenter))
     }
 }

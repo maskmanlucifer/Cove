@@ -1,5 +1,7 @@
 package app.cove.companion.feature.today
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -21,7 +23,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import app.cove.companion.container
 import app.cove.companion.data.local.entity.EventEntity
 import app.cove.companion.feature.plan.EventEditSheet
@@ -32,7 +33,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
@@ -57,7 +57,6 @@ import app.cove.companion.design.components.CoveCard
 import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.DockClearance
 import app.cove.companion.design.components.pressable
-import app.cove.companion.design.components.DockFloatBottom
 import app.cove.companion.design.components.PillButton
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.design.components.OfflineNotice
@@ -161,14 +160,12 @@ fun TodayScreen(nav: Nav) {
         if (!offline && suggestion == null && state.todos.isEmpty() && state.next == null) {
             CoveText("Add something in Plan, or just say it.", style = CoveType.Meta, color = c.muted)
         }
-        if (suggestion != null) {
-            CoveText("One suggestion at a time. Ignored ones disappear at noon.", style = CoveType.Meta, color = c.muted)
-        } else if (offline) {
+        if (offline) {
             CoveText(
                 "Voice, alarms and your journal work offline. Only weather and the brief’s one thing to read wait for a connection.",
                 style = CoveType.Meta.copy(lineHeight = 21.sp), color = c.muted,
             )
-        } else if (evening) {
+        } else if (state.askMood) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 CoveText("How was today?", style = CoveType.Meta, color = c.muted)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -179,14 +176,14 @@ fun TodayScreen(nav: Nav) {
     }
     val done by vm.completed.collectAsState()
     done?.let { d ->
-        PlanUndoBar("Done “${d.title}”", vm::undoComplete, Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = DockFloatBottom))
+        PlanUndoBar("Done “${d.title}”", vm::undoComplete, Modifier.align(Alignment.TopCenter))
     }
     undo?.let { gone ->
         LaunchedEffect(gone.id) {
             delay(6000)
             undo = null
         }
-        PlanUndoBar("Deleted “${gone.title}”", { vm.restoreEvent(gone); undo = null }, Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = DockFloatBottom))
+        PlanUndoBar("Deleted “${gone.title}”", { vm.restoreEvent(gone); undo = null }, Modifier.align(Alignment.TopCenter))
     }
     }
     editing?.let { event ->
@@ -200,7 +197,7 @@ fun TodayScreen(nav: Nav) {
     if (suggestion != null && sug.whyOpen) WhySheet(sug.detail, suggest)
 }
 
-/** What the Next card's buttons do: open the event editor, start the wind-down, or hide the card for a while. */
+/** What the Next card's buttons do: open the event editor ("Edit"), start the wind-down, or hide the card for a while. */
 private class NextActions(val move: (EventEntity) -> Unit, val startWindDown: () -> Unit, val later: () -> Unit)
 
 @Composable
@@ -229,7 +226,7 @@ private fun NextCard(next: NextItem, actions: NextActions, modifier: Modifier = 
                     val place = next.event?.place?.takeIf { it.isNotBlank() }
                     if (place != null) PillButton("Directions", { openDirections(context, place) })
                     CoveText(
-                        "Move",
+                        "Edit",
                         Modifier.heightIn(min = 44.dp).pressable({ next.event?.let(actions.move) }, role = Role.Button).padding(horizontal = 14.dp).wrapContentHeight(Alignment.CenterVertically),
                         style = CoveType.Button.copy(fontWeight = FontWeight.Normal),
                         color = c.muted,

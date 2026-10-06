@@ -50,7 +50,7 @@ fun MeSheets(sheet: MeSheet?, s: SettingsEntity, vm: MeViewModel, briefPlay: () 
         MeSheet.OneThing -> PlanSheet(onDismiss, gap = 16) {
             SheetHeading("One-thing mode")
             OnOffSegment(s.oneThingMode) { on -> vm.update { it.copy(oneThingMode = on, oneThingUntil = 0) } }
-            SheetCaption("Today shows only the next thing to do, nothing else.")
+            SheetCaption("Today shows only the next thing to do, so you can focus. Turn it off here any time.")
         }
         MeSheet.VoiceCheck -> app.cove.companion.feature.voice.VoiceCheckSheet(onDismiss)
         MeSheet.Spoken -> PlanSheet(onDismiss, gap = 16) {

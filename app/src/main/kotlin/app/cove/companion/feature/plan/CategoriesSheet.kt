@@ -38,7 +38,10 @@ import app.cove.companion.design.CoveIcons
 import app.cove.companion.design.CoveShapes
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.CoveText
+import app.cove.companion.design.components.ButtonKind
 import app.cove.companion.design.components.Hairline
+import app.cove.companion.design.components.PillButton
+import app.cove.companion.design.components.TopUndoBar
 import app.cove.companion.design.components.pressable
 import kotlin.math.roundToInt
 
@@ -53,11 +56,11 @@ class CategoryActions(
 )
 
 /**
- * Sheet to rename, reorder (drag the grip), delete (swipe left) and add categories. Deleting one that
- * still holds to-dos asks where they should go first.
+ * Sheet to rename, reorder (drag the grip), delete (a Delete button, or swipe left) and add categories. Deleting one
+ * that still holds to-dos asks where they should go first; every delete offers Undo.
  */
 @Composable
-fun CategoriesSheet(groups: List<CategoryGroup>, actions: CategoryActions, onDismiss: () -> Unit) {
+fun CategoriesSheet(groups: List<CategoryGroup>, actions: CategoryActions, onDismiss: () -> Unit, undo: UndoNotice? = null, onUndo: () -> Unit = {}) {
     var order by remember(groups.map { it.category.id }) { mutableStateOf(groups.map { it.category }) }
     var editing by remember { mutableStateOf<String?>(null) }
     var editText by remember { mutableStateOf("") }
@@ -77,7 +80,10 @@ fun CategoriesSheet(groups: List<CategoryGroup>, actions: CategoryActions, onDis
         newText = ""
     }
 
-    PlanSheet(onDismiss, modifier = Modifier.fillMaxHeight().padding(top = 64.dp), gap = 16, fillHeight = true) { close ->
+    PlanSheet(
+        onDismiss, modifier = Modifier.fillMaxHeight().padding(top = 64.dp), gap = 16, fillHeight = true,
+        overlay = { if (undo != null) TopUndoBar(undo.message, onUndo, Modifier.align(Alignment.TopCenter), undo.action, belowHeader = false) },
+    ) { close ->
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             CoveText("Categories", style = SheetTitleStyle)
             Row(Modifier.height(44.dp).pressable(close), verticalAlignment = Alignment.CenterVertically) {
@@ -204,6 +210,7 @@ private fun CategoryRow(
                     color = if (struck) c.tail else c.ink,
                 )
                 CoveText(count.toString(), style = CoveType.Meta, color = c.muted)
+                PillButton("Delete", onSwipeDelete, kind = ButtonKind.Destructive, horizontalPadding = 8.dp, textStyle = CoveType.Meta.copy(color = c.alert))
             }
         }
     }

@@ -5,9 +5,17 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import app.cove.companion.design.Cove
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.lifecycle.Lifecycle
@@ -63,8 +71,21 @@ private fun safeBack(controller: NavHostController) {
 @Composable
 fun CoveNavHost(start: String, voiceRequest: Int = 0, briefRequest: Int = 0) {
     val reduce = LocalReduceMotion.current
-    val fadeIn = fadeIn(tween(if (reduce) ReducedMotionMillis else 250))
-    val fadeOut = fadeOut(tween(if (reduce) ReducedMotionMillis else 200))
+    val density = LocalDensity.current
+    val slide = with(density) { NavMotion.SLIDE_DP.dp.roundToPx() }
+    val rise = with(density) { NavMotion.RISE_DP.dp.roundToPx() }
+    val enterMs = if (reduce) ReducedMotionMillis else NavMotion.ENTER_MS
+    val exitMs = if (reduce) ReducedMotionMillis else NavMotion.EXIT_MS
+    val fadeSpecIn = tween<Float>(enterMs, easing = NavMotion.Ease)
+    val fadeSpecOut = tween<Float>(exitMs, easing = NavMotion.Ease)
+    val slideSpecIn = tween<IntOffset>(enterMs, easing = NavMotion.Ease)
+    val slideSpecOut = tween<IntOffset>(exitMs, easing = NavMotion.Ease)
+    // Forward: new screen fades in while sliding in from the right; the old one only fades. Back is the mirror.
+    val fadeIn = fadeIn(fadeSpecIn)
+    val fadeOut = fadeOut(fadeSpecOut)
+    val forwardIn = if (reduce) fadeIn else fadeIn + slideInHorizontally(slideSpecIn) { slide }
+    val backIn = fadeIn
+    val backOut = if (reduce) fadeOut else fadeOut + slideOutHorizontally(slideSpecOut) { slide }
     val controller = rememberNavController()
     val nav = remember(controller) {
         val gate = TapGate()
@@ -82,10 +103,11 @@ fun CoveNavHost(start: String, voiceRequest: Int = 0, briefRequest: Int = 0) {
 
     NavHost(
         controller, start,
-        enterTransition = { fadeIn },
+        modifier = Modifier.background(Cove.colors.canvas),
+        enterTransition = { forwardIn },
         exitTransition = { fadeOut },
-        popEnterTransition = { fadeIn },
-        popExitTransition = { fadeOut },
+        popEnterTransition = { backIn },
+        popExitTransition = { backOut },
     ) {
         composable(Routes.Welcome) { WelcomeScreen(nav) }
         composable(Routes.WakeTime) { WakeTimeScreen(nav) }
@@ -95,9 +117,9 @@ fun CoveNavHost(start: String, voiceRequest: Int = 0, briefRequest: Int = 0) {
         composable(Routes.Main) { MainScreen(nav) }
         composable(
             Routes.Voice,
-            enterTransition = { if (reduce) fadeIn else slideInVertically(tween(280)) { it / 8 } + fadeIn },
+            enterTransition = { if (reduce) fadeIn else slideInVertically(tween(enterMs, easing = NavMotion.Ease)) { rise } + fadeIn },
             exitTransition = { ExitTransition.None },
-            popExitTransition = { if (reduce) fadeOut else slideOutVertically(tween(220)) { it / 8 } + fadeOut },
+            popExitTransition = { if (reduce) fadeOut else slideOutVertically(tween(exitMs, easing = NavMotion.Ease)) { rise } + fadeOut },
         ) { VoiceScreen(nav) }
         composable(Routes.Brief) { BriefScreen(nav) }
         composable(Routes.OneThing) { OneThingScreen(nav) }

@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 
 /** A line in the recent list: "Sun 27 · calm" over the entry's title. */
@@ -45,7 +47,7 @@ internal fun recentMeta(day: LocalDate, mood: String?, today: LocalDate): String
 class JournalViewModel(private val c: AppContainer) : ViewModel() {
     private val today = c.clock.now().toLocalDate()
     private val month = MutableStateFlow(YearMonth.from(today))
-    private var idsByDay: Map<Long, List<String>> = emptyMap()
+    @Volatile private var idsByDay: Map<Long, List<String>> = emptyMap()
     private val selected = MutableStateFlow<LocalDate?>(null)
 
     val state: StateFlow<JournalMonthState> = combine(c.journal.entries, month, selected) { entries, m, pick ->
@@ -61,7 +63,7 @@ class JournalViewModel(private val c: AppContainer) : ViewModel() {
             selected = pick,
             selectedEntries = pick?.let { d -> entries.filter { it.day == d.toEpochDay() }.map { it.toRecent() } }.orEmpty(),
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), JournalMonthState(today))
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), JournalMonthState(today))
 
     /** Moves the calendar by [delta] months. */
     fun shift(delta: Long) {

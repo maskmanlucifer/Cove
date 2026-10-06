@@ -1,5 +1,6 @@
 package app.cove.companion.feature.training
 
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -91,7 +92,7 @@ fun TrainingScreen(nav: Nav) {
         )
         WeightSheet(weighing, ui.unit, ui.weighedKg ?: ui.lastKg, { weighing = false }) { kg -> vm.saveWeight(kg); weighing = false }
         AddExerciseHost(adding, ui.today.dayOfWeek.value, ui.unit, { adding = false })
-        UndoHost("training", Modifier.align(Alignment.BottomCenter).padding(start = 24.dp, end = 24.dp, bottom = DockClearance))
+        UndoHost("training", Modifier.align(Alignment.TopCenter))
     }
 }
 

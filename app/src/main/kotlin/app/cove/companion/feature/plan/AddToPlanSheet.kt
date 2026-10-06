@@ -42,7 +42,6 @@ import app.cove.companion.design.components.CoveSwitch
 import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.Hairline
 import app.cove.companion.design.components.PillButton
-import app.cove.companion.design.components.Segmented
 import app.cove.companion.design.components.ValueRow
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -54,11 +53,12 @@ private enum class AddPage { Main, Day, Time, Repeat, Remind, Category, When }
 data class AddDefaults(val event: Boolean, val title: String = "", val autofocus: Boolean = true)
 
 /**
- * Sheet for adding a to-do or an event from the Plan tab. Events take a day, time range, repeat,
- * reminder and place; to-dos take a category, optional due time and reminder.
+ * Sheet for adding from the Plan tab. The To-dos tab adds a to-do (title, optional category, optional time and
+ * reminder); the Schedule tab adds an event (title, day, time range, optional place, repeat). Which one is decided by
+ * [AddDefaults.event]; there is no switch between them.
  *
- * With [editing] set it becomes the event editor (see [EventEditSheet]): fields start from that event,
- * the To-do/Event switch is hidden and the buttons are Save and Delete.
+ * With [editing] set it becomes the event editor (see [EventEditSheet]): fields start from that event, the
+ * reminder row is available and the buttons are Save and Delete.
  */
 @Composable
 fun AddToPlanSheet(
@@ -74,7 +74,7 @@ fun AddToPlanSheet(
     val nowTime = now.toLocalDateTime()
     val startDefault = ((nowTime.hour * 60 + nowTime.minute) / 60 + 1).coerceAtMost(22) * 60
     val from = remember(editing?.id) { editing?.let(::EventForm) }
-    var isEvent by rememberSaveable { mutableStateOf(defaults.event || editing != null) }
+    val isEvent = defaults.event || editing != null
     var title by rememberSaveable { mutableStateOf(editing?.title ?: defaults.title) }
     var page by rememberSaveable { mutableStateOf(AddPage.Main) }
     var day by rememberSaveable { mutableStateOf(from?.day ?: now.toLocalDate()) }
@@ -97,10 +97,6 @@ fun AddToPlanSheet(
             AddPage.Category -> CategoryPage(categories, categoryId, { categoryId = it; back() }, back)
             AddPage.When -> WhenPage(dueAt, now, { dueAt = it; back() }, back)
             AddPage.Main -> {
-                if (editing == null) Segmented(
-                    listOf("To-do", "Event"), if (isEvent) 1 else 0, { isEvent = it == 1 },
-                    Modifier.fillMaxWidth(), height = 40.dp, fillWidth = true,
-                )
                 TitleField(
                     title, { title = it }, if (isEvent) "What’s happening?" else "What do you need to do?",
                     onDone = {}, autofocus = defaults.autofocus,
@@ -109,25 +105,24 @@ fun AddToPlanSheet(
                     if (isEvent) {
                         SheetRow("Day", day.dayLabel(), { page = AddPage.Day }, if (day < now.toLocalDate()) " · past" else null)
                         SheetRow("Time", rangeText(start, end), { page = AddPage.Time })
-                        SheetRow("Repeat", RepeatOptions.first { it.first == repeat }.second, { page = AddPage.Repeat })
-                        SheetRow("Remind me", remindText(remindBefore), { page = AddPage.Remind })
                         PlaceRow(place) { place = it }
+                        SheetRow("Repeat", RepeatOptions.first { it.first == repeat }.second, { page = AddPage.Repeat })
+                        if (editing != null) SheetRow("Remind me", remindText(remindBefore), { page = AddPage.Remind })
                     } else {
                         SheetRow("Category", categories.firstOrNull { it.id == categoryId }?.name ?: "None", { page = AddPage.Category })
                         val whenText = whenParts(dueAt, now)
-                        SheetRow("When", whenText?.first ?: "Not set", { page = AddPage.When }, whenText?.second, placeholder = whenText == null)
-                        Hairline()
-                        ValueRow("Remind me", trailing = {
-                            if (dueAt == null) CoveText("Set a time first", style = CoveType.Meta, color = Cove.colors.muted)
-                            CoveSwitch(remind && dueAt != null, { remind = it }, label = "Remind me", enabled = dueAt != null)
-                        })
+                        SheetRow("Time", whenText?.first ?: "Optional", { page = AddPage.When }, whenText?.second, placeholder = whenText == null)
+                        if (dueAt != null) {
+                            Hairline()
+                            ValueRow("Remind me", trailing = { CoveSwitch(remind, { remind = it }, label = "Remind me") })
+                        }
                     }
                 }
                 val text = CoveType.Button.copy(fontSize = 16.sp)
                 val ready = title.isNotBlank()
                 val primary: @Composable (Modifier) -> Unit = { m ->
                     PillButton(
-                        if (editing != null) "Save" else "Add",
+                        "Save",
                         {
                             if (!ready) return@PillButton
                             if (isEvent) onAddEvent(buildEvent(editing, title.trim(), day, start, end, repeat, remindBefore, place.trim())) else onAddTodo(title.trim(), categoryId, dueAt, remind && dueAt != null)
@@ -145,8 +140,8 @@ fun AddToPlanSheet(
                 } else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     primary(Modifier.weight(1f))
                     PillButton(
-                        "Cancel", close, Modifier.widthIn(min = 104.dp), kind = ButtonKind.Secondary,
-                        container = Cove.colors.canvas, height = 56.dp, textStyle = text.copy(fontWeight = FontWeight.Medium),
+                        "Cancel", close, Modifier.widthIn(min = 96.dp), kind = ButtonKind.Text,
+                        height = 56.dp, textStyle = text.copy(fontWeight = FontWeight.Normal, color = Cove.colors.muted),
                     )
                 }
             }

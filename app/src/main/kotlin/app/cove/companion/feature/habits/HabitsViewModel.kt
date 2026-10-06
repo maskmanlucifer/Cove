@@ -7,6 +7,8 @@ import app.cove.companion.core.toLocalDate
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -27,7 +29,7 @@ class HabitsViewModel(private val c: AppContainer) : ViewModel() {
             },
             loaded = true,
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HabitsState())
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HabitsState())
 
     /** Ticks or un-ticks today for [habitId]. */
     fun toggleToday(habitId: String) {

@@ -2,6 +2,7 @@ package app.cove.companion.feature.plan
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -68,7 +69,8 @@ val SheetTitleStyle = CoveType.Section.copy(lineHeight = 32.sp)
 
 /**
  * Hosts a [CoveSheet] in its own window so it covers the dock. [content] receives `close`,
- * which plays the exit animation before calling [onDismiss].
+ * which plays the exit animation before calling [onDismiss]. [overlay] draws above the sheet inside the same window
+ * (for example an Undo bar, since the window would otherwise hide the screen's own).
  */
 @Composable
 fun PlanSheet(
@@ -76,6 +78,7 @@ fun PlanSheet(
     modifier: Modifier = Modifier,
     gap: Int = 24,
     fillHeight: Boolean = false,
+    overlay: @Composable BoxScope.() -> Unit = {},
     content: @Composable ColumnScope.(close: () -> Unit) -> Unit,
 ) {
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
@@ -103,6 +106,7 @@ fun PlanSheet(
                     content(close)
                 }
             }
+            overlay()
         }
     }
 }

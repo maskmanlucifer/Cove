@@ -174,6 +174,7 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
 
     /** Hide-until state of Today's Next card (survives restarts). */
     val nextCard = NextCardMemory(context.applicationContext)
+    val moodMemory = app.cove.companion.feature.today.MoodMemory(context.applicationContext)
 
     private val httpClient by lazy { HttpClient(OkHttp) }
 

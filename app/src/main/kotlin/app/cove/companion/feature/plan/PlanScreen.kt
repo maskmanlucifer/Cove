@@ -1,5 +1,7 @@
 package app.cove.companion.feature.plan
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,12 +17,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
@@ -112,17 +112,17 @@ fun PlanScreen(nav: Nav) {
             }
         }
         if (!todos && drag.id == null) DayPill(state.day, state.isToday, vm::shiftDay, vm::showToday, Modifier.align(Alignment.BottomStart).padding(start = 20.dp, bottom = DockFloatBottom))
-        if (drag.id == null) AddButton(if (todos) "Add to-do" else "Add event", { sheet = if (todos) ADD_TODO else ADD_EVENT }, Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = DockFloatBottom))
+        if (drag.id == null) AddButton(if (todos) "Add to-do" else "Add to schedule", { sheet = if (todos) ADD_TODO else ADD_EVENT }, Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = DockFloatBottom))
         undo?.let { notice ->
             LaunchedEffect(notice.id) {
                 delay(6000)
                 vm.expireUndo(notice.id)
             }
-            PlanUndoBar(notice.message, vm::undoLast, action = notice.action, modifier = Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = DockFloatBottom))
+            PlanUndoBar(notice.message, vm::undoLast, action = notice.action, modifier = Modifier.align(Alignment.TopCenter))
         }
     }
 
-    if (state.now != 0L) PlanSheets(sheet, state, vm) { sheet = null }
+    if (state.now != 0L) PlanSheets(sheet, state, vm, undo) { sheet = null }
 }
 
 @Composable
@@ -141,7 +141,7 @@ private fun AddButton(label: String, onClick: () -> Unit, modifier: Modifier = M
 }
 
 @Composable
-private fun PlanSheets(sheet: String?, state: PlanState, vm: PlanViewModel, dismiss: () -> Unit) {
+private fun PlanSheets(sheet: String?, state: PlanState, vm: PlanViewModel, undo: UndoNotice?, dismiss: () -> Unit) {
     val categories = state.groups.map { it.category }
     when {
         sheet == null -> Unit
@@ -155,7 +155,7 @@ private fun PlanSheets(sheet: String?, state: PlanState, vm: PlanViewModel, dism
         sheet == CATEGORIES -> CategoriesSheet(
             state.groups,
             CategoryActions(vm::addCategory, vm::renameCategory, vm::reorderCategories, vm::deleteCategory),
-            dismiss,
+            dismiss, undo, vm::undoLast,
         )
         sheet.startsWith(EVENT) -> {
             val id = sheet.removePrefix(EVENT)
