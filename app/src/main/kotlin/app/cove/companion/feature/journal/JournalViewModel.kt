@@ -27,18 +27,29 @@ data class JournalMonthState(
     val entryCount: Int = 0,
     val recent: List<RecentEntry> = emptyList(),
     val empty: Boolean = true,
+    /** A day with several entries that the user tapped; its entries are listed in place of Recent. */
+    val selected: LocalDate? = null,
+    val selectedEntries: List<RecentEntry> = emptyList(),
 )
 
 private val dayMeta = DateTimeFormatter.ofPattern("EEE d", Locale.ENGLISH)
+private val dayMetaMonth = DateTimeFormatter.ofPattern("EEE d MMM", Locale.ENGLISH)
 
-/** Month calendar with entry days marked, the entry count and the two latest entries. */
+/** "Sun 27 · calm"; the month is added ("Sun 27 Sep") for an entry outside [today]'s month. */
+internal fun recentMeta(day: LocalDate, mood: String?, today: LocalDate): String {
+    val label = day.format(if (YearMonth.from(day) == YearMonth.from(today)) dayMeta else dayMetaMonth)
+    return if (mood.isNullOrBlank()) label else "$label · $mood"
+}
+
+/** Month calendar with entry days marked, the entry count and the two latest entries (all of a day with several). */
 class JournalViewModel(private val c: AppContainer) : ViewModel() {
     private val today = c.clock.now().toLocalDate()
     private val month = MutableStateFlow(YearMonth.from(today))
-    private var latestByDay: Map<Long, String> = emptyMap()
+    private var idsByDay: Map<Long, List<String>> = emptyMap()
+    private val selected = MutableStateFlow<LocalDate?>(null)
 
-    val state: StateFlow<JournalMonthState> = combine(c.journal.entries, month) { entries, m ->
-        latestByDay = entries.groupBy { it.day }.mapValues { it.value.first().id }
+    val state: StateFlow<JournalMonthState> = combine(c.journal.entries, month, selected) { entries, m, pick ->
+        idsByDay = entries.groupBy { it.day }.mapValues { (_, list) -> list.map { it.id } }
         val inMonth = entries.filter { YearMonth.from(LocalDate.ofEpochDay(it.day)) == m }
         JournalMonthState(
             today = today,
@@ -47,6 +58,8 @@ class JournalViewModel(private val c: AppContainer) : ViewModel() {
             entryCount = inMonth.size,
             recent = entries.take(2).map { it.toRecent() },
             empty = entries.isEmpty(),
+            selected = pick,
+            selectedEntries = pick?.let { d -> entries.filter { it.day == d.toEpochDay() }.map { it.toRecent() } }.orEmpty(),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), JournalMonthState(today))
 
@@ -55,22 +68,30 @@ class JournalViewModel(private val c: AppContainer) : ViewModel() {
         month.value = month.value.plusMonths(delta)
     }
 
-    /** Route for the entry behind a tapped [date]: its latest entry, or a new one for a day that has none yet. */
-    fun routeFor(date: LocalDate): String? {
-        val existing = latestByDay[date.toEpochDay()]
+    /**
+     * What a tap on [date] does: opens its only entry, starts a new one for an empty day, or (with several entries)
+     * lists them below the calendar and returns null. Tapping the listed day again hides the list.
+     */
+    fun tapDay(date: LocalDate): String? {
+        val ids = idsByDay[date.toEpochDay()].orEmpty()
+        selected.value = null
         return when {
-            existing != null -> Routes.journalEdit(existing)
+            ids.size == 1 -> Routes.journalEdit(ids.single())
+            ids.size > 1 -> {
+                if (state.value.selected != date) selected.value = date
+                null
+            }
             date <= today -> journalNewRoute(date)
             else -> null
         }
     }
 
     private fun JournalEntryEntity.toRecent(): RecentEntry {
-        val day = LocalDate.ofEpochDay(day).format(dayMeta)
-        return RecentEntry(id, if (mood.isNullOrBlank()) day else "$day · $mood", displayTitle())
+        return RecentEntry(id, recentMeta(LocalDate.ofEpochDay(day), mood, today), displayTitle())
     }
 }
 
 /** Title shown in lists: the title, else the first line of the body, else "Untitled". */
 fun JournalEntryEntity.displayTitle(): String =
-    title.trim().ifEmpty { body.lineSequence().map(String::trim).firstOrNull { it.isNotEmpty() }.orEmpty() }.ifEmpty { "Untitled" }
+    title.trim().ifEmpty { body.lineSequence().map(String::trim).firstOrNull { it.isNotEmpty() }.orEmpty() }
+        .ifEmpty { mood?.takeIf { it.isNotBlank() }?.let { "Feeling $it" }.orEmpty() }.ifEmpty { "Untitled" }

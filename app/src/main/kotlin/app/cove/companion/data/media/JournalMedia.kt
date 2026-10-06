@@ -21,16 +21,25 @@ class JournalMedia(
     private val quality: suspend () -> Int = { QUALITY_BALANCED },
     private val onSaved: () -> Unit = {},
 ) {
-    /** Compresses [source] (photo picker or camera URI) at the user's photo quality (80 Balanced, 90 High) and attaches it to [entryId]. */
-    suspend fun addPhoto(entryId: String, source: Uri): JournalMediaEntity {
+    /**
+     * Compresses [source] (photo picker or camera URI) at the user's photo quality (80 Balanced, 90 High) and attaches it to [entryId].
+     * Returns null when the image cannot be read or decoded, so the caller can say so calmly.
+     */
+    suspend fun addPhoto(entryId: String, source: Uri): JournalMediaEntity? {
         val id = newId()
         val webpQuality = quality()
         val media = withContext(Dispatchers.IO) {
-            val stored = compressor.compress(source, files.photoBase(id), webpQuality)
-            val thumb = files.thumb(id)
-            ThumbnailMaker.make(stored.file, thumb)
-            JournalMediaEntity(id, entryId, "photo", stored.file.path, thumb.path, bytes = stored.bytes + thumb.length())
-        }
+            try {
+                val stored = compressor.compress(source, files.photoBase(id), webpQuality)
+                val thumb = files.thumb(id)
+                ThumbnailMaker.make(stored.file, thumb)
+                JournalMediaEntity(id, entryId, "photo", stored.file.path, thumb.path, bytes = stored.bytes + thumb.length())
+            } catch (e: Exception) {
+                null
+            } catch (e: OutOfMemoryError) {
+                null
+            }
+        } ?: return null
         repo.saveMedia(media)
         onSaved()
         return media
@@ -42,6 +51,24 @@ class JournalMedia(
         repo.saveMedia(media)
         onSaved()
         return media
+    }
+
+    /** Soft-deletes [media] but keeps its files, so Undo can bring it back; call [deleteFiles] once it is final. */
+    suspend fun softRemove(media: JournalMediaEntity) {
+        repo.saveMedia(media.copy(deletedAt = clock.now()))
+    }
+
+    /** Undoes [softRemove]. */
+    suspend fun restore(media: JournalMediaEntity) {
+        repo.saveMedia(media.copy(deletedAt = null))
+    }
+
+    /** Removes the files of a deleted [media]. */
+    suspend fun deleteFiles(media: JournalMediaEntity) {
+        withContext(Dispatchers.IO) {
+            File(media.localPath).delete()
+            media.thumbPath?.let { File(it).delete() }
+        }
     }
 
     /** Soft-deletes [media] and removes its files. */
