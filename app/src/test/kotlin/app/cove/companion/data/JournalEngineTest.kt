@@ -23,7 +23,7 @@ class JournalEngineTest {
         val p = planImage(4000, 3000, 200_000, false)
         assertFalse(p.skip)
         assertEquals(2048 to 1536, p.width to p.height)
-        assertEquals(1536 to 2048, fitLongEdge(3000, 4096, 2048))
+        assertEquals(1500 to 2048, fitLongEdge(3000, 4096, 2048))
     }
 
     @Test fun neverUpscales() = assertEquals(320 to 200, fitLongEdge(320, 200, 2048))
