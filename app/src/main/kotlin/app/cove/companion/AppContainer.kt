@@ -281,7 +281,10 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
             embedding = listOf(UnbundledEmbeddingProvider()),
             category = listOf(nano, gemini),
         )
-        val router = AiRouter(providers, AiPolicy(foreground) { connectivity.online.value }, speechLog = { if (BuildConfig.DEBUG) android.util.Log.d("CoveVoice", it) })
+        val router = AiRouter(providers, AiPolicy(foreground) { connectivity.online.value }, speechLog = { line ->
+            app.cove.companion.ai.speech.SpeechLogBook.add(line)
+            if (BuildConfig.DEBUG) android.util.Log.d("CoveVoice", line)
+        })
         DefaultAiService(router, providers, typed, rules, clock) { key, model ->
             GeminiConnectionCheck.run(GeminiDirectClient(key, model, "", httpClient))
         }
