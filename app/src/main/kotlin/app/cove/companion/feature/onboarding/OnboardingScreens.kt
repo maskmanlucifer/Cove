@@ -67,7 +67,7 @@ fun WelcomeScreen(nav: Nav) {
             Column(Modifier.padding(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 BalancedText(
                     "Say it once.", " Cove remembers the rest.",
-                    CoveType.Title.copy(fontSize = 40.sp, lineHeight = 44.sp, letterSpacing = (-1.4).sp),
+                    CoveType.Title.copy(fontSize = 40.sp, lineHeight = 44.sp, letterSpacing = (-0.4).sp),
                 )
                 CoveText(
                     "Alarms, to-dos, money and a journal, all by voice. Everything stays in your own space.",

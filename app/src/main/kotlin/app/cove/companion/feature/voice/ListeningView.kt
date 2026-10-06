@@ -44,7 +44,7 @@ import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.design.components.pressable
 import kotlin.math.hypot
 
-private val Transcript = CoveType.Title.copy(fontSize = 34.sp, lineHeight = 42.sp, letterSpacing = (-1.12).sp)
+private val Transcript = CoveType.Title.copy(fontSize = 34.sp, lineHeight = 42.sp, letterSpacing = (-0.4).sp)
 
 /** Frame 02: gradient wash, live transcript with the newest word grey, timer and controls. */
 @Composable

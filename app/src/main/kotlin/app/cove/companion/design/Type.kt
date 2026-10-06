@@ -62,7 +62,7 @@ private fun style(size: Int, line: Number, weight: Int = 400, spacing: Double = 
 object CoveType {
     val Figure = style(60, 62, 400, -2.4)
     val Hero = style(44, 46, 400, -1.6)
-    val Title = style(32, 38, 500, -0.5, Fraunces)
+    val Title = style(32, 38, 500, -0.2, Fraunces)
     val Section = style(26, 30, 500, -0.5)
     val Heading = style(19, 25.65, 500, -0.2)
     val Value = style(22, 29.7, 500)
