@@ -43,6 +43,10 @@ import app.cove.companion.ai.model.VoiceIntent
 fun ResultView(s: VoiceState, nowMillis: Long, vm: VoiceViewModel) {
     val today = nowMillis.toLocalDate()
     val single = s.drafts.singleOrNull()
+    if (single is VoiceIntent.LogSets && s.setsPreview != null) {
+        app.cove.companion.feature.training.voice.LogSetsDraft(s, vm)
+        return
+    }
     if (single is VoiceIntent.LogExpense) {
         ExpenseDraft(s, single, nowMillis, vm)
         return

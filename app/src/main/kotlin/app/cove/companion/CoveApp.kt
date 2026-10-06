@@ -55,6 +55,7 @@ class CoveApp : Application() {
                     .collect { (on, wake) -> BriefScheduler.apply(this@CoveApp, on, wake) }
             }
         }
+        CrashHandler.guarded("start:training") { app.cove.companion.feature.training.LiveTrainingSummary.install(c) }
         CrashHandler.guarded("start:nudges") { NudgeScheduler(this, c).start(c.appScope) }
         CrashHandler.guarded("start:widgets") { WidgetUpdater.start(this, c, c.appScope) }
     }
