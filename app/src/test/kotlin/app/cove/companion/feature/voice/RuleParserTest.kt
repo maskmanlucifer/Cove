@@ -2,7 +2,10 @@ package app.cove.companion.feature.voice
 
 import app.cove.companion.core.Clock
 import app.cove.companion.core.toEpochMillis
+import app.cove.companion.ai.provider.rules.CategoryResolver
 import app.cove.companion.ai.provider.rules.RuleParser
+import app.cove.companion.data.categorize.ExpenseCategorizer
+import app.cove.companion.data.local.entity.ExpenseCategoryEntity
 import app.cove.companion.ai.model.TodoDraft
 import app.cove.companion.ai.model.VoiceIntent
 import java.time.LocalDateTime
@@ -13,7 +16,11 @@ import org.junit.Test
 class RuleParserTest {
     /** Tuesday 6 October 2026, 10:35. */
     private val now = LocalDateTime.of(2026, 10, 6, 10, 35)
-    private val parser = RuleParser(Clock { now.toEpochMillis() })
+    private val categories = listOf("Food", "Home", "Transport", "Fun", "Other").mapIndexed { i, n -> ExpenseCategoryEntity("c-$i", n, sort = i) }
+    private val parser = RuleParser(
+        Clock { now.toEpochMillis() },
+        CategoryResolver { note -> ExpenseCategorizer.suggest(note, categories).categoryId?.let { id -> categories.first { it.id == id }.name } },
+    )
 
     private fun at(day: Int, h: Int, m: Int = 0) = LocalDateTime.of(2026, 10, day, h, m).toEpochMillis()
 

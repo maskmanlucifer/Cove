@@ -1,4 +1,4 @@
--- Cove: complete Supabase setup in one paste (migrations 0001, 0002 and 0003 combined).
+-- Cove: complete Supabase setup in one paste (migrations 0001, 0002, 0003 and 0004 combined).
 -- Run it once in the Supabase dashboard: SQL Editor > New query > paste > Run.
 -- Safe to run again: every statement is idempotent.
 -- Keep in sync with supabase/migrations/*.sql (a unit test checks the copy in app/src/main/assets).
@@ -315,3 +315,29 @@ alter table public.settings add column if not exists upload_on_wifi_only boolean
 -- App-lock preferences are device-local, but settings rows are pushed whole, so the columns must exist.
 alter table public.settings add column if not exists lock_after text not null default '1min';
 alter table public.settings add column if not exists hide_in_recents boolean not null default true;
+
+-- ===== 0004_categorize =====
+-- Smart expense categorisation: words the user files under a category, and what Cove has learned from corrections.
+alter table public.expense_categories add column if not exists keywords text not null default '';
+
+-- category_memory: one row per word (token) with the category it is filed under and how many times.
+create table if not exists public.category_memory (
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  token text not null,
+  category_id text not null,
+  count integer not null default 1,
+  updated_at bigint not null default 0,
+  deleted_at bigint,
+  device_id text,
+  device_name text,
+  primary key (user_id, token)
+);
+
+alter table public.category_memory enable row level security;
+drop policy if exists category_memory_owner on public.category_memory;
+create policy category_memory_owner on public.category_memory for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+drop trigger if exists category_memory_touch on public.category_memory;
+create trigger category_memory_touch before insert or update on public.category_memory
+  for each row execute function public.cove_touch();
+create index if not exists category_memory_user_updated_idx on public.category_memory (user_id, updated_at);

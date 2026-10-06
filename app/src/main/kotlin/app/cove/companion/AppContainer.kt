@@ -43,6 +43,7 @@ import app.cove.companion.data.repo.AssistantRepository
 import app.cove.companion.data.repo.ChangeLog
 import app.cove.companion.data.repo.HabitRepository
 import app.cove.companion.data.repo.JournalRepository
+import app.cove.companion.data.categorize.LiveCategoryResolver
 import app.cove.companion.data.repo.MoneyRepository
 import app.cove.companion.data.repo.PlanRepository
 import app.cove.companion.data.repo.SettingsRepository
@@ -108,6 +109,9 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
     val todos = TodoRepository(database, clock, changeLog)
     val habits = HabitRepository(database, clock, changeLog)
     val money = MoneyRepository(database, clock, changeLog)
+
+    /** Files spoken and typed expenses under the user's own categories (see `docs/CATEGORIZATION.md`). */
+    val categoryResolver by lazy { LiveCategoryResolver(money, appScope) }
     val journal = JournalRepository(database, clock, changeLog)
     val assistant = AssistantRepository(database, clock, changeLog)
 
@@ -214,7 +218,7 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
         val gemini = CloudProvider(CloudProvider.GEMINI_ID, "API key") { geminiGateway.get() }
         val edge = CloudProvider(CloudProvider.EDGE_ID, "Supabase project") { edgeGateway.get() }
         val typed = TypedSpeechProvider()
-        val rules = RuleParser(clock)
+        val rules = RuleParser(clock, categoryResolver)
         val providers = AiProviders(
             intent = listOf(RuleIntentProvider(rules), nano, gemini, edge),
             brief = listOf(nano, gemini, edge),

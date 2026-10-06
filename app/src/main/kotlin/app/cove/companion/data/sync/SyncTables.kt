@@ -12,7 +12,7 @@ data class SyncTable(
     val conflictAware: Boolean = false,
 )
 
-/** The 15 synced tables, mirroring `supabase/migrations/0001_init.sql`. */
+/** The 16 synced tables, mirroring `supabase/migrations/0001_init.sql` and `0004_categorize.sql`. */
 object SyncTables {
     val all = listOf(
         SyncTable(
@@ -28,6 +28,7 @@ object SyncTables {
         SyncTable("habit_logs"),
         SyncTable("expense_categories", bools = setOf("carry_over", "alert_at80")),
         SyncTable("expenses"),
+        SyncTable("category_memory", key = "token"),
         SyncTable("journal_entries"),
         SyncTable("journal_media"),
         SyncTable("decisions"),

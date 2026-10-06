@@ -132,6 +132,21 @@ data class ExpenseCategoryEntity(
     val carryOver: Boolean = false,
     val alertAt80: Boolean = true,
     val sort: Int = 0,
+    /** Comma-separated words the user says for this category ("gift, birthday"); see `ExpenseCategorizer`. */
+    val keywords: String = "",
+    val updatedAt: Long = 0,
+    val deletedAt: Long? = null,
+)
+
+/**
+ * What the user taught Cove: [token] (a word from an expense note) was filed under [categoryId] [count] times.
+ * One category per token; contradicting picks lower the count until it flips. Soft-deleted at zero.
+ */
+@Entity(tableName = "category_memory")
+data class CategoryMemoryEntity(
+    @PrimaryKey val token: String,
+    val categoryId: String,
+    val count: Int = 1,
     val updatedAt: Long = 0,
     val deletedAt: Long? = null,
 )

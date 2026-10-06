@@ -9,6 +9,7 @@ import app.cove.companion.data.local.entity.AlarmEntity
 import app.cove.companion.data.local.entity.BriefEntity
 import app.cove.companion.data.local.entity.DecisionEntity
 import app.cove.companion.data.local.entity.EventEntity
+import app.cove.companion.data.local.entity.CategoryMemoryEntity
 import app.cove.companion.data.local.entity.ExpenseCategoryEntity
 import app.cove.companion.data.local.entity.ExpenseEntity
 import app.cove.companion.data.local.entity.HabitEntity
@@ -141,6 +142,21 @@ interface ExpenseDao {
 
     @Query("SELECT * FROM expenses WHERE deletedAt IS NULL AND categoryId = :categoryId")
     suspend fun inCategory(categoryId: String): List<ExpenseEntity>
+
+    @Query("SELECT * FROM category_memory WHERE deletedAt IS NULL AND count > 0")
+    fun observeMemory(): Flow<List<CategoryMemoryEntity>>
+
+    @Query("SELECT * FROM category_memory WHERE token IN (:tokens)")
+    suspend fun memoryFor(tokens: List<String>): List<CategoryMemoryEntity>
+
+    @Upsert
+    suspend fun upsertMemory(memory: CategoryMemoryEntity)
+
+    @Query("SELECT * FROM category_memory WHERE deletedAt IS NULL AND categoryId = :categoryId")
+    suspend fun memoryIn(categoryId: String): List<CategoryMemoryEntity>
+
+    @Query("SELECT * FROM expenses WHERE deletedAt IS NULL AND kind = 'spent' AND spentAt >= :from ORDER BY spentAt DESC")
+    suspend fun spentSince(from: Long): List<ExpenseEntity>
 }
 
 @Dao

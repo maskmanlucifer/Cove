@@ -18,6 +18,7 @@ import app.cove.companion.data.local.dao.SyncDao
 import app.cove.companion.data.local.dao.TodoDao
 import app.cove.companion.data.local.entity.AlarmEntity
 import app.cove.companion.data.local.entity.BriefEntity
+import app.cove.companion.data.local.entity.CategoryMemoryEntity
 import app.cove.companion.data.local.entity.DecisionEntity
 import app.cove.companion.data.local.entity.EventEntity
 import app.cove.companion.data.local.entity.ExpenseCategoryEntity
@@ -44,8 +45,9 @@ import app.cove.companion.data.local.entity.VoiceCommandEntity
         ExpenseEntity::class, JournalEntryEntity::class, JournalMediaEntity::class, DecisionEntity::class,
         SuggestionPrefEntity::class, VoiceCommandEntity::class, BriefEntity::class,
         SearchIndexEntity::class, OutboxEntity::class, SyncStateEntity::class, SyncConflictEntity::class,
+        CategoryMemoryEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 abstract class CoveDatabase : RoomDatabase() {
@@ -95,12 +97,23 @@ abstract class CoveDatabase : RoomDatabase() {
             }
         }
 
+        /** Adds category `keywords` and the learned `category_memory` table. */
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `expense_categories` ADD COLUMN `keywords` TEXT NOT NULL DEFAULT ''")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `category_memory` (`token` TEXT NOT NULL, `categoryId` TEXT NOT NULL, " +
+                        "`count` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, PRIMARY KEY(`token`))",
+                )
+            }
+        }
+
         /** File name of the database in the app's databases directory. */
         const val NAME = "cove.db"
 
         fun create(context: Context, factory: SupportSQLiteOpenHelper.Factory? = null): CoveDatabase =
             Room.databaseBuilder(context, CoveDatabase::class.java, NAME)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                 .apply { if (factory != null) openHelperFactory(factory) }
                 .build()
     }

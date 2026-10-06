@@ -4,9 +4,12 @@ import app.cove.companion.core.Clock
 import app.cove.companion.core.epochDay
 import app.cove.companion.core.newId
 import app.cove.companion.core.startOfDayMillis
+import app.cove.companion.data.categorize.CategoryLearning
+import app.cove.companion.data.categorize.CategoryTokens
 import app.cove.companion.data.local.CoveDatabase
 import app.cove.companion.data.local.entity.AlarmEntity
 import app.cove.companion.data.local.entity.BriefEntity
+import app.cove.companion.data.local.entity.CategoryMemoryEntity
 import app.cove.companion.data.local.entity.DecisionEntity
 import app.cove.companion.data.local.entity.EventEntity
 import app.cove.companion.data.local.entity.ExpenseCategoryEntity
@@ -145,6 +148,9 @@ class HabitRepository(private val db: CoveDatabase, private val clock: Clock, pr
     }
 }
 
+/** One expense moving from category [from] (null = uncategorised) to [to]. */
+data class CategoryChange(val expenseId: String, val from: String?, val to: String)
+
 /** Spending, income and budgets. */
 class MoneyRepository(private val db: CoveDatabase, private val clock: Clock, private val log: ChangeLog) {
     val categories: Flow<List<ExpenseCategoryEntity>> = db.expenses().observeCategories()
@@ -177,6 +183,61 @@ class MoneyRepository(private val db: CoveDatabase, private val clock: Clock, pr
     /** Stores the order of [ids] as the categories' `sort`. */
     suspend fun reorderCategories(ids: List<String>) {
         ids.forEachIndexed { i, id -> db.expenses().getCategory(id)?.takeIf { it.sort != i }?.let { saveCategory(it.copy(sort = i)) } }
+    }
+
+    /** Learned word-to-category memory keyed by token, for [app.cove.companion.data.categorize.ExpenseCategorizer]. */
+    val memory: Flow<Map<String, CategoryMemoryEntity>> = db.expenses().observeMemory().map { rows -> rows.associateBy { it.token } }
+
+    /**
+     * Remembers that the user filed [note] under [categoryId]. When [previousId] differs, the words are first taken
+     * out of that category so a changed mind weakens the old mapping.
+     */
+    suspend fun teach(note: String, categoryId: String, previousId: String? = null) {
+        val tokens = CategoryTokens.tokens(note)
+        if (tokens.isEmpty()) return
+        val now = clock.now()
+        val rows = db.expenses().memoryFor(tokens).associateBy { it.token }.toMutableMap()
+        for (t in tokens) {
+            var row = rows[t]
+            if (previousId != null && previousId != categoryId) row = CategoryLearning.unlearn(row, previousId, now) ?: row
+            val next = CategoryLearning.learn(row, t, categoryId, now)
+            db.expenses().upsertMemory(next)
+            log.mark("category_memory", t)
+        }
+    }
+
+    /** Takes the words of [note] out of [categoryId] (used when an accepted suggestion is undone). */
+    suspend fun forget(note: String, categoryId: String) {
+        val tokens = CategoryTokens.tokens(note)
+        if (tokens.isEmpty()) return
+        val now = clock.now()
+        for (row in db.expenses().memoryFor(tokens)) {
+            CategoryLearning.unlearn(row, categoryId, now)?.let {
+                db.expenses().upsertMemory(it)
+                log.mark("category_memory", it.token)
+            }
+        }
+    }
+
+    /** Spent expenses since [from], newest first, for the review list. */
+    suspend fun spentSince(from: Long): List<ExpenseEntity> = db.expenses().spentSince(from)
+
+    /** Files each expense under its new category and teaches the memory; returns the changes actually applied. */
+    suspend fun applyCategories(changes: List<CategoryChange>): List<CategoryChange> =
+        changes.mapNotNull { ch ->
+            val e = expense(ch.expenseId) ?: return@mapNotNull null
+            save(e.copy(categoryId = ch.to))
+            teach(e.note, ch.to, ch.from)
+            ch.copy(from = e.categoryId)
+        }
+
+    /** Reverses [applyCategories]: puts each expense back and forgets what was taught. */
+    suspend fun undoCategories(changes: List<CategoryChange>) {
+        for (ch in changes) {
+            val e = expense(ch.expenseId) ?: continue
+            save(e.copy(categoryId = ch.from))
+            forget(e.note, ch.to)
+        }
     }
 
     /** Removes a category; its expenses fall back to "Other" (no category). */

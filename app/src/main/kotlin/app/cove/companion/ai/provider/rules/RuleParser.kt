@@ -10,9 +10,9 @@ import java.time.LocalTime
 
 /**
  * Deterministic English parser: transcript to [VoiceIntent]s with regexes, spoken numbers and times.
- * Free, instant and the first layer of [IntentParser]; "now" always comes from [clock].
+ * Free, instant and the first layer of [IntentParser]; "now" always comes from [clock] and expense categories from [categories].
  */
-class RuleParser(private val clock: Clock) {
+class RuleParser(private val clock: Clock, private val categories: CategoryResolver = CategoryResolver.None) {
     private val opts = setOf(RegexOption.IGNORE_CASE)
 
     /**
@@ -172,7 +172,7 @@ class RuleParser(private val clock: Clock) {
         val at = time?.let { pastToday(it, now) }
         return VoiceIntent.LogExpense(
             amountPaise = paise,
-            category = if (received) null else CategoryGuess.expense(rest),
+            category = if (received) null else categories.categoryFor(rest),
             paidWith = paidWith,
             note = note,
             received = received,
