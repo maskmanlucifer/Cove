@@ -45,6 +45,7 @@ import kotlinx.coroutines.launch
 /** Single activity hosting the Compose navigation graph. */
 class MainActivity : FragmentActivity() {
     private var debugRoute: String? = null
+    private var debugScreenshots = false
 
     /** Bumped whenever something asks to open straight into listening (tile, shortcut, debug). */
     private val voiceRequest = mutableIntStateOf(0)
@@ -115,7 +116,7 @@ class MainActivity : FragmentActivity() {
 
     /** Hides the window from recents and screenshots while [secure]. */
     private fun applySecureFlag(secure: Boolean) {
-        if (secure) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE) else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        if (secure && !(BuildConfig.DEBUG && debugScreenshots)) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE) else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -134,7 +135,7 @@ class MainActivity : FragmentActivity() {
      * `--ez fakeDrive true [--ez driveRun true]` uses a folder-backed fake Drive with a seeded pending photo; driveRun uploads it and backs up.
      * `--es suggest late-night` fakes a 1:40 am phone use so the late-night suggestion appears; `--es briefAt 51/124` freezes the brief player
      * at elapsed/total seconds; `--ez offline true` forces the offline look.
-     * `--ez appLock true|false` switches the app lock setting without authenticating; `--ez lockNow true` locks immediately;
+     * `--ez appLock true|false` switches the app lock setting without authenticating; `--ez lockNow true` locks immediately; `--ez screenshots true` drops FLAG_SECURE so adb screencap works;
      * `--ez plainDb true` rewrites the database as plaintext and kills the process, so the next launch runs the plaintext migration.
      * `--es voiceState listening|result|partial|saved|micoff --es transcript "..."` opens the Voice screen in that state.
      */
@@ -158,6 +159,7 @@ class MainActivity : FragmentActivity() {
             val on = intent.getBooleanExtra("appLock", false)
             CoroutineScope(Dispatchers.IO).launch { container.settings.update { it.copy(biometricLock = on) } }
         }
+        if (intent.hasExtra("screenshots")) debugScreenshots = intent.getBooleanExtra("screenshots", false)
         if (intent.getBooleanExtra("lockNow", false)) container.appLock.lock()
         if (intent.getBooleanExtra("plainDb", false)) {
             CoroutineScope(Dispatchers.IO).launch { DebugSecurity.downgradeToPlaintext(this@MainActivity, container.database) }

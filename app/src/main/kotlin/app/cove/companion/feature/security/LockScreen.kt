@@ -11,14 +11,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -57,6 +56,7 @@ fun LockScreen(onUnlock: () -> Unit, onTurnOff: () -> Unit) {
             if (ok) onUnlock()
         }
     }
+    LaunchedEffect(Unit) { ask(credentialOnly = availability == AuthAvailability.CredentialOnly) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { ask(credentialOnly = availability == AuthAvailability.CredentialOnly) }
 
     CoveScreen {
@@ -87,14 +87,11 @@ fun LockScreen(onUnlock: () -> Unit, onTurnOff: () -> Unit) {
     }
 }
 
-/** A soft, quiet version of the voice orb with a lock glyph. */
+/** The voice orb's gradient with a lock glyph. */
 @Composable
 private fun LockOrb() {
-    Box(Modifier.size(140.dp), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.size(140.dp).blur(18.dp).alpha(if (Cove.colors.isDark) 0.45f else 0.8f)) { drawOrbGradient() }
-        Box(Modifier.size(88.dp).clip(CircleShape), contentAlignment = Alignment.Center) {
-            Canvas(Modifier.size(88.dp)) { drawOrbGradient() }
-            CoveIcon(LockIcon, androidx.compose.ui.graphics.Color(0xFF16171A), size = 28.dp)
-        }
+    Box(Modifier.size(96.dp).clip(CircleShape), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.size(96.dp)) { drawOrbGradient() }
+        CoveIcon(LockIcon, androidx.compose.ui.graphics.Color(0xFF16171A), size = 30.dp)
     }
 }

@@ -37,5 +37,5 @@ object SqlCipherCopier : DatabaseCopier {
     }
 
     private fun open(file: File, key: String): SQLiteDatabase =
-        SQLiteDatabase.openDatabase(file.path, key, null, SQLiteDatabase.OPEN_READWRITE, null, null)
+        SQLiteDatabase.openDatabase(file.path, key, null, SQLiteDatabase.OPEN_READWRITE or SQLiteDatabase.CREATE_IF_NECESSARY, null, null)
 }
