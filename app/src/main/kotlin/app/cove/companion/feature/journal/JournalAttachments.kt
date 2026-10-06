@@ -26,7 +26,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import app.cove.companion.ai.model.Summary
 import app.cove.companion.core.shortTime
 import app.cove.companion.core.toLocalDateTime
