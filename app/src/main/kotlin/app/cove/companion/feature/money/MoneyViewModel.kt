@@ -8,6 +8,8 @@ import app.cove.companion.data.categorize.ReviewLogic
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import java.time.format.TextStyle
 import java.util.Locale
@@ -60,5 +62,5 @@ class MoneyViewModel(c: AppContainer) : ViewModel() {
             empty = month.none { it.kind == "spent" },
             reviewBanner = ReviewLogic.bannerText(ReviewLogic.unfiled(recent, categories, now).size),
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MoneyState())
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MoneyState())
 }

@@ -1,0 +1,20 @@
+# Hints for the first frames of the main tabs, sheets and navigation; AGP compiles this into the release profile.
+HSPLapp/cove/companion/navigation/**;->**(**)**
+HSPLapp/cove/companion/design/**;->**(**)**
+HSPLapp/cove/companion/feature/today/**;->**(**)**
+HSPLapp/cove/companion/feature/plan/**;->**(**)**
+HSPLapp/cove/companion/feature/money/**;->**(**)**
+HSPLapp/cove/companion/feature/journal/**;->**(**)**
+HSPLapp/cove/companion/feature/me/**;->**(**)**
+HSPLapp/cove/companion/feature/habits/**;->**(**)**
+HSPLapp/cove/companion/feature/alarms/**;->**(**)**
+HSPLandroidx/compose/foundation/**;->**(**)**
+HSPLandroidx/compose/animation/**;->**(**)**
+HSPLandroidx/navigation/compose/**;->**(**)**
+Lapp/cove/companion/navigation/**;
+Lapp/cove/companion/design/**;
+Lapp/cove/companion/feature/today/**;
+Lapp/cove/companion/feature/plan/**;
+Lapp/cove/companion/feature/money/**;
+Lapp/cove/companion/feature/journal/**;
+Lapp/cove/companion/feature/me/**;

@@ -24,6 +24,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -163,7 +165,7 @@ class TodayViewModel(private val c: AppContainer) : ViewModel() {
             lateNight = now.hour < LATE_NIGHT_END_HOUR,
             askMood = MoodPrompt.visible(now, answeredMood),
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TodayState())
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TodayState())
 
     /** Emits the hide deadline, then 0 once it has passed so the card reappears without a refresh. */
     private fun hiddenFlow(): Flow<Long> = c.nextCard.hiddenUntil.flatMapLatest { until ->

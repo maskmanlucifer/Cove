@@ -7,6 +7,8 @@ import app.cove.companion.data.local.entity.AlarmEntity
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -27,7 +29,7 @@ class AlarmsViewModel(private val c: AppContainer) : ViewModel() {
             bedtime = all.firstOrNull { it.kind == "bedtime" },
             nextText = next?.let { "Next in ${untilText(it - now)}" },
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AlarmsState())
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AlarmsState())
 
     fun setEnabled(alarm: AlarmEntity, enabled: Boolean) {
         viewModelScope.launch { c.plan.saveAlarm(alarm.copy(enabled = enabled)) }

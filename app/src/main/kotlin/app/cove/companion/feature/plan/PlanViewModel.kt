@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -93,7 +95,7 @@ class PlanViewModel(private val c: AppContainer) : ViewModel() {
             buildTimeline(items, nowMin, showNow = day == today), groupTodos(categories, todos, now),
             todos.filter { it.deletedAt == null }, events, now, day, day == today,
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), PlanState())
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), PlanState())
 
     private val _undo = MutableStateFlow<UndoNotice?>(null)
 
