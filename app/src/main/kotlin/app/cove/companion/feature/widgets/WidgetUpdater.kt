@@ -12,6 +12,7 @@ import app.cove.companion.container
 import app.cove.companion.core.startOfDayMillis
 import app.cove.companion.core.toLocalDate
 import app.cove.companion.feature.nudges.NudgeScheduler
+import app.cove.companion.resilience.CrashHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.combine
@@ -55,8 +56,11 @@ object WidgetUpdater {
 /** Periodic safety net: day rollover, "in 25 min" ageing, and a resync of reminders. */
 class WidgetRefreshWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
-        WidgetUpdater.refresh(applicationContext)
-        NudgeScheduler(applicationContext, applicationContext.container).syncNow()
+        // A broken database must not crash the worker or make it retry forever: note it and finish.
+        CrashHandler.guarded("widget-worker") {
+            WidgetUpdater.refresh(applicationContext)
+            NudgeScheduler(applicationContext, applicationContext.container).syncNow()
+        }
         return Result.success()
     }
 }

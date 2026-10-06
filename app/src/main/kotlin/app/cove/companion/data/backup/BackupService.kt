@@ -17,7 +17,7 @@ sealed interface BackupResult {
     data object Offline : BackupResult
     data object NothingToRestore : BackupResult
     data object NotEmpty : BackupResult
-    data class Failed(val reason: String) : BackupResult
+    data class Failed(val reason: String, val cause: Throwable? = null) : BackupResult
 }
 
 /** Writes monthly snapshots to `Cove/Backups` on Drive, prunes old ones, and restores the newest. */
@@ -75,6 +75,6 @@ class BackupService(
     } catch (e: NotEmptyException) {
         BackupResult.NotEmpty
     } catch (e: Exception) {
-        BackupResult.Failed(e.message ?: "Something went wrong")
+        BackupResult.Failed(e.message ?: "Something went wrong", e)
     }
 }

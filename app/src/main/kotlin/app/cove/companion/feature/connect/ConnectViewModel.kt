@@ -116,6 +116,14 @@ class ConnectViewModel(private val c: AppContainer) : ViewModel() {
         ServiceId.Drive -> driveResult(c.cloud.drive.connect())
     }
 
+    /** Marks onboarding complete (the user already has their data), then calls [done]. */
+    fun skipSetup(done: () -> Unit) {
+        viewModelScope.launch {
+            c.settings.update { it.copy(onboarded = true) }
+            done()
+        }
+    }
+
     /** Signs out of Supabase on this phone. */
     fun signOut() {
         viewModelScope.launch { c.auth.signOut() }

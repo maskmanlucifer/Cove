@@ -12,15 +12,21 @@ import app.cove.companion.data.local.entity.AlarmEntity
 /**
  * Registers alarms with [AlarmManager.setAlarmClock] (exact, survives Doze, shown by the system).
  * Each alarm owns one PendingIntent keyed by a data URI; snoozes use a separate key so syncing
- * alarms never cancels a pending snooze.
+ * alarms never cancels a pending snooze. Every [sync] also refreshes the [AlarmMirror], so alarms can still ring
+ * when the database is unreadable.
  */
-class AlarmScheduler(private val context: Context, private val clock: Clock) {
+class AlarmScheduler(
+    private val context: Context,
+    private val clock: Clock,
+    private val mirror: AlarmMirror = AlarmMirror.forContext(context),
+) {
     private val manager = context.getSystemService(AlarmManager::class.java)
     private val prefs = context.getSharedPreferences("alarm_scheduler", Context.MODE_PRIVATE)
 
     /** Makes AlarmManager match [alarms]: registers enabled ones and cancels ones that were removed or switched off. */
     @Synchronized
     fun sync(alarms: List<AlarmEntity>) {
+        mirror.write(alarms)
         val live = alarms.filter { it.enabled && it.deletedAt == null }
         val liveIds = live.map { it.id }.toSet()
         val previous = prefs.getStringSet(KEY_REGISTERED, emptySet()).orEmpty()
@@ -41,6 +47,11 @@ class AlarmScheduler(private val context: Context, private val clock: Clock) {
         manager.cancel(firePending(alarmId, snooze = false))
     }
 
+    /** Removes a pending snooze of [alarmId]. */
+    fun cancelSnooze(alarmId: String) {
+        manager.cancel(firePending(alarmId, snooze = true))
+    }
+
     /** Re-fires [alarmId] at [atMillis] as a snooze. */
     fun scheduleSnooze(alarmId: String, atMillis: Long) {
         register(atMillis, firePending(alarmId, snooze = true))
@@ -54,6 +65,7 @@ class AlarmScheduler(private val context: Context, private val clock: Clock) {
         try {
             manager.setAlarmClock(AlarmManager.AlarmClockInfo(at, show), pending)
         } catch (_: SecurityException) {
+            // Exact alarms were revoked: ring as close as the system allows; the Alarms screen tells the user how to fix it.
             manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pending)
         }
     }

@@ -36,6 +36,9 @@ object Routes {
 
     const val SyncConflict = "sync/conflict"
     const val Connect = "connect"
+
+    /** Connect services opened from "I already use Cove", with Continue and Skip the setup questions. */
+    const val ConnectOnboarding = "connect/onboarding"
 }
 
 /** Navigation actions exposed to screens, so they never touch `NavController` directly. */

@@ -12,15 +12,16 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import app.cove.companion.container
+import app.cove.companion.resilience.guardedWork
 import java.util.concurrent.TimeUnit
 
 /** Uploads pending journal media to Drive; retried with exponential backoff while Drive is unreachable. */
 class MediaUploadWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
-    override suspend fun doWork(): Result {
+    override suspend fun doWork(): Result = guardedWork("media-worker", runAttemptCount, MAX_ATTEMPTS) {
         val kit = applicationContext.container.driveKit
-        if (!kit.enabled) return Result.success()
+        if (!kit.enabled) return@guardedWork Result.success()
         val run = kit.uploader().run()
-        return if (run.retryLater && runAttemptCount < MAX_ATTEMPTS) Result.retry() else Result.success()
+        if (run.retryLater && runAttemptCount < MAX_ATTEMPTS) Result.retry() else Result.success()
     }
 
     private companion object {

@@ -66,8 +66,10 @@ private val DoneKey = ActionParameters.Key<Boolean>("todo_done")
 class ToggleTodoAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         val id = parameters[TodoIdKey] ?: return
-        context.container.todos.setDone(id, !(parameters[DoneKey] ?: false))
-        WidgetUpdater.refresh(context)
+        app.cove.companion.resilience.CrashHandler.guarded("widget-toggle") {
+            context.container.todos.setDone(id, !(parameters[DoneKey] ?: false))
+            WidgetUpdater.refresh(context)
+        }
     }
 }
 

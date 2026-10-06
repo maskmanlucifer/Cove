@@ -35,7 +35,7 @@ enum class MeSheet { Name, Wake, Brief, OneThing, Spoken, Nudges, Motion, Look, 
 
 /** Hosts whichever sheet [sheet] names, reading and writing through [vm]. */
 @Composable
-fun MeSheets(sheet: MeSheet?, s: SettingsEntity, vm: MeViewModel, briefPlay: () -> Unit = {}, onDismiss: () -> Unit) {
+fun MeSheets(sheet: MeSheet?, s: SettingsEntity, vm: MeViewModel, briefPlay: () -> Unit = {}, openConnect: () -> Unit = {}, onDismiss: () -> Unit) {
     when (sheet) {
         null -> Unit
         MeSheet.Name -> NameSheet(s.displayName, { n -> vm.update { it.copy(displayName = n.trim()) } }, onDismiss)
@@ -106,7 +106,7 @@ fun MeSheets(sheet: MeSheet?, s: SettingsEntity, vm: MeViewModel, briefPlay: () 
             )
             SheetCaption(photoQualityHelp(s.photoQuality))
         }
-        MeSheet.Backup, MeSheet.Restore -> BackupSheet(sheet == MeSheet.Restore, vm, onDismiss)
+        MeSheet.Backup, MeSheet.Restore -> BackupSheet(sheet == MeSheet.Restore, vm, onDismiss, openConnect)
     }
 }
 
@@ -137,11 +137,25 @@ private fun WakeSheet(minutes: Int, onSave: (Int) -> Unit, onDismiss: () -> Unit
     }
 }
 
-private val privacyBlocks = listOf(
-    "On this phone" to "Alarms, to-dos, habits, money and journal entries are saved on this phone first, so Cove works with no signal.",
-    "Your own space" to "When you sign in, changes are copied to your own database (Supabase) and photos and voice notes go to your own Google Drive in a folder called Cove. Only you can read them.",
-    "Your voice" to "Speech is turned into text on this phone whenever it can. If it can’t, a short voice command (never a journal note) may be sent to be transcribed by Google’s Gemini through your own database. Journal voice notes always stay on this phone.",
-    "Journal insights" to "Mood and pattern summaries of your journal are made on this phone only. Nothing is sent anywhere to produce them.",
+/** One group of the Privacy sheet: a heading and titled paragraphs. */
+private class PrivacyGroup(val heading: String, val blocks: List<Pair<String, String>>)
+
+private val privacyGroups = listOf(
+    PrivacyGroup(
+        "What stays on this phone",
+        listOf(
+            "Your entries" to "Alarms, to-dos, habits, money and journal are saved on this phone first, in an encrypted database. Cove works with no signal.",
+            "Your journal" to "Journal text, photos and voice notes are never sent to an AI service. Mood and pattern summaries are made on this phone.",
+        ),
+    ),
+    PrivacyGroup(
+        "What can leave, and when",
+        listOf(
+            "Sync and backup (only if you set them up)" to "Changes are copied to your own Supabase database, and photos, voice notes and backups go to a Cove folder in your own Google Drive.",
+            "Speech" to "Your phone turns speech into text. On phones without an offline speech model, Android may send the audio to Google to do this.",
+            "Gemini (only if you add a key)" to "Short non-journal commands (up to 160 characters), the facts for your morning brief, and expense notes with amounts removed (when you ask Review to sort them) go from this phone straight to Google with your own key. Without a key, your Supabase project may relay the same text.",
+        ),
+    ),
 )
 
 @Composable
@@ -152,10 +166,13 @@ private fun PrivacySheet(onDismiss: () -> Unit) {
             Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            privacyBlocks.forEach { (title, body) ->
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    CoveText(title, style = CoveType.BodyMedium)
-                    CoveText(body, style = CoveType.Meta.copy(lineHeight = androidx.compose.ui.unit.TextUnit(21f, androidx.compose.ui.unit.TextUnitType.Sp)), color = Cove.colors.muted)
+            privacyGroups.forEach { group ->
+                CoveText(group.heading, style = CoveType.Heading)
+                group.blocks.forEach { (title, body) ->
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        CoveText(title, style = CoveType.BodyMedium)
+                        CoveText(body, style = CoveType.Meta.copy(lineHeight = androidx.compose.ui.unit.TextUnit(21f, androidx.compose.ui.unit.TextUnitType.Sp)), color = Cove.colors.muted)
+                    }
                 }
             }
         }

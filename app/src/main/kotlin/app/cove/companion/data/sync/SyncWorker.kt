@@ -13,13 +13,14 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import app.cove.companion.container
+import app.cove.companion.resilience.guardedWork
 import java.util.concurrent.TimeUnit
 
 /** Runs one sync pass; WorkManager retries with exponential backoff while it reports failure. */
 class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
-    override suspend fun doWork(): Result {
+    override suspend fun doWork(): Result = guardedWork("sync-worker", runAttemptCount, MAX_ATTEMPTS) {
         val ok = applicationContext.container.sync.syncNow()
-        return if (ok || runAttemptCount >= MAX_ATTEMPTS) Result.success() else Result.retry()
+        if (ok || runAttemptCount >= MAX_ATTEMPTS) Result.success() else Result.retry()
     }
 
     private companion object {

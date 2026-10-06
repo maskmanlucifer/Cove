@@ -75,7 +75,7 @@ fun WelcomeScreen(nav: Nav) {
             }
             BigButton("Get started", next)
             Box(Modifier.padding(top = 4.dp)) {
-                TextAction("I already use Cove") { nav.go(Routes.Connect) }
+                TextAction("I already use Cove") { nav.go(Routes.ConnectOnboarding) }
             }
         }
     }
@@ -180,7 +180,7 @@ fun AlarmPermissionScreen(nav: Nav) {
         InfoCard {
             PermissionRow(
                 title = "Notifications",
-                subtitle = "Bundled, three times a day",
+                subtitle = "Your daily summaries and reminders",
                 allowed = notifAllowed,
                 action = if (notifAsked) "Settings" else "Allow",
             ) {
@@ -194,7 +194,14 @@ fun AlarmPermissionScreen(nav: Nav) {
                 context.startActivity(Permissions.exactAlarmSettings(context))
             }
         }
-        HelperText("Turn on “Allow setting alarms”, then press back. Cove will notice and move on.", center = false)
+        if (!exactAllowed) HelperText("Turn on “Allow setting alarms”, then press back. Cove will notice and move on.", center = false)
+        if (!notifAllowed && notifAsked) {
+            HelperText(
+                "Notifications are off, so a ringing alarm can’t show its Stop and Snooze screen and reminders won’t appear. " +
+                    "You can continue now; Cove will remind you in Alarms and Me.",
+                center = false,
+            )
+        }
         Box(Modifier.weight(1f))
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             BigButton("Finish", finish, enabled = exactAllowed)

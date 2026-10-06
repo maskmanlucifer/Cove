@@ -81,7 +81,7 @@ class AuthRepositoryTest {
         assertEquals("Not signed in", syncUi(AuthState.SignedOut, SyncStatus.Idle, 0, 0).label)
         assertEquals("Syncing", syncUi(inn, SyncStatus.Syncing, 0, 0).label)
         assertEquals("Up to date · 2 min ago", syncUi(inn, SyncStatus.UpToDate(0), 0, 120_000).label)
-        assertEquals("Error", syncUi(inn, SyncStatus.Failed("x"), 0, 0).label)
+        assertEquals("Paused", syncUi(inn, SyncStatus.Failed("x"), 0, 0).label)
         assertEquals("1 to review", syncUi(inn, SyncStatus.Syncing, 1, 0).label)
     }
 }

@@ -11,6 +11,7 @@ class Importer(private val store: BackupStore, private val tables: List<SyncTabl
     /** Writes every table of [backup] that this build knows; unknown tables are ignored. Returns the number of rows restored. */
     suspend fun restore(backup: Backup): Int {
         if (!store.isEmpty()) throw NotEmptyException()
+        if (backup.tables["alarms"].orEmpty().isNotEmpty()) store.clearDefaultAlarms()
         var count = 0
         for (table in tables) {
             val rows = backup.tables[table.name].orEmpty()

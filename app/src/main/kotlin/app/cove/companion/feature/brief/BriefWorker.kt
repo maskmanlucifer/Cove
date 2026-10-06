@@ -7,6 +7,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import app.cove.companion.container
+import app.cove.companion.resilience.guardedWork
 import kotlinx.coroutines.flow.first
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -14,10 +15,10 @@ import java.util.concurrent.TimeUnit
 
 /** Generates and caches today's brief ahead of the wake-up time. Never uses Nano (foreground only). */
 class BriefWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
-    override suspend fun doWork(): Result {
+    override suspend fun doWork(): Result = guardedWork("brief-worker", runAttemptCount) {
         val c = applicationContext.container
-        if (!c.settings.settings.first().briefOn) return Result.success()
-        return runCatching { c.briefGenerator.generate() }.fold({ Result.success() }, { Result.retry() })
+        if (!c.settings.settings.first().briefOn) return@guardedWork Result.success()
+        runCatching { c.briefGenerator.generate() }.fold({ Result.success() }, { Result.retry() })
     }
 }
 

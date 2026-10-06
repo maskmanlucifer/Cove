@@ -40,6 +40,13 @@ import app.cove.companion.feature.voice.VoiceDebug
 import app.cove.companion.feature.alarms.DebugAlarms
 import app.cove.companion.feature.widgets.DebugWidgets
 import app.cove.companion.feature.security.LockScreen
+import app.cove.companion.feature.alarms.RingingBanner
+import app.cove.companion.feature.recovery.RecoveryScreen
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import app.cove.companion.resilience.RecoveryReason
+import app.cove.companion.resilience.StartupState
 import app.cove.companion.security.DebugSecurity
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -85,6 +92,11 @@ class MainActivity : FragmentActivity() {
         if (intent.action == ACTION_LISTEN) voiceRequest.intValue++
         if (intent.action == ACTION_BRIEF) briefRequest.intValue++
         setContent {
+            val startup by container.startup.collectAsState()
+            (startup as? StartupState.Recovery)?.let {
+                RecoveryScreen(it.reason)
+                return@setContent
+            }
             val ready by container.dbReady.collectAsState()
             if (!ready) {
                 UpdatingSplash(container.dbMigrating.collectAsState().value)
@@ -121,11 +133,14 @@ class MainActivity : FragmentActivity() {
                     val pendingBrief = briefRequest.intValue
                     val brief = if (pendingBrief > handledBrief) pendingBrief else 0
                     LaunchedEffect(brief) { if (brief > 0) handledBrief = brief }
-                    CoveNavHost(
-                        start = debugRoute ?: DebugLaunch.route ?: if (s.onboarded) Routes.Main else Routes.Welcome,
-                        voiceRequest = request,
-                        briefRequest = brief,
-                    )
+                    Box {
+                        CoveNavHost(
+                            start = debugRoute ?: DebugLaunch.route ?: if (s.onboarded) Routes.Main else Routes.Welcome,
+                            voiceRequest = request,
+                            briefRequest = brief,
+                        )
+                        RingingBanner(Modifier.align(Alignment.TopCenter))
+                    }
                 }
             }
         }
@@ -161,6 +176,7 @@ class MainActivity : FragmentActivity() {
      * `--ez reviewSeed true` (with seed) adds five unfiled expenses and two misfiled ones for `--es route money/review`.
      * `--ez conflict true` (with seed) adds the sync conflict from frame 31; open it with `--es route sync/conflict`.
      * `--es tab plan --es segment 1 --es sheet categories --es title Dentist` open a Plan tab view directly.
+     * `--ez fakeDriveOnly true` switches to the fake Drive without seeding any data (for testing Restore on a fresh Cove).
      * `--ez fakeDrive true [--ez driveRun true]` uses a folder-backed fake Drive with a seeded pending photo; driveRun uploads it and backs up.
      * `--es suggest late-night` fakes a 1:40 am phone use so the late-night suggestion appears; `--es briefAt 51/124` freezes the brief player
      * at elapsed/total seconds; `--ez offline true` forces the offline look.
@@ -184,6 +200,7 @@ class MainActivity : FragmentActivity() {
         }
         BriefDebug.frozen = intent.getStringExtra("briefAt")?.split("/")?.let { it[0].toInt() to it[1].toInt() }
         ConnectivityMonitor.forceOffline = intent.getBooleanExtra("offline", false)
+        intent.getStringExtra("crashTest")?.let(::debugCrashTest)
         if (intent.hasExtra("appLock")) {
             val on = intent.getBooleanExtra("appLock", false)
             CoroutineScope(Dispatchers.IO).launch { container.settings.update { it.copy(biometricLock = on) } }
@@ -215,11 +232,30 @@ class MainActivity : FragmentActivity() {
                 VoiceDebug.runSaved(container)
             }
         }
+        if (intent.getBooleanExtra("fakeDriveOnly", false)) CoroutineScope(Dispatchers.IO).launch { container.driveKit.useFake() }
         if (intent.getBooleanExtra("fakeDrive", false)) {
             CoroutineScope(Dispatchers.IO).launch { DebugSeed.seedDrive(container, intent.getBooleanExtra("driveRun", false)) }
         }
         CoroutineScope(Dispatchers.IO).launch { DebugAlarms.handle(this@MainActivity, container, intent) }
         CoroutineScope(Dispatchers.IO).launch { DebugWidgets.handle(this@MainActivity, container, intent) }
+    }
+
+    /**
+     * Debug only. `--es crashTest db-corrupt|key-missing|key-invalid|migration|storage|unknown|loop` shows the Recovery screen for that
+     * failure class without damaging anything; `crash` throws on the main thread to exercise the crash handler.
+     */
+    private fun debugCrashTest(kind: String) {
+        val reason = when (kind) {
+            "db-corrupt" -> RecoveryReason.Corrupt
+            "key-missing" -> RecoveryReason.KeyMissing
+            "key-invalid" -> RecoveryReason.KeyInvalid
+            "migration" -> RecoveryReason.MigrationFailed
+            "storage" -> RecoveryReason.StorageFull
+            "unknown" -> RecoveryReason.Unknown
+            "loop" -> RecoveryReason.CrashLoop
+            else -> null
+        }
+        if (reason != null) container.forceRecovery(reason) else if (kind == "crash") throw IllegalStateException("crashTest")
     }
 
     companion object {

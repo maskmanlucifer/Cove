@@ -11,6 +11,7 @@ All code is in `app/src/main/kotlin/app/cove/companion/`:
 | `core/` | Freezable `Clock`, formatting, notification channels, `Permissions`, ViewModel helpers |
 | `design/` | Colour tokens, Geist type scale, shapes, icons, `CoveTheme`, shared components (`CoveText`, `CoveSheet`, dock, orb) |
 | `navigation/` | Routes, nav host, tab host |
+| `resilience/` | Crash notes and handler, crash-loop rule, `DatabaseGuard`, safe mode, worker guard. See `docs/RESILIENCE.md` |
 | `security/` | SQLCipher open helper, Keystore-wrapped key, plaintext-to-encrypted migration |
 | `ai/` | The AI layer: `AiService` facade, `AiRouter` + `AiPolicy`, providers (on-device, cloud, rules), prompts, schemas. See `docs/AI.md` |
 | `data/` | Room (`local/`), repositories, sync (Supabase over Ktor), auth, Drive, media, backup, journal search |
@@ -51,6 +52,7 @@ Send with `adb shell am start -n app.cove.companion/.MainActivity <extras>`.
 | `--ez appLock true\|false`, `--ez lockNow true` | Turn the app lock on/off, lock immediately |
 | `--ez plainDb true` | Rewrite the DB as plaintext and kill the process, to exercise the migration on next launch |
 | `--ez screenshots true\|false` | Allow/disallow screenshots while the lock hides them |
+| `--es crashTest db-corrupt\|key-missing\|key-invalid\|migration\|storage\|unknown\|loop` | Show the Recovery screen for that failure class without damaging anything (`crash` throws on the main thread to exercise the crash handler) |
 
 Release builds ignore all of these. Debug builds also log StrictMode violations (`adb logcat -s StrictMode`).
 
@@ -64,6 +66,7 @@ Release builds ignore all of these. Debug builds also log StrictMode violations 
 - `docs/CONTRIBUTING.md`: how features are built and verified.
 - `docs/CATEGORIZATION.md`: how expenses are filed (rules, learning, Review, optional AI cross-check).
 - `docs/SECURITY.md`: database encryption and app lock.
+- `docs/RESILIENCE.md`: what happens when the database, key or app fails, and what the user sees.
 - `docs/SETUP.md`: connect your own Supabase, Google, Drive and Gemini (15 minutes); `tools/make-setup-code.py` builds a one-paste setup code.
 - `docs/DRIVE_SETUP.md`: pointer to the Drive part of the setup guide.
 - `docs/RELEASE.md`: signing, release builds, R8 rules, lint notes.

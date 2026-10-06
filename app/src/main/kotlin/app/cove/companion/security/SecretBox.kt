@@ -3,6 +3,7 @@ package app.cove.companion.security
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
+import app.cove.companion.resilience.KeystoreKeyMissingException
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -17,10 +18,10 @@ class SecretBox(private val alias: String) : Sealer {
         return cipher.iv + cipher.doFinal(plain)
     }
 
-    /** Reverses [encrypt]; throws if the data was tampered with or the key is gone. */
+    /** Reverses [encrypt]; throws if the data was tampered with, or [KeystoreKeyMissingException] if the key is gone (it never mints a replacement). */
     override fun decrypt(box: ByteArray): ByteArray {
         val cipher = Cipher.getInstance(TRANSFORM)
-        cipher.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(TAG_BITS, box, 0, IV_BYTES))
+        cipher.init(Cipher.DECRYPT_MODE, key(create = false), GCMParameterSpec(TAG_BITS, box, 0, IV_BYTES))
         return cipher.doFinal(box, IV_BYTES, box.size - IV_BYTES)
     }
 
@@ -31,9 +32,10 @@ class SecretBox(private val alias: String) : Sealer {
     fun decryptString(text: String): String? =
         runCatching { String(decrypt(Base64.decode(text, Base64.NO_WRAP))) }.getOrNull()
 
-    private fun key(): SecretKey {
+    private fun key(create: Boolean = true): SecretKey {
         val store = KeyStore.getInstance(PROVIDER).apply { load(null) }
         (store.getKey(alias, null) as? SecretKey)?.let { return it }
+        if (!create) throw KeystoreKeyMissingException()
         val spec = KeyGenParameterSpec.Builder(alias, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
             .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
             .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)

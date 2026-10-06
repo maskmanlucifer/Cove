@@ -37,14 +37,17 @@ class AlarmRingActivity : ComponentActivity() {
             ring ?: return@setContent
             val message by produceState("", ring.minutes) {
                 val c = container
-                val first = c.plan.eventsOn(c.clock.now().toLocalDate()).first()
-                    .map { it.startAt.toLocalDateTime() }
-                    .map { it.hour * 60 + it.minute }
-                    .filter { it >= ring.minutes }
-                    .minOrNull()
+                // The database may be unreadable: ring with a plain message instead of failing.
+                val first = runCatching {
+                    c.plan.eventsOn(c.clock.now().toLocalDate()).first()
+                        .map { it.startAt.toLocalDateTime() }
+                        .map { it.hour * 60 + it.minute }
+                        .filter { it >= ring.minutes }
+                        .minOrNull()
+                }.getOrNull()
                 value = ringMessage(ring.minutes / 60, first)
             }
-            val briefOn by produceState(false) { value = container.settings.settings.first().briefOn }
+            val briefOn by produceState(false) { value = runCatching { container.settings.settings.first().briefOn }.getOrDefault(false) }
             CoveTheme(dark = true) {
                 RingScreen(
                     ring = ring,
