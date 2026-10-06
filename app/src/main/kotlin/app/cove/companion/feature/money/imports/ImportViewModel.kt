@@ -137,7 +137,7 @@ class ImportViewModel(private val c: AppContainer) : ViewModel() {
             try {
                 val from = since ?: c.smsImport.rangeStart(_state.value.range)
                 val result = c.smsImport.scan(source, from) { p -> _state.update { s -> s.copy(progress = p) } }
-                val cats = _state.value.categories
+                val cats = c.money.categories.first().filter { it.kind == "spending" && it.deletedAt == null }
                 val memory = c.money.memory.first()
                 val rows = result.items.map { item ->
                     val tx = item.candidate.tx
@@ -146,7 +146,7 @@ class ImportViewModel(private val c: AppContainer) : ViewModel() {
                     val id = s?.categoryId ?: if (kind == "spent") ExpenseCategorizer.fallback(cats)?.id else null
                     ImportRow(item, checked = item.match == null, kind = kind, categoryId = id, suggestedId = id, reason = s?.reason?.label)
                 }
-                _state.update { it.copy(stage = ImportStage.Review, rows = rows, scanned = result.scanned, duplicatesDropped = result.duplicatesDropped) }
+                _state.update { it.copy(stage = ImportStage.Review, rows = rows, categories = cats, scanned = result.scanned, duplicatesDropped = result.duplicatesDropped) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: SmsReadException) {

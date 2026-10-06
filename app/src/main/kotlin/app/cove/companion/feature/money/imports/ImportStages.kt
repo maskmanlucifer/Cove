@@ -108,7 +108,7 @@ internal fun RangeStage(s: ImportState, onRange: (ImportRange) -> Unit, onFind: 
         RowsCard {
             ImportRange.entries.forEachIndexed { i, r ->
                 if (i > 0) RowDivider()
-                val hint = if (r == ImportRange.SinceLast && !s.hasHistory) "Nothing imported yet, so this looks back 30 days" else null
+                val hint = if (r == ImportRange.SinceLast && !s.hasHistory) "Nothing imported yet: looks back 30 days" else null
                 Row(
                     Modifier.fillMaxWidth().heightIn(min = 56.dp).pressable({ onRange(r) }).padding(vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),

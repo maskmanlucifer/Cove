@@ -36,6 +36,8 @@ import app.cove.companion.data.local.entity.ExpenseCategoryEntity
 import app.cove.companion.design.Cove
 import app.cove.companion.design.CoveShapes
 import app.cove.companion.design.CoveType
+import app.cove.companion.data.sms.ImportRange
+import app.cove.companion.design.components.AccentButton
 import app.cove.companion.design.components.CheckCircle
 import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.PillButton
@@ -64,7 +66,7 @@ internal fun ReviewStage(s: ImportState, vm: ImportViewModel, importing: Boolean
                         if (s.rows.isEmpty()) "No new transactions found." else "${fresh.size} new" + if (dups.isNotEmpty()) " · ${dups.size} possible duplicate${if (dups.size == 1) "" else "s"}" else "",
                         style = CoveType.Section,
                     )
-                    if (s.rows.isEmpty()) EmptyHint(s) else {
+                    if (s.rows.isEmpty()) EmptyHint(s, vm) else {
                         val anyOff = fresh.any { !it.checked }
                         Box(Modifier.heightIn(min = 44.dp).pressable(vm::selectAllOrNone), contentAlignment = Alignment.CenterStart) {
                             CoveText(if (anyOff) "Select all new" else "Select none", style = MoneyType.Sub.copy(fontWeight = FontWeight.Medium), color = c.accent)
@@ -90,10 +92,16 @@ internal fun ReviewStage(s: ImportState, vm: ImportViewModel, importing: Boolean
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun EmptyHint(s: ImportState) {
+private fun EmptyHint(s: ImportState, vm: ImportViewModel) {
     val c = Cove.colors
-    val where = if (s.fromPaste) "in what you pasted" else "in ${s.range.label.lowercase()}"
+    val where = if (s.fromPaste) "in what you pasted" else when (s.range) {
+        ImportRange.SinceLast -> "since your last import"
+        ImportRange.Last30 -> "from the last 30 days"
+        ImportRange.ThisMonth -> "from this month"
+        ImportRange.All -> "in your inbox"
+    }
     CoveText("Cove looked at ${count(s.scanned)} message${if (s.scanned == 1) "" else "s"} $where.", style = MoneyType.Note, color = c.muted)
     CoveText(
         if (s.fromPaste) "Try pasting the whole bank message, including the amount and the word debited or credited."
@@ -101,6 +109,10 @@ private fun EmptyHint(s: ImportState) {
         style = MoneyType.Note, color = c.muted,
     )
     if (s.duplicatesDropped > 0) CoveText("${s.duplicatesDropped} repeated or already handled.", style = MoneyType.Note, color = c.muted)
+    FlowRow(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (!s.fromPaste) AccentButton("Change range", { vm.backToStart(true) })
+        AccentButton("Paste a message", vm::openPaste)
+    }
 }
 
 private fun androidx.compose.foundation.lazy.LazyListScope.section(
@@ -153,7 +165,7 @@ private fun ImportRowItem(row: ImportRow, today: java.time.LocalDate, cats: List
         FlowRow(Modifier.fillMaxWidth().padding(start = 38.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (row.kind == "spent") {
                 val name = cats.firstOrNull { it.id == row.categoryId }?.name
-                Pill(name ?: "Pick a category", selected = name != null) { picking = !picking }
+                Pill(name ?: "Pick a category", selected = false, accent = name != null) { picking = !picking }
             }
             KindToggle(row.kind) { vm.setKind(row.id, it) }
         }
@@ -182,10 +194,12 @@ private fun KindToggle(kind: String, onPick: (String) -> Unit) {
 }
 
 @Composable
-private fun Pill(text: String, selected: Boolean, onClick: () -> Unit) {
+private fun Pill(text: String, selected: Boolean, accent: Boolean = false, onClick: () -> Unit) {
     val c = Cove.colors
+    val bg = if (selected) c.ink else if (accent) c.accentSoft else c.well
+    val fg = if (selected) c.onInk else if (accent) c.accent else c.ink
     Box(
-        Modifier.heightIn(min = 36.dp).background(if (selected) c.ink else c.well, CoveShapes.Pill).pressable(onClick).padding(horizontal = 14.dp),
+        Modifier.heightIn(min = 36.dp).background(bg, CoveShapes.Pill).pressable(onClick).padding(horizontal = 14.dp),
         contentAlignment = Alignment.Center,
-    ) { CoveText(text, style = CoveType.Meta.copy(fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal), color = if (selected) c.onInk else c.ink) }
+    ) { CoveText(text, style = CoveType.Meta.copy(fontWeight = if (selected || accent) FontWeight.Medium else FontWeight.Normal), color = fg) }
 }

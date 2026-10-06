@@ -145,6 +145,7 @@ object SmsTransactionParser {
             atm -> "Cash"
             Regex("""(?i)\bcard\b""").containsMatchIn(text) && vpaMatch == null && !Regex("""(?i)\bupi\b""").containsMatchIn(text) -> "Card"
             Regex("""(?i)\bupi\b|@[a-z]{2,}|\bvpa\b""").containsMatchIn(text) -> "UPI"
+            Regex("""(?i)^(sent|paid)\b""").containsMatchIn(text) -> "UPI"
             else -> "Bank transfer"
         }
         val bank = bankFor(senderId, text)
