@@ -164,15 +164,15 @@ private fun AmountBlock(s: ExpenseEditState, onNote: (String) -> Unit, focus: (B
     }
 }
 
+/** Category chips scroll sideways; "+ New" stays pinned at the right so it is always reachable. */
 @Composable
 private fun CategoryChips(s: ExpenseEditState, onPick: (String) -> Unit, onNew: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 24.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        s.categories.forEach { cat ->
-            val on = cat.id == s.categoryId
-            Chip(cat.name, on) { onPick(cat.id) }
+    Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            Modifier.weight(1f).horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            s.categories.forEach { cat -> Chip(cat.name, cat.id == s.categoryId) { onPick(cat.id) } }
         }
         Chip("+ New", false, onNew)
     }
