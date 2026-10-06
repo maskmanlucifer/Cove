@@ -21,7 +21,9 @@ import app.cove.companion.feature.brief.BriefScreen
 import app.cove.companion.feature.habits.HabitNewScreen
 import app.cove.companion.feature.habits.HabitsScreen
 import app.cove.companion.feature.journal.JournalEditScreen
+import app.cove.companion.BuildConfig
 import app.cove.companion.feature.money.ExpenseEditScreen
+import app.cove.companion.feature.money.MoneyLoggedDebugScreen
 import app.cove.companion.feature.money.MoneyCategoriesScreen
 import app.cove.companion.feature.money.MoneyCategoryDetailScreen
 import app.cove.companion.feature.money.MoneyCategoryEditScreen
@@ -87,6 +89,7 @@ fun CoveNavHost(start: String) {
 
         composable(Routes.JournalEdit, idArg) { JournalEditScreen(id(it), nav) }
         composable(Routes.SyncConflict) { SyncConflictScreen(nav) }
+        if (BuildConfig.DEBUG) composable("debug/money-logged") { MoneyLoggedDebugScreen() }
     }
 }
 

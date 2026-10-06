@@ -125,6 +125,12 @@ interface ExpenseDao {
 
     @Query("SELECT COUNT(*) FROM expense_categories")
     suspend fun categoryCount(): Int
+
+    @Query("SELECT * FROM expense_categories WHERE id = :id")
+    suspend fun getCategory(id: String): ExpenseCategoryEntity?
+
+    @Query("SELECT * FROM expenses WHERE deletedAt IS NULL AND categoryId = :categoryId")
+    suspend fun inCategory(categoryId: String): List<ExpenseEntity>
 }
 
 @Dao
