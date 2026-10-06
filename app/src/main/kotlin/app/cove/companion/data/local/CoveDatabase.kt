@@ -16,6 +16,7 @@ import app.cove.companion.data.local.dao.ExpenseDao
 import app.cove.companion.data.local.dao.HabitDao
 import app.cove.companion.data.local.dao.JournalDao
 import app.cove.companion.data.local.dao.SettingsDao
+import app.cove.companion.data.local.dao.SmsImportDao
 import app.cove.companion.data.local.dao.SyncDao
 import app.cove.companion.data.local.dao.TodoDao
 import app.cove.companion.data.local.dao.TrainingDao
@@ -40,6 +41,7 @@ import app.cove.companion.data.local.entity.JournalMediaEntity
 import app.cove.companion.data.local.entity.OutboxEntity
 import app.cove.companion.data.local.entity.SearchIndexEntity
 import app.cove.companion.data.local.entity.SettingsEntity
+import app.cove.companion.data.local.entity.SmsImportLogEntity
 import app.cove.companion.data.local.entity.SuggestionPrefEntity
 import app.cove.companion.data.local.entity.SyncConflictEntity
 import app.cove.companion.data.local.entity.SyncStateEntity
@@ -58,8 +60,9 @@ import app.cove.companion.data.local.entity.VoiceCommandEntity
         CategoryMemoryEntity::class,
         ExerciseEntity::class, WorkoutPlanEntity::class, PlanDayEntity::class, WorkoutSessionEntity::class,
         SetLogEntity::class, BodyWeightEntity::class, TrainingSettingsEntity::class,
+        SmsImportLogEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
 )
 abstract class CoveDatabase : RoomDatabase() {
@@ -73,6 +76,7 @@ abstract class CoveDatabase : RoomDatabase() {
     abstract fun assistant(): AssistantDao
     abstract fun sync(): SyncDao
     abstract fun training(): TrainingDao
+    abstract fun smsImport(): SmsImportDao
 
     companion object {
         /** Adds the local-only `sync_conflicts` table. */
@@ -128,12 +132,28 @@ abstract class CoveDatabase : RoomDatabase() {
             }
         }
 
+        /** Adds `expenses.externalRef` and the local-only `sms_import_log` (see `docs/SMS_IMPORT.md`). */
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `expenses` ADD COLUMN `externalRef` TEXT")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `sms_import_log` (`key` TEXT NOT NULL, `providerId` INTEGER, `outcome` TEXT NOT NULL, " +
+                        "`amountPaise` INTEGER NOT NULL, `kind` TEXT NOT NULL, `merchant` TEXT, `last4` TEXT, `externalRef` TEXT, " +
+                        "`expenseId` TEXT, `batchId` TEXT, `messageAt` INTEGER NOT NULL, `loggedAt` INTEGER NOT NULL, " +
+                        "`parserVersion` INTEGER NOT NULL, PRIMARY KEY(`key`))",
+                )
+                listOf("providerId", "externalRef", "messageAt", "batchId", "expenseId").forEach {
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_sms_import_log_$it` ON `sms_import_log` (`$it`)")
+                }
+            }
+        }
+
         /** File name of the database in the app's databases directory. */
         const val NAME = "cove.db"
 
         fun create(context: Context, factory: SupportSQLiteOpenHelper.Factory? = null): CoveDatabase =
             Room.databaseBuilder(context, CoveDatabase::class.java, NAME)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                 // Room's own background coroutines (invalidation tracking) would crash the process on a failing database; report instead.
                 .setQueryCoroutineContext(Dispatchers.IO + CrashHandler.coroutineHandler("room"))
                 .apply { if (factory != null) openHelperFactory(factory) }

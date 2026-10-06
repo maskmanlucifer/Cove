@@ -151,7 +151,7 @@ data class CategoryMemoryEntity(
     val deletedAt: Long? = null,
 )
 
-/** `kind` is spent|received; `source` is manual|voice|sms. */
+/** `kind` is spent|received; `source` is manual|voice|sms; `externalRef` is set for sms imports. */
 @Entity(tableName = "expenses", indices = [Index("spentAt"), Index("categoryId")])
 data class ExpenseEntity(
     @PrimaryKey val id: String,
@@ -164,6 +164,8 @@ data class ExpenseEntity(
     val source: String = "manual",
     val updatedAt: Long = 0,
     val deletedAt: Long? = null,
+    /** Bank or UPI reference (or a `msg:` hash) of an expense imported from messages; used to dedupe re-imports. */
+    val externalRef: String? = null,
 )
 
 /** Journal entry; `mood` is the user's own pick (calm|good|tired|low|…). */

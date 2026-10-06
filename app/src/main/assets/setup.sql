@@ -1,4 +1,4 @@
--- Cove: complete Supabase setup in one paste (migrations 0001, 0002, 0003 and 0004 combined).
+-- Cove: complete Supabase setup in one paste (migrations 0001 to 0006 combined).
 -- Run it once in the Supabase dashboard: SQL Editor > New query > paste > Run.
 -- Safe to run again: every statement is idempotent.
 -- Keep in sync with supabase/migrations/*.sql (a unit test checks the copy in app/src/main/assets).
@@ -514,3 +514,7 @@ drop trigger if exists training_settings_touch on public.training_settings;
 create trigger training_settings_touch before insert or update on public.training_settings
   for each row execute function public.cove_touch();
 create index if not exists training_settings_user_updated_idx on public.training_settings (user_id, updated_at);
+
+-- ===== 0006_expense_external_ref =====
+-- Expenses imported from bank/UPI messages remember the bank reference (or a hash) so re-imports never double up.
+alter table public.expenses add column if not exists external_ref text;
