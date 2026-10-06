@@ -40,7 +40,7 @@ fun VoiceScreen(nav: Nav) {
     LaunchedEffect(Unit) {
         if (granted() || VoiceDebug.hasPending) vm.begin() else request.launch(Manifest.permission.RECORD_AUDIO)
     }
-    LaunchedEffect(state.done) { if (state.done) { nav.home(); state.route?.let { nav.go(it) } } }
+    LaunchedEffect(state.done) { if (state.done) nav.home() }
 
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle) {

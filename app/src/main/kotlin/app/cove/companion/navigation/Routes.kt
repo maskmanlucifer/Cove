@@ -37,15 +37,8 @@ object Routes {
     const val JournalEdit = "journal/{id}"
     fun journalEdit(id: String = "new") = "journal/$id"
 
-    const val TrainingSetup = "training/setup"
-    const val TrainingPlan = "training/plan"
-    const val TrainingSession = "training/session"
-    const val TrainingRest = "training/rest"
-    const val TrainingSummary = "training/summary/{id}"
-    fun trainingSummary(id: String) = "training/summary/$id"
-    const val TrainingLift = "training/lift/{exerciseId}"
-    fun trainingLift(exerciseId: String) = "training/lift/$exerciseId"
-    const val TrainingWeight = "training/weight"
+    const val TrainingPlanDay = "training/plan/{weekday}"
+    fun trainingPlanDay(weekday: Int) = "training/plan/$weekday"
     const val TrainingProgress = "training/progress"
 
     const val SyncConflict = "sync/conflict"

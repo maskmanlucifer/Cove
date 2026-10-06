@@ -5,9 +5,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -29,6 +27,10 @@ import app.cove.companion.feature.training.engine.ChartMath
 
 /** One x label under a chart: the point at [index] is captioned [text]. */
 data class ChartLabel(val index: Int, val text: String)
+
+/** First, middle and last captions under a chart: "21 Sep", "28 Sep", "Today". */
+fun chartLabels(dates: List<java.time.LocalDate>, today: java.time.LocalDate): List<ChartLabel> =
+    ChartMath.labelIndexes(dates.size).map { i -> ChartLabel(i, app.cove.companion.feature.training.engine.TrainingStats.dateLabel(dates[i], today)) }
 
 private const val W = 342f
 private const val RIGHT = 308f
@@ -76,44 +78,6 @@ fun LineChart(values: List<Double>, axis: Axis, labels: List<ChartLabel>, summar
                 k == 0 -> text(measurer, l.text, label, x, 144f * s, baseline = true)
                 k == labels.lastIndex -> text(measurer, l.text, label, x, 144f * s, anchorEnd = true, baseline = true)
                 else -> text(measurer, l.text, label, x, 144f * s, center = true, baseline = true)
-            }
-        }
-    }
-}
-
-/** One bar of [BarChart]. */
-data class Bar(val value: Int, val label: String)
-
-/**
- * Sessions per week (or day, or month) as grey bars with the latest in ink, scaled so [goal] fills the height
- * (frame 48, viewBox 342x110).
- */
-@Composable
-fun BarChart(bars: List<Bar>, goal: Int, summary: String, modifier: Modifier = Modifier) {
-    val c = Cove.colors
-    val measurer = rememberTextMeasurer()
-    val density = LocalDensity.current.density
-    Canvas(modifier.fillMaxWidth().aspectRatio(W / 110f).semantics { contentDescription = summary }) {
-        val s = size.width / W
-        val label = TextStyle(fontFamily = Geist, fontSize = TextUnit(11f * s / density, TextUnitType.Sp), color = c.tail)
-        val full = maxOf(goal, bars.maxOfOrNull { it.value } ?: 1, 1)
-        val barW = minOf(28f, W / (bars.size * 1.7f))
-        bars.forEachIndexed { i, b ->
-            val x = if (bars.size == 1) W - barW else i * (W - barW) / (bars.size - 1)
-            val h = 82f * b.value / full
-            if (b.value > 0) {
-                drawRoundRect(
-                    if (i == bars.lastIndex) c.ink else c.ink.copy(alpha = 0.16f),
-                    Offset(x * s, (88f - h) * s), Size(barW * s, h * s), CornerRadius(6f * s),
-                )
-            } else {
-                drawRoundRect(c.ink.copy(alpha = 0.06f), Offset(x * s, 84f * s), Size(barW * s, 4f * s), CornerRadius(2f * s))
-            }
-            val cx = (x + barW / 2) * s
-            when (i) {
-                0 -> text(measurer, b.label, label, x * s, 104f * s, baseline = true)
-                bars.lastIndex -> text(measurer, b.label, label, W * s, 104f * s, anchorEnd = true, baseline = true)
-                else -> text(measurer, b.label, label, cx, 104f * s, center = true, baseline = true)
             }
         }
     }

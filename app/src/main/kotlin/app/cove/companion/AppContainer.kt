@@ -275,6 +275,7 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
             summary = listOf(nano),
             embedding = listOf(UnbundledEmbeddingProvider()),
             category = listOf(nano, gemini),
+            advice = listOf(nano, gemini),
         )
         val router = AiRouter(providers, AiPolicy(foreground) { connectivity.online.value })
         DefaultAiService(router, providers, typed, rules, clock) { key, model ->

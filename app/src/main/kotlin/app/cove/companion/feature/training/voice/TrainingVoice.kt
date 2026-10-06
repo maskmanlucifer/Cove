@@ -1,21 +1,41 @@
 package app.cove.companion.feature.training.voice
 
 import app.cove.companion.ai.model.VoiceIntent
-import app.cove.companion.feature.training.engine.WeightUnit
 import kotlinx.serialization.Serializable
 
 /** A weigh-in a voice command replaced, so undo can put it back ([previousKg] null means there was none). */
 @Serializable
 data class BodyWeightUndo(val day: Long, val previousKg: Double? = null)
 
+/** A plan exercise as it was before a command changed it. */
+@Serializable
+data class PlanSnap(val id: String, val weightKg: Double, val sets: Int, val reps: Int)
+
+/** A per-date weight change as it was before a command ([had] false means there was none). */
+@Serializable
+data class OverrideUndo(val day: Long, val planId: String, val had: Boolean, val weightKg: Double? = null, val dismissed: Boolean = false)
+
+/** An exercise log as it was before a command ([previous] null means there was none). */
+@Serializable
+data class LogUndo(val day: Long, val name: String, val previous: LogSnap? = null)
+
+/** The values of an exercise log. */
+@Serializable
+data class LogSnap(val weightKg: Double, val targetSets: Int, val targetReps: Int, val reps: String)
+
 /** What undoing a training voice command has to reverse. */
 @Serializable
 data class TrainingUndo(
-    val sets: List<String> = emptyList(),
-    val sessions: List<String> = emptyList(),
+    /** Plan exercises the command added. */
+    val created: List<String> = emptyList(),
+    val changed: List<PlanSnap> = emptyList(),
+    val overrides: List<OverrideUndo> = emptyList(),
+    val logs: List<LogUndo> = emptyList(),
     val bodyWeights: List<BodyWeightUndo> = emptyList(),
 ) {
-    val isEmpty get() = sets.isEmpty() && sessions.isEmpty() && bodyWeights.isEmpty()
+    val isEmpty get() = created.isEmpty() && changed.isEmpty() && overrides.isEmpty() && logs.isEmpty() && bodyWeights.isEmpty()
+
+    operator fun plus(o: TrainingUndo) = TrainingUndo(created + o.created, changed + o.changed, overrides + o.overrides, logs + o.logs, bodyWeights + o.bodyWeights)
 }
 
 /** Outcome of one training intent: [summary] on success, [error] otherwise, plus what undo needs. */
@@ -24,32 +44,23 @@ data class TrainingOutcome(
     val error: String? = null,
     val undo: TrainingUndo = TrainingUndo(),
     val label: String = "",
-    /** Screen to open after saving (the workout just started). */
-    val route: String? = null,
 )
-
-/** One set of a draft as it will be saved: [weightKg] is resolved (planned weight when none was said). */
-data class PreviewSet(val weightKg: Double, val reps: Int)
-
-/** The draft of frame 44: the lift's name, the sets, and what they mean for next time. */
-data class SetsPreview(val exercise: String, val unit: WeightUnit, val sets: List<PreviewSet>, val note: String, val bodyweight: Boolean)
 
 /** Training side of voice commands, so [app.cove.companion.feature.voice.exec.IntentExecutor] stays testable without a database. */
 interface TrainingVoice {
-    /** Names of the user's lifts for the intent parser (empty before training is set up). */
+    /** Names of the user's lifts for the intent parser. */
     suspend fun exerciseNames(): List<String>
 
-    /** Resolves a [LogSets][VoiceIntent.LogSets] draft without saving anything. */
-    suspend fun preview(intent: VoiceIntent.LogSets): SetsPreview?
+    suspend fun planExercise(intent: VoiceIntent.PlanExercise): TrainingOutcome
 
     suspend fun logSets(intent: VoiceIntent.LogSets): TrainingOutcome
 
-    suspend fun startWorkout(intent: VoiceIntent.StartWorkout): TrainingOutcome
+    suspend fun changeWeight(intent: VoiceIntent.ChangeWeight): TrainingOutcome
 
     suspend fun logBodyWeight(intent: VoiceIntent.LogBodyWeight): TrainingOutcome
 
-    /** Spoken answer for "what is my next workout". */
-    suspend fun nextWorkout(): String
+    /** Spoken answer for "what is my workout today". */
+    suspend fun todaySummary(): String
 
     /** Reverses a command's training changes. */
     suspend fun undo(undo: TrainingUndo)

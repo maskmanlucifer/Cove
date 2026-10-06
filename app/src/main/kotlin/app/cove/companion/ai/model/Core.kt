@@ -21,7 +21,7 @@ enum class Capability(
     /** Nano and on-device models only run while the app is the top foreground app (PLAN 6a). */
     val needsForeground: Boolean,
 ) {
-    Intent(true), Brief(true), Speech(false), Caption(true), Summary(true), Embedding(true), Category(true)
+    Intent(true), Brief(true), Speech(false), Caption(true), Summary(true), Embedding(true), Category(true), Advice(true)
 }
 
 /** How private the payload is. [Journal] content is processed on the phone only, always. */

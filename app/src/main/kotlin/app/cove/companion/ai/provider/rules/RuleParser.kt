@@ -87,7 +87,7 @@ class RuleParser(private val clock: Clock, private val categories: CategoryResol
         }
         reminder.find(c)?.let { return listOf(reminder(it.groupValues[1], c)) }
         if (Regex("\\balarm\\b|\\bwake me\\b", opts).containsMatchIn(c)) return alarm(c)
-        TrainingRules.parse(c, exercises)?.let { return listOf(it) }
+        TrainingRules.parse(c, exercises, clock.now().toLocalDateTime().toLocalDate())?.let { return it }
         expense(c)?.let { return listOf(it) }
         habit(c, habits)?.let { return listOf(it) }
         todo(c)?.let { return it }
