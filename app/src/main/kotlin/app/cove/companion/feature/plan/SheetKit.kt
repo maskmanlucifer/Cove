@@ -44,6 +44,7 @@ import app.cove.companion.design.CoveIcons
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.CoveSheet
 import app.cove.companion.design.components.CoveText
+import app.cove.companion.design.components.DialogSystemBars
 import app.cove.companion.design.components.Hairline
 import app.cove.companion.design.components.SheetHandle
 import app.cove.companion.design.components.ValueRow
@@ -68,6 +69,7 @@ fun PlanSheet(
 ) {
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         (LocalView.current.parent as? DialogWindowProvider)?.window?.setDimAmount(0f)
+        DialogSystemBars()
         var shown by remember { mutableStateOf(false) }
         val scope = rememberCoroutineScope()
         LaunchedEffect(Unit) { shown = true }

@@ -41,6 +41,7 @@ import app.cove.companion.design.OrbColors
 import app.cove.companion.design.components.ButtonKind
 import app.cove.companion.design.components.CoveSheet
 import app.cove.companion.design.components.CoveText
+import app.cove.companion.design.components.DialogSystemBars
 import app.cove.companion.design.components.PillButton
 import app.cove.companion.design.components.SheetHandle
 import app.cove.companion.design.components.pressable
@@ -100,6 +101,7 @@ fun WhySheet(detail: DecisionDetail, vm: SuggestionViewModel) {
         (LocalView.current.parent as? DialogWindowProvider)?.window?.let { w ->
             SideEffect { w.setDimAmount(0f) }
         }
+        DialogSystemBars()
         Box(Modifier.fillMaxSize()) {
             CoveSheet(visible = true, onDismiss = { vm.showWhy(false) }) {
                 Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {

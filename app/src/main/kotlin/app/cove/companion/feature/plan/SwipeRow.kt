@@ -54,7 +54,7 @@ fun SwipeRow(
                 if (x > 0) {
                     CoveText(rightLabel, Modifier.align(Alignment.CenterStart).padding(start = 20.dp), style = CoveType.MetaMedium, color = c.onInk)
                 } else {
-                    CoveText(leftLabel, Modifier.align(Alignment.CenterEnd).padding(end = 20.dp), style = CoveType.MetaMedium, color = Color.White)
+                    CoveText(leftLabel, Modifier.align(Alignment.CenterEnd).padding(end = 20.dp), style = CoveType.MetaMedium, color = if (c.isDark) c.onInk else Color.White)
                 }
             }
         }
