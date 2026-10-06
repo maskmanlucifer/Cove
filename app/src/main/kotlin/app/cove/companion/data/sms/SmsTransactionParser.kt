@@ -104,6 +104,127 @@ object SmsTransactionParser {
     private val knownCaps = setOf(
         "irctc", "kfc", "bsnl", "lic", "hdfc", "icici", "sbi", "bpcl", "hpcl", "iocl", "dmart", "pvr", "bmtc", "dtc", "bms", "emi", "atm", "upi", "gst", "mrf", "nse", "bse", "npci",
     )
+
+    /**
+     * Parses [body] sent by [sender] at [receivedAt] (epoch millis).
+     *
+     * @param sender alphanumeric sender id such as `AX-HDFCBK`, or null for text the user pasted (which then needs strong structure).
+     * @param zone zone the message's own date and time are read in.
+     */
+    fun parse(sender: String?, body: String, receivedAt: Long, zone: ZoneId = ZoneId.systemDefault()): ParseResult {
+        val text = body.replace(' ', ' ').replace(Regex("""\s+"""), " ").trim()
+        if (text.isEmpty()) return reject(Rejection.Empty)
+        val senderId = sender?.trim()?.takeIf { it.isNotEmpty() }
+        if (senderId != null && isPersonalNumber(senderId)) return reject(Rejection.PersonalSender)
+
+        val hasDone = txnDone.containsMatchIn(text) || pastVerb.containsMatchIn(text)
+        if (otpCode.containsMatchIn(text) || (otpWord.containsMatchIn(text) && !txnDone.containsMatchIn(text))) return reject(Rejection.Otp)
+        if (hardPromo.containsMatchIn(text) || (softPromo.containsMatchIn(text) && !hasDone)) return reject(Rejection.Promo)
+        if (future.containsMatchIn(text)) return reject(Rejection.Future)
+        if (request.containsMatchIn(text)) return reject(Rejection.Request)
+        if (failed.containsMatchIn(text)) return reject(Rejection.Failed)
+        if (statement.containsMatchIn(text)) return reject(Rejection.Statement)
+        if (due.containsMatchIn(text) && !Regex("""(?i)\b(debited|credited|spent|withdrawn|received)\b""").containsMatchIn(text)) return reject(Rejection.Due)
+        if (cardBillAck.containsMatchIn(text)) return reject(Rejection.CardBillAck)
+        if (mandateNotice.containsMatchIn(text) && mandateSetup.containsMatchIn(text) && !Regex("""(?i)\b(debited|deducted|charged|paid)\b""").containsMatchIn(text)) return reject(Rejection.Mandate)
+
+        val amount = findAmount(text) ?: return reject(if (balance.containsMatchIn(text) && !hasDone) Rejection.BalanceOnly else Rejection.NoAmount)
+        val direction = findDirection(text) ?: return reject(if (balance.containsMatchIn(text)) Rejection.BalanceOnly else Rejection.NoDirection)
+
+        val last4 = last4Regex.find(text)?.groupValues?.get(1)?.takeLast(4)
+        val ref = findRef(text)
+        val vpaMatch = vpa.find(text)
+        val bankish = senderId != null && senderShape.matches(senderId.uppercase())
+        val strong = strongToken.containsMatchIn(text) && (last4 != null || ref != null || vpaMatch != null || Regex("""(?i)\b(upi|atm|imps|neft|rtgs)\b""").containsMatchIn(text))
+        if (!bankish && !strong) return reject(Rejection.WeakStructure)
+
+        val atm = Regex("""(?i)\batm\b|cash withdrawal|withdrawn at""").containsMatchIn(text)
+        val merchant = if (atm && direction == Direction.Debit) "ATM withdrawal" else findMerchant(text, direction, vpaMatch)
+        val (at, fromText) = findInstant(text, receivedAt, zone)
+        val paidWith = when {
+            atm -> "Cash"
+            Regex("""(?i)\bcard\b""").containsMatchIn(text) && vpaMatch == null && !Regex("""(?i)\bupi\b""").containsMatchIn(text) -> "Card"
+            Regex("""(?i)\bupi\b|@[a-z]{2,}|\bvpa\b""").containsMatchIn(text) -> "UPI"
+            else -> "Bank transfer"
+        }
+        val bank = bankFor(senderId, text)
+        var conf = 0.45f
+        if (bankish) conf += 0.2f
+        if (ref != null) conf += 0.1f
+        if (last4 != null) conf += 0.1f
+        if (merchant != null) conf += 0.1f
+        if (fromText) conf += 0.05f
+        return ParseResult.Accepted(ParsedSms(amount, direction, merchant, at, fromText, last4, paidWith, ref, bank, conf.coerceAtMost(1f)))
+    }
+
+    /** True for senders that are phone numbers (a person), as opposed to alphanumeric bank ids. */
+    fun isPersonalNumber(sender: String): Boolean = sender.count { it.isDigit() } >= 7 && sender.none { it.isLetter() }
+
+    /** Splits text a user pasted into separate messages: blank lines separate them, and so do lines that each hold an amount. */
+    fun splitPasted(text: String): List<String> {
+        val chunks = text.split(Regex("""\r?\n\s*\r?\n""")).map { it.trim() }.filter { it.isNotEmpty() }
+        return chunks.flatMap { chunk ->
+            val lines = chunk.lines().map { it.trim() }.filter { it.isNotEmpty() }
+            val withAmount = lines.count { amountRegex.containsMatchIn(it) }
+            if (lines.size > 1 && withAmount >= 2 && withAmount == lines.size) lines else listOf(chunk.replace(Regex("""\s*\r?\n\s*"""), " "))
+        }
+    }
+
+    private fun reject(r: Rejection) = ParseResult.Rejected(r)
+
+    private fun findAmount(text: String): Long? {
+        for (m in amountRegex.findAll(text)) {
+            val before = text.substring(maxOf(0, m.range.first - 22), m.range.first)
+            if (balanceBefore.containsMatchIn(before)) continue
+            toPaise(m.groupValues[1])?.let { return it }
+        }
+        for (m in bareAmount.findAll(text)) {
+            val before = text.substring(maxOf(0, m.range.first - 22), m.range.first)
+            if (balanceBefore.containsMatchIn(before)) continue
+            toPaise(m.groupValues[1])?.let { return it }
+        }
+        return null
+    }
+
+    private fun toPaise(s: String): Long? {
+        val v = runCatching { BigDecimal(s.replace(",", "")) }.getOrNull() ?: return null
+        val paise = v.movePointRight(2).setScale(0, java.math.RoundingMode.HALF_UP).toLong()
+        return paise.takeIf { it in 1..MAX_PAISE }
+    }
+
+    private fun findDirection(text: String): Direction? {
+        val d = debitWord.find(text)?.range?.first
+        val c = creditWord.find(text)?.range?.first
+        return when {
+            d != null && c != null -> if (d <= c) Direction.Debit else Direction.Credit
+            d != null -> Direction.Debit
+            c != null -> Direction.Credit
+            cardUse.containsMatchIn(text) -> Direction.Debit
+            else -> null
+        }
+    }
+
+    private fun findRef(text: String): String? {
+        for (p in refPatterns) {
+            for (m in p.findAll(text)) {
+                val v = m.groupValues[1]
+                if (v.count { it.isDigit() } >= 4 && v.length >= 6) return v.uppercase()
+            }
+        }
+        upiSlash.find(text)?.let { return it.groupValues[1].uppercase() }
+        return null
+    }
+
+    private val stop = """(?=\s+on\s|\s+dated\b|\s+dt\b|\s+ref|\s+upi|\s+utr|\s+via\b|\s+thru\b|\s+avl|\s+bal|\s+from\b|\s+using\b|\s+is\b|\s+has\b|\s+credited|\s+debited|\s+txn|\s+not\s+you|\s+if\s|\s+call|\s+sms|\s*\(|\s*[,;]|\.\s|\.$|$)"""
+    private val debitTargets = listOf(
+        Regex("""(?i)\b(?:autopay|auto-?pay|e-?mandate|mandate)\s+(?:for|to)\s+(.{2,50}?)(?=\s+mandate|\s+on\s|\.\s|\.$|,|$)"""),
+        Regex("""(?i)\b(?:thank you for using.{0,60}?\bfor\s+(?:rs\.?|inr|₹)\s*[\d,.]+\s+at)\s+(.{2,50}?)$stop"""),
+        Regex("""(?i)\b(?:to|towards|trf to|transfer to)\s+(?!your\b|a/c\b|acct\b|account\b|card\b|vpa\b|rs\b|inr\b|₹|\d)(.{2,50}?)$stop"""),
+        Regex("""(?i)\bat\s+(?!atm\b)(.{2,50}?)$stop"""),
+        Regex("""(?i); ?(.{2,40}?)\s+credited\b"""),
+        Regex("""(?i)\binfo[:\-]\s*(.{2,50}?)$stop"""),
+        Regex("""(?i)\d{1,2}:\d{2}(?::\d{2})?\s+(?!avl|sms|not\b)([A-Za-z][A-Za-z0-9 &.'\-]{2,40}?)\s+(?:avl|avail|sms|not\b|call|if\b)"""),
+    )
     private val creditTargets = listOf(
         Regex("""(?i)\b(?:from|by)\s+(?!your\b|a/c\b|acct\b|account\b|card\b|vpa\b|a\.c\b|neft\b|imps\b|upi\b|rs\b|inr\b|₹|\d)(.{2,50}?)$stop"""),
         Regex("""(?i)\b(?:refund|order|cashback)\b.{0,40}?\bat\s+(.{2,40}?)$stop"""),
