@@ -69,6 +69,6 @@ fun VoiceOrb(
         contentAlignment = Alignment.Center,
     ) {
         Canvas(Modifier.size(size)) { drawOrbGradient() }
-        CoveIcon(CoveIcons.Mic, androidx.compose.ui.graphics.Color(0xFF16171A), size = 24.dp)
+        CoveIcon(CoveIcons.Mic, androidx.compose.ui.graphics.Color(0xFF16171A), size = if (size < 48.dp) 18.dp else 24.dp)
     }
 }

@@ -105,9 +105,7 @@ fun AlarmsScreen(nav: Nav) {
                 item { Spacer(Modifier.height(20.dp)); Bedtime(state.bedtime) { nav.go(Routes.alarmEdit(it)) } }
             }
         }
-        Box(Modifier.align(Alignment.BottomCenter).padding(start = 12.dp, end = 12.dp, bottom = 24.dp)) {
-            CoveDock(Tab.Me, onSelect = { nav.back() }, onVoice = { nav.go(Routes.Voice) })
-        }
+        CoveDock(Tab.Me, onSelect = { nav.back() }, onVoice = { nav.go(Routes.Voice) })
     }
 }
 

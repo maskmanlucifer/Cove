@@ -31,6 +31,7 @@ import app.cove.companion.design.CoveIcons
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.DockClearance
+import app.cove.companion.design.components.DockFloatBottom
 import app.cove.companion.design.components.FitText
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.design.components.pressable
@@ -78,7 +79,7 @@ fun MoneyScreen(nav: Nav) {
             }
             s.reviewBanner?.let { ReviewLink(it) { nav.go(Routes.MoneyReview) } }
         }
-        MoneyUndoBar(Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = 112.dp))
+        MoneyUndoBar(Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = DockFloatBottom))
     }
 }
 

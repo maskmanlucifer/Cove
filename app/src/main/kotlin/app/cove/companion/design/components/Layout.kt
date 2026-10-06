@@ -27,5 +27,11 @@ fun CoveScreen(modifier: Modifier = Modifier, content: @Composable BoxScope.() -
     Box(modifier.fillMaxSize().background(Cove.colors.canvas), content = content)
 }
 
-/** Space reserved at the bottom so content clears the floating dock. */
-val DockClearance = 120.dp
+/** Height of the bottom bar's hit area and fade: pill and orb (44 dp) sit 22 dp above the screen edge. */
+val DockBarHeight = 88.dp
+
+/** Space reserved at the bottom so scrolling content clears the bottom bar. */
+val DockClearance = 96.dp
+
+/** Bottom offset for controls that float just above the bar (undo bars, add buttons, day pill). */
+val DockFloatBottom = 84.dp

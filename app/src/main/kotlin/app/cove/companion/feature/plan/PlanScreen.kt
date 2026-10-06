@@ -41,6 +41,7 @@ import app.cove.companion.design.CoveShapes
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.DockClearance
+import app.cove.companion.design.components.DockFloatBottom
 import app.cove.companion.design.components.Segmented
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.design.components.pressable
@@ -110,14 +111,14 @@ fun PlanScreen(nav: Nav) {
                 scheduleRows(state.timeline, { sheet = TASK + it }, { sheet = EVENT + it }, { nav.go(Routes.alarmEdit(it)) })
             }
         }
-        if (!todos && drag.id == null) DayPill(state.day, state.isToday, vm::shiftDay, vm::showToday, Modifier.align(Alignment.BottomStart).padding(start = 20.dp, bottom = 112.dp))
-        if (drag.id == null) AddButton(if (todos) "Add to-do" else "Add event", { sheet = if (todos) ADD_TODO else ADD_EVENT }, Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = 112.dp))
+        if (!todos && drag.id == null) DayPill(state.day, state.isToday, vm::shiftDay, vm::showToday, Modifier.align(Alignment.BottomStart).padding(start = 20.dp, bottom = DockFloatBottom))
+        if (drag.id == null) AddButton(if (todos) "Add to-do" else "Add event", { sheet = if (todos) ADD_TODO else ADD_EVENT }, Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = DockFloatBottom))
         undo?.let { notice ->
             LaunchedEffect(notice.id) {
                 delay(6000)
                 vm.expireUndo(notice.id)
             }
-            PlanUndoBar(notice.message, vm::undoLast, action = notice.action, modifier = Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = 112.dp))
+            PlanUndoBar(notice.message, vm::undoLast, action = notice.action, modifier = Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = DockFloatBottom))
         }
     }
 

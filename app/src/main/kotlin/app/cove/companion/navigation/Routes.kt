@@ -12,6 +12,9 @@ object Routes {
     const val Brief = "brief"
     const val OneThing = "one-thing"
 
+    /** Training home, opened from Me > Body > Training. */
+    const val Training = "training"
+
     const val Alarms = "alarms"
     const val AlarmEdit = "alarms/{id}"
     fun alarmEdit(id: String = "new") = "alarms/$id"

@@ -44,6 +44,7 @@ import app.cove.companion.design.CoveShapes
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.DockClearance
+import app.cove.companion.design.components.DockFloatBottom
 import app.cove.companion.design.components.Hairline
 import app.cove.companion.design.components.PillButton
 import app.cove.companion.design.components.UndoHost
@@ -83,7 +84,7 @@ fun JournalScreen(nav: Nav) {
                 else -> entryRows(s.recent, nav)
             }
         }
-        UndoHost("journal", Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = 112.dp))
+        UndoHost("journal", Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = DockFloatBottom))
     }
 }
 
