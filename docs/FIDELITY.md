@@ -1,5 +1,7 @@
 # Fidelity table
 
+> **Colour and display type changed on purpose (owner direction, "calm garden").** The frames in `design/ref*` use the old cool grey/blue palette and an all-Geist title style. Layout, spacing and the type scale still apply; colours (see `docs/DESIGN.md`) and the serif display face for big titles intentionally differ, so raw `compare.py` scores below are historical and no longer tracked. Use `python3 tools/compare.py --structure <frame> <shot.png>` to compare grayscale edge structure instead and catch layout regressions.
+
 Mean absolute pixel difference (0-255, `tools/compare.py`, status band ignored) between each device capture (390x844dp, light, data from `DebugSeed`) and its frame in `design/ref3x`. Today scores about 2; anything above about 6 is explained. Frame 10 (dark) is measured with `--dark --evening --now 21:50`.
 
 | Frame | Score | Note |

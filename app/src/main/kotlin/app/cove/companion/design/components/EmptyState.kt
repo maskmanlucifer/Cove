@@ -18,6 +18,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.cove.companion.design.Cove
 import app.cove.companion.design.CoveType
+import app.cove.companion.design.Fraunces
+import androidx.compose.ui.text.font.FontWeight
 import app.cove.companion.design.illustrations.Illustration
 import app.cove.companion.design.illustrations.Scene
 import app.cove.companion.design.illustrations.SceneBanner
@@ -61,7 +63,7 @@ fun EmptyState(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            CoveText(title, style = CoveType.Heading, textAlign = TextAlign.Center)
+            CoveText(title, style = CoveType.Heading.copy(fontFamily = Fraunces, fontWeight = FontWeight.Medium), textAlign = TextAlign.Center)
             if (line != null) CoveText(line, style = CoveType.Meta.copy(lineHeight = CoveType.Meta.lineHeight * 1.1f), color = Cove.colors.muted, textAlign = TextAlign.Center)
         }
         if (primary != null || secondary != null) {

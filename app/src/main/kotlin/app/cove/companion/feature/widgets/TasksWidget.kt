@@ -82,7 +82,7 @@ private fun TasksContent(rows: List<TaskRow>, left: Int) {
             modifier = GlanceModifier.fillMaxWidth().clickable(openApp()),
         )
         Spacer(GlanceModifier.height(4.dp))
-        if (rows.isEmpty()) Text("Nothing on the list", style = TextStyle(fontSize = 17.sp, color = WidgetColors.muted))
+        if (rows.isEmpty()) Text("A clear list, for now", style = TextStyle(fontSize = 17.sp, color = WidgetColors.muted))
         rows.forEach { TaskLine(it) }
     }
 }
