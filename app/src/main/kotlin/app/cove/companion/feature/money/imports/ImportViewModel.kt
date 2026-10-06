@@ -62,6 +62,28 @@ data class ImportRow(
 /** Merchant name of [tx], or the plain fallback for a payment of [kind] with no readable name. */
 internal fun generatedNote(tx: app.cove.companion.data.sms.ParsedSms, kind: String): String = tx.merchant ?: if (kind == "received") "Money received" else "Payment"
 
+/**
+ * The review row for [item]: category and label from the payee's memory when [payees] knows it (it wins over word
+ * [memory] and built-ins), otherwise the categorizer's suggestion on the cleaned merchant name.
+ */
+internal fun rowFor(
+    item: ReviewItem,
+    cats: List<ExpenseCategoryEntity>,
+    memory: Map<String, app.cove.companion.data.local.entity.CategoryMemoryEntity>,
+    payees: Map<String, app.cove.companion.data.local.entity.PayeeMemoryEntity>,
+): ImportRow {
+    val tx = item.candidate.tx
+    val kind = if (tx.direction == Direction.Credit) "received" else "spent"
+    val payee = if (kind == "spent") tx.payeeKey?.let(payees::get) else null
+    val s = if (kind == "spent") ExpenseCategorizer.suggest(generatedNote(tx, kind), cats, memory, payee) else null
+    val id = s?.categoryId ?: if (kind == "spent") ExpenseCategorizer.fallback(cats)?.id else null
+    val recalled = s?.reason == Reason.Payee
+    return ImportRow(
+        item, checked = item.match == null, kind = kind, categoryId = id, suggestedId = id, reason = s?.reason?.label,
+        label = payee?.label?.takeIf { recalled }, recalled = recalled,
+    )
+}
+
 /** Everything the Import screens draw. */
 data class ImportState(
     val stage: ImportStage = ImportStage.Intro,
@@ -158,18 +180,7 @@ class ImportViewModel(private val c: AppContainer) : ViewModel() {
                 val cats = c.money.categories.first().filter { it.kind == "spending" && it.deletedAt == null }
                 val memory = c.money.memory.first()
                 val payees = c.money.payees(result.items.mapNotNull { it.candidate.tx.payeeKey })
-                val rows = result.items.map { item ->
-                    val tx = item.candidate.tx
-                    val kind = if (tx.direction == Direction.Credit) "received" else "spent"
-                    val payee = if (kind == "spent") tx.payeeKey?.let(payees::get) else null
-                    val s = if (kind == "spent") ExpenseCategorizer.suggest(generatedNote(tx, kind), cats, memory, payee) else null
-                    val id = s?.categoryId ?: if (kind == "spent") ExpenseCategorizer.fallback(cats)?.id else null
-                    val recalled = s?.reason == Reason.Payee
-                    ImportRow(
-                        item, checked = item.match == null, kind = kind, categoryId = id, suggestedId = id, reason = s?.reason?.label,
-                        label = payee?.label?.takeIf { recalled }, recalled = recalled,
-                    )
-                }
+                val rows = result.items.map { rowFor(it, cats, memory, payees) }
                 _state.update { it.copy(stage = ImportStage.Review, rows = rows, categories = cats, scanned = result.scanned, duplicatesDropped = result.duplicatesDropped) }
             } catch (e: CancellationException) {
                 throw e

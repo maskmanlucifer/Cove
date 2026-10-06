@@ -47,7 +47,10 @@ data class ImportDecision(
     val note: String? = null,
     /** The user typed or changed the label in this review: an explicit action that teaches the payee. */
     val labelEdited: Boolean = false,
-)
+) {
+    /** Only explicit edits teach: a category pick or a typed label on a spent row, never an unreviewed bulk import. */
+    val teaches: Boolean get() = include && kind == "spent" && categoryId != null && (picked || labelEdited)
+}
 
 /**
  * What an import did, kept for the summary and for Undo. [payeeSnapshots] put payee memory back; [payeePicks] (payee key to
@@ -197,7 +200,7 @@ class SmsImportRepository(
                     )
                     money.save(e)
                     ids += e.id
-                    if ((d.picked || d.labelEdited) && d.categoryId != null && d.kind == "spent") {
+                    if (d.teaches && d.categoryId != null) {
                         money.teach(note, d.categoryId, d.taughtFrom)
                         taught += note to d.categoryId
                         c.tx.payeeKey?.let { key ->
