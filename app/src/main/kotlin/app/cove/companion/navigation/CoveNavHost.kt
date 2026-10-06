@@ -144,6 +144,7 @@ fun CoveNavHost(start: String, voiceRequest: Int = 0, briefRequest: Int = 0) {
         composable(Routes.Connect) { ConnectScreen(nav) }
         composable(Routes.ConnectOnboarding) { ConnectScreen(nav, onboarding = true) }
         if (BuildConfig.DEBUG) composable("debug/money-logged") { MoneyLoggedDebugScreen() }
+        if (BuildConfig.DEBUG) composable("debug/illustrations") { app.cove.companion.design.illustrations.IllustrationGallery() }
     }
     LaunchedEffect(voiceRequest) { if (voiceRequest > 0 && start == Routes.Main) nav.go(Routes.Voice) }
     LaunchedEffect(briefRequest) { if (briefRequest > 0 && start == Routes.Main) nav.go(Routes.Brief) }
