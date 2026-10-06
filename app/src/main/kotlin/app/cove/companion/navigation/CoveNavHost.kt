@@ -16,6 +16,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import app.cove.companion.design.LocalReduceMotion
+import app.cove.companion.design.ReducedMotionMillis
 import app.cove.companion.feature.alarms.AlarmEditScreen
 import app.cove.companion.feature.alarms.AlarmsScreen
 import app.cove.companion.feature.brief.BriefScreen
@@ -36,12 +38,13 @@ import app.cove.companion.feature.sync.SyncConflictScreen
 import app.cove.companion.feature.today.OneThingScreen
 import app.cove.companion.feature.voice.VoiceScreen
 
-private val fadeIn = fadeIn(tween(250))
-private val fadeOut = fadeOut(tween(200))
 
 /** App-wide navigation graph. Screens receive [Nav] and route ids, never the controller. */
 @Composable
 fun CoveNavHost(start: String, voiceRequest: Int = 0) {
+    val reduce = LocalReduceMotion.current
+    val fadeIn = fadeIn(tween(if (reduce) ReducedMotionMillis else 250))
+    val fadeOut = fadeOut(tween(if (reduce) ReducedMotionMillis else 200))
     val controller = rememberNavController()
     val nav = remember(controller) {
         Nav(
@@ -70,9 +73,9 @@ fun CoveNavHost(start: String, voiceRequest: Int = 0) {
         composable(Routes.Main) { MainScreen(nav) }
         composable(
             Routes.Voice,
-            enterTransition = { slideInVertically(tween(280)) { it / 8 } + fadeIn },
+            enterTransition = { if (reduce) fadeIn else slideInVertically(tween(280)) { it / 8 } + fadeIn },
             exitTransition = { ExitTransition.None },
-            popExitTransition = { slideOutVertically(tween(220)) { it / 8 } + fadeOut },
+            popExitTransition = { if (reduce) fadeOut else slideOutVertically(tween(220)) { it / 8 } + fadeOut },
         ) { VoiceScreen(nav) }
         composable(Routes.Brief) { BriefScreen(nav) }
         composable(Routes.OneThing) { OneThingScreen(nav) }

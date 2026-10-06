@@ -1,15 +1,18 @@
 package app.cove.companion
 
+import androidx.compose.runtime.getValue
 import android.content.Intent
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import app.cove.companion.design.CoveTheme
+import app.cove.companion.design.resolveReduceMotion
 import app.cove.companion.navigation.CoveNavHost
 import app.cove.companion.navigation.DebugLaunch
 import app.cove.companion.navigation.Routes
@@ -44,7 +47,8 @@ class MainActivity : ComponentActivity() {
                 "light" -> false
                 else -> isSystemInDarkTheme()
             }
-            CoveTheme(dark) {
+            val animationsOff = remember { Settings.Global.getFloat(contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f }
+            CoveTheme(dark, textScale = s.textScale, reduceMotion = resolveReduceMotion(s.reduceMotion, animationsOff)) {
                 CoveNavHost(
                     start = debugRoute ?: if (s.onboarded) Routes.Main else Routes.Welcome,
                     voiceRequest = voiceRequest.intValue,

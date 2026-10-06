@@ -1,14 +1,19 @@
 package app.cove.companion.navigation
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import app.cove.companion.container
+import kotlinx.coroutines.flow.map
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -25,7 +30,9 @@ import app.cove.companion.feature.voice.UndoToastHost
 /** The five dock destinations. Each tab screen draws its own content and leaves room for the dock. */
 @Composable
 fun MainScreen(nav: Nav) {
+    val container = LocalContext.current.container
     var tab by rememberSaveable { mutableStateOf(Tab.entries.firstOrNull { it.name.equals(DebugLaunch.tab, true) } ?: Tab.Today) }
+    val oneThing by remember(container) { container.settings.settings.map { it.oneThingMode } }.collectAsState(false)
     CoveScreen {
         Crossfade(tab, animationSpec = tween(150), label = "tab") { current ->
             when (current) {
@@ -36,7 +43,7 @@ fun MainScreen(nav: Nav) {
                 Tab.Me -> MeScreen(nav)
             }
         }
-        Box(
+        if (!(oneThing && tab == Tab.Today)) Box(
             Modifier
                 .align(Alignment.BottomCenter)
                 .padding(start = 12.dp, end = 12.dp, bottom = 24.dp),

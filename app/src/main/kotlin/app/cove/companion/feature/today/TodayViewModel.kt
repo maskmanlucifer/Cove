@@ -40,6 +40,7 @@ data class TodayState(
     val habitsTotal: Int = 0,
     val doneCount: Int = 0,
     val remainingBeforeNoon: Boolean = false,
+    val oneThingMode: Boolean = false,
 )
 
 private data class Aux(
@@ -94,6 +95,7 @@ class TodayViewModel(private val c: AppContainer) : ViewModel() {
         val shown = habits.filter { it.showOnToday }
         TodayState(
             name = settings.displayName,
+            oneThingMode = settings.oneThingMode,
             phase = phase,
             date = today,
             next = next,

@@ -1,11 +1,112 @@
 package app.cove.companion.feature.me
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import app.cove.companion.design.components.Placeholder
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import app.cove.companion.BuildConfig
+import app.cove.companion.core.appViewModel
+import app.cove.companion.design.Cove
+import app.cove.companion.design.CoveIcon
+import app.cove.companion.design.CoveIcons
+import app.cove.companion.design.CoveShapes
+import app.cove.companion.design.CoveType
+import app.cove.companion.design.components.CoveText
+import app.cove.companion.design.components.DockClearance
+import app.cove.companion.design.components.coveTopInset
+import app.cove.companion.design.components.pressable
+import app.cove.companion.feature.onboarding.SignIn
 import app.cove.companion.navigation.Nav
+import app.cove.companion.navigation.Routes
 
-/** Placeholder until the Me screen is built. */
+/** Me tab: profile, day and calm settings, and links to alarms, habits, look and privacy. */
 @Composable
 fun MeScreen(nav: Nav) {
-    Placeholder("Me")
+    val vm = appViewModel { MeViewModel(it) }
+    val s by vm.settings.collectAsState()
+    val alarms by vm.alarms.collectAsState()
+    var sheet by rememberSaveable { mutableStateOf<MeSheet?>(null) }
+    val settings = s ?: return
+    val context = LocalContext.current
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .coveTopInset()
+            .padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = DockClearance),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Header(settings.displayName) { sheet = MeSheet.Name }
+        SettingsGroup("Day") {
+            SettingsRow("Wake-up time", value = clockLabel(settings.wakeMinutes), onClick = { sheet = MeSheet.Wake })
+            RowDivider()
+            SettingsRow("Morning brief", checked = settings.briefOn, onCheck = { v -> vm.update { it.copy(briefOn = v) } })
+            RowDivider()
+            SettingsRow("Nudges", value = nudgeLabel(settings.nudgeMode), onClick = { sheet = MeSheet.Nudges })
+        }
+        SettingsGroup("Calm") {
+            SettingsRow("One-thing mode", checked = settings.oneThingMode, onCheck = { v -> vm.update { it.copy(oneThingMode = v) } })
+            RowDivider()
+            SettingsRow("Spoken replies", checked = settings.spokenReplies, onCheck = { v -> vm.update { it.copy(spokenReplies = v) } })
+            RowDivider()
+            SettingsRow("Reduce motion", value = settings.reduceMotion.replaceFirstChar { it.uppercase() }, onClick = { sheet = MeSheet.Motion })
+        }
+        SettingsGroup("More") {
+            SettingsRow("Look and text size", value = lookSummary(settings.theme, settings.textScale), onClick = { sheet = MeSheet.Look })
+            RowDivider()
+            SettingsRow("Alarms", value = alarmSummary(alarms.map { it.minutes }), onClick = { nav.go(Routes.Alarms) })
+            RowDivider()
+            SettingsRow("Habits", onClick = { nav.go(Routes.Habits) })
+            RowDivider()
+            SettingsRow("Privacy and data", value = "Your own space", onClick = { sheet = MeSheet.Privacy })
+            RowDivider()
+            SettingsRow("Sync", value = "Not signed in", onClick = { SignIn.launcher.signIn(context) {} })
+            RowDivider()
+            SettingsRow("Version", value = BuildConfig.VERSION_NAME)
+        }
+    }
+    MeSheets(sheet, settings, vm) { sheet = null }
+}
+
+@Composable
+private fun Header(name: String, onEdit: () -> Unit) {
+    val c = Cove.colors
+    Row(
+        Modifier.padding(start = 4.dp, end = 4.dp, bottom = 4.dp).pressable(onEdit),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Box(
+            Modifier.size(56.dp).clip(CoveShapes.Circle).background(if (c.isDark) c.wellStrong else Color(0xFFE4E1DB)),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (name.isBlank()) CoveIcon(CoveIcons.Me, c.muted, size = 24.dp)
+            else CoveText(name.first().uppercase(), style = CoveType.Value.copy(fontSize = 20.sp, lineHeight = 27.sp), color = c.muted)
+        }
+        Column {
+            if (name.isBlank()) CoveText("Add your name", style = CoveType.Section.copy(lineHeight = 32.sp), color = c.placeholder)
+            else CoveText(name, style = CoveType.Section.copy(lineHeight = 32.sp))
+            CoveText("Everything stays in your own space", style = CoveType.Meta, color = c.muted)
+        }
+    }
 }

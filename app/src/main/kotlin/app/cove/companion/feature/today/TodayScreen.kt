@@ -49,6 +49,10 @@ fun TodayScreen(nav: Nav) {
     val evening = state.phase == DayPhase.Evening
     val c = Cove.colors
     DisposableEffect(Unit) { onDispose { vm.markNewSeen() } }
+    if (state.oneThingMode) {
+        OneThingContent(nav)
+        return
+    }
 
     Column(
         Modifier
