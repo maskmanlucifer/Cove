@@ -98,7 +98,7 @@ private fun VersionCard(side: ConflictSide, selected: Boolean, onClick: () -> Un
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         val ring = c.ring
-        Box(Modifier.size(22.dp).border(if (selected) 7.dp else 1.5.dp, if (selected) c.ink else ring, CoveShapes.Circle))
+        Box(Modifier.size(22.dp).border(if (selected) 7.dp else 1.5.dp, if (selected) c.accent else ring, CoveShapes.Circle))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             CoveText(side.value, style = CoveType.Body)
             CoveText(side.meta, style = CoveType.Meta, color = c.muted)

@@ -203,8 +203,8 @@ private fun KindToggle(kind: String, onPick: (String) -> Unit) {
 @Composable
 private fun Pill(text: String, selected: Boolean, accent: Boolean = false, onClick: () -> Unit) {
     val c = Cove.colors
-    val bg = if (selected) c.ink else if (accent) c.accentSoft else c.well
-    val fg = if (selected) c.onInk else if (accent) c.accent else c.ink
+    val bg = if (selected) c.accent else if (accent) c.accentSoft else c.well
+    val fg = if (selected) c.onAccent else if (accent) c.accent else c.ink
     Box(
         Modifier.heightIn(min = 36.dp).background(bg, CoveShapes.Pill).pressable(onClick).padding(horizontal = 14.dp),
         contentAlignment = Alignment.Center,

@@ -148,7 +148,7 @@ internal fun BudgetBar(fraction: Float, over: Boolean, modifier: Modifier = Modi
             Modifier
                 .fillMaxWidth(fraction)
                 .height(4.dp)
-                .background(if (over) c.alert else c.ink, RoundedCornerShape(2.dp)),
+                .background(if (over) c.alert else c.accent, RoundedCornerShape(2.dp)),
         )
     }
 }
