@@ -159,25 +159,21 @@ class AiRouterTest {
         assertEquals("nano/native", r.source.toString())
     }
 
-    @Test fun speechSkipsTypedAndPicksFirstAvailableRecognizer() = runBlocking {
-        val mlkit = FakeSpeechProvider("mlkit", Location.Native, Availability.Unavailable("no model"))
+    @Test fun speechEnginesSkipTypedAndKeepOrder() {
+        val mlkit = FakeSpeechProvider("mlkit", Location.Native)
         val android = FakeSpeechProvider("android", Location.Native)
         val typed = FakeSpeechProvider("typed", Location.Rules)
         val r = AiRouter(AiProviders(speech = listOf(mlkit, android, typed)), policy)
-        assertEquals("android", r.openSpeech(Sensitivity.Everyday)!!.source.id)
-        assertEquals(0, typed.opened)
-        android.state = Availability.Unavailable("none")
-        assertEquals(null, r.openSpeech(Sensitivity.Everyday))
+        assertEquals(listOf("mlkit", "android"), r.speechEngines(Sensitivity.Everyday).map { it.id })
     }
 
-    @Test fun networkRecognizerIsRefusedForJournalAndWhenOffline() = runBlocking {
+    @Test fun networkRecognizerIsRefusedForJournalButKeptOffline() {
         val net = FakeSpeechProvider("android", Location.Cloud)
         val r = AiRouter(AiProviders(speech = listOf(net)), policy)
-        assertEquals(null, r.openSpeech(Sensitivity.Journal))
+        assertEquals(emptyList<String>(), r.speechEngines(Sensitivity.Journal).map { it.id })
         online = false
-        assertEquals(null, r.openSpeech(Sensitivity.Everyday))
+        assertEquals(listOf("android"), r.speechEngines(Sensitivity.Everyday).map { it.id })
         online = true
-        assertFalse(r.openSpeech(Sensitivity.Everyday) == null)
     }
 
     @Test fun statusListsEveryProviderAndMarksTheActiveOne() = runBlocking {
