@@ -26,11 +26,23 @@ import kotlinx.coroutines.withContext
 /** Largest setup-code file Cove reads; a real one is under 1 KB. */
 private const val MAX_CODE_FILE = 64 * 1024
 
+/** Reads at most [limit] bytes (`InputStream.readNBytes` needs Android 13). */
+private fun readUpTo(input: java.io.InputStream, limit: Int): ByteArray {
+    val out = java.io.ByteArrayOutputStream()
+    val buffer = ByteArray(4096)
+    while (out.size() < limit) {
+        val n = input.read(buffer, 0, minOf(buffer.size, limit - out.size()))
+        if (n < 0) break
+        out.write(buffer, 0, n)
+    }
+    return out.toByteArray()
+}
+
 /** Reads a small text file the user picked; null when it cannot be read or is too large. */
 suspend fun readSetupFile(context: Context, uri: Uri): String? = withContext(Dispatchers.IO) {
     runCatching {
         context.contentResolver.openInputStream(uri)?.use { input ->
-            val bytes = input.readNBytes(MAX_CODE_FILE + 1)
+            val bytes = readUpTo(input, MAX_CODE_FILE + 1)
             if (bytes.size > MAX_CODE_FILE) null else String(bytes)
         }
     }.getOrNull()

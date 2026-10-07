@@ -87,7 +87,7 @@ fun LogSheet(
             if (reps.isNotEmpty()) StepRow("Set ${s + 1} reps", reps[s].toString(), { reps[s] = maxOf(1, reps[s] - 1) }, { reps[s] = minOf(100, reps[s] + 1) })
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 TextAction("Add set", { reps.add(reps.lastOrNull() ?: ex.reps); sel = reps.lastIndex }, strong = false)
-                if (reps.size > 1) TextAction("Remove last set", { reps.removeLast() }, strong = false)
+                if (reps.size > 1) TextAction("Remove last set", { reps.removeAt(reps.lastIndex) }, strong = false)
             }
             PrimaryButton(
                 if (changed || done) "Save" else "Done as planned",
