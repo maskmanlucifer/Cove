@@ -16,8 +16,8 @@ android {
         applicationId = "app.cove.companion"
         minSdk = 31
         targetSdk = 36
-        versionCode = 15
-        versionName = "0.2.11"
+        versionCode = 16
+        versionName = "0.2.12"
 
         buildConfigField("String", "SUPABASE_URL", "\"${providers.gradleProperty("supabaseUrl").getOrElse("")}\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"${providers.gradleProperty("supabaseAnonKey").getOrElse("")}\"")
@@ -47,6 +47,9 @@ android {
 
     buildTypes {
         release {
+            // Sideloaded onto a 64-bit ARM phone (Pixel): the 32-bit and x86 copies of the native libraries are dead weight.
+            // Debug builds keep every ABI so the x86_64 emulator still works.
+            ndk { abiFilters += "arm64-v8a" }
             signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
@@ -57,6 +60,11 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    // The app is English only, so drop the translated strings that Play services, ML Kit and Compose bring along.
+    androidResources {
+        localeFilters += "en"
     }
 
     buildFeatures {
