@@ -1,6 +1,7 @@
 package app.cove.companion.data.backup
 
 import app.cove.companion.data.sync.RowJson
+import app.cove.companion.feature.journal.blocks.JournalBodyCodec
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.time.LocalDate
@@ -79,14 +80,27 @@ object ExportBuilder {
         )
     }
 
-    /** One Markdown document per month that has entries, keyed by [journalName]. Deleted entries are left out. */
-    fun journalMarkdown(entries: List<JsonObject>): Map<YearMonth, String> =
+    /**
+     * One Markdown document per month that has entries, keyed by [journalName]. Deleted entries are left out. Photos and
+     * voice notes of [media] (the `journal_media` rows) appear where the body places them; photos link to the file
+     * Drive keeps in the sibling `Photos` folder (`../Photos/<id>.<ext>`).
+     */
+    fun journalMarkdown(entries: List<JsonObject>, media: List<JsonObject> = emptyList()): Map<YearMonth, String> =
         entries.filter { RowJson.string(it, "deleted_at") == null }
             .groupBy { YearMonth.from(LocalDate.ofEpochDay(RowJson.long(it, "day"))) }
             .toSortedMap()
-            .mapValues { (month, list) -> monthDocument(month, list) }
+            .mapValues { (month, list) -> monthDocument(month, list, mediaByEntry(media)) }
 
-    private fun monthDocument(month: YearMonth, entries: List<JsonObject>): String = buildString {
+    private fun mediaByEntry(rows: List<JsonObject>): Map<String, Map<String, JournalBodyCodec.MarkdownMedia>> =
+        rows.filter { RowJson.string(it, "deleted_at") == null }.groupBy { RowJson.string(it, "entry_id").orEmpty() }.mapValues { (_, list) ->
+            list.associate { r ->
+                val id = RowJson.string(r, "id").orEmpty()
+                val ext = RowJson.string(r, "local_path").orEmpty().substringAfterLast('.', "webp")
+                id to JournalBodyCodec.MarkdownMedia(RowJson.string(r, "kind").orEmpty(), "../Photos/$id.$ext", RowJson.long(r, "duration_ms"))
+            }
+        }
+
+    private fun monthDocument(month: YearMonth, entries: List<JsonObject>, media: Map<String, Map<String, JournalBodyCodec.MarkdownMedia>>): String = buildString {
         append("# Journal, ${month.month.getDisplayName(TextStyle.FULL, Locale.ENGLISH)} ${month.year}\n")
         entries.sortedWith(compareBy({ RowJson.long(it, "day") }, { RowJson.long(it, "created_at") })).forEach { e ->
             val day = LocalDate.ofEpochDay(RowJson.long(e, "day")).format(DateTimeFormatter.ISO_LOCAL_DATE)
@@ -95,7 +109,7 @@ object ExportBuilder {
             if (title.isNotEmpty()) append(" · ").append(title)
             append('\n')
             RowJson.string(e, "mood")?.let { append("\nMood: ").append(it).append('\n') }
-            val body = RowJson.string(e, "body").orEmpty().trim()
+            val body = JournalBodyCodec.toMarkdown(RowJson.string(e, "body").orEmpty(), media[RowJson.string(e, "id")].orEmpty())
             if (body.isNotEmpty()) append('\n').append(body).append('\n')
         }
     }

@@ -33,12 +33,11 @@ import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.InputTransformation
 import androidx.compose.foundation.text.input.TextFieldState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -90,7 +89,7 @@ import app.cove.companion.design.components.pressable
 import app.cove.companion.navigation.Nav
 import kotlinx.coroutines.launch
 
-private val BodyStyle = CoveType.Body.copy(fontSize = 18.sp, lineHeight = 29.sp)
+internal val BodyStyle = CoveType.Body.copy(fontSize = 18.sp, lineHeight = 29.sp)
 
 /** Journal entry editor: date and mood, title, body with autosave, and photo / voice note attachments. */
 @OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
@@ -103,9 +102,11 @@ fun JournalEditScreen(id: String, nav: Nav) {
     val context = LocalContext.current
     var sheet by rememberSaveable { mutableStateOf<String?>(null) }
     val titleFocus = remember { FocusRequester() }
-    val bodyFocus = remember { FocusRequester() }
+    val listState = rememberLazyListState()
+    val drag = remember { BlockDrag() }
     val leaveGuard = remember { OneShot() }
     val deleteGuard = remember { OneShot() }
+    var picking by remember { mutableStateOf(false) }
     var viewing by rememberSaveable { mutableStateOf<Int?>(null) }
     var micHelp by remember { mutableStateOf(false) }
     var micCanAsk by remember { mutableStateOf(true) }
@@ -117,8 +118,9 @@ fun JournalEditScreen(id: String, nav: Nav) {
         }
     }
 
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { it?.let(vm::addPhoto) }
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { picking = false; it?.let(vm::addPhoto) }
     val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
+        picking = false
         val target = vm.cameraTarget
         if (ok && target != null) vm.addPhoto(target.second) else target?.first?.delete()
     }
@@ -137,28 +139,18 @@ fun JournalEditScreen(id: String, nav: Nav) {
     BackHandler(onBack = leave)
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { scope.launch { vm.save() } }
     LaunchedEffect(s.loaded) {
-        if (s.loaded && !s.persisted && vm.title.text.isEmpty() && vm.body.text.isEmpty()) titleFocus.requestFocus()
+        if (s.loaded && !s.persisted && vm.title.text.isEmpty() && vm.doc.isEmpty) titleFocus.requestFocus()
     }
 
     Box(Modifier.fillMaxSize().background(paper()).imePadding()) {
         Column(Modifier.fillMaxSize().coveTopInset()) {
             TopBar(s.status, canDelete = s.persisted, onBack = leave, onDone = leave, onDelete = { sheet = "delete" })
-            Column(
-                Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
-                    .padding(start = 24.dp, end = 24.dp, top = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                CoveText(s.day.longLabel() + (s.mood?.let { " · $it" } ?: ""), style = CoveType.Meta, color = c.muted)
-                EntryField(vm.title, "Title", CoveType.Title, titleFocus, Modifier.offset(y = (-2).dp), singleLine = true, onNext = { bodyFocus.requestFocus() })
-                EntryField(vm.body, "Write whatever is on your mind.", BodyStyle, bodyFocus, Modifier.offset(y = (-3).dp).heightIn(min = 160.dp), bodyColor(), shortBlankLines = true)
-                val photos = s.media.filter { it.kind == "photo" }
-                if (photos.isNotEmpty()) JournalPhotos(photos, onOpen = { viewing = it }, onRemove = { vm.removeMedia(it) })
-                s.media.filter { it.kind == "voice" }.forEach { note ->
-                    VoiceRow(note, s.playback, onToggle = { vm.togglePlayback(note) }, onRemove = { vm.removeMedia(note) }, hint = s.voiceHints[note.id])
-                }
-            }
+            DocumentList(
+                vm, s, drag, listState, Modifier.weight(1f),
+                titleFocus = titleFocus,
+                onOpenPhoto = { viewing = it },
+                scope = scope,
+            )
             s.notice?.let {
                 CoveText(
                     it, Modifier.fillMaxWidth().padding(horizontal = 28.dp).semantics { liveRegion = LiveRegionMode.Polite },
@@ -191,13 +183,18 @@ fun JournalEditScreen(id: String, nav: Nav) {
             sheet == "photo", { sheet = null },
             onLibrary = {
                 sheet = null
+                if (picking) return@PhotoSheet
+                picking = true
                 picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
             },
             onCamera = {
                 sheet = null
+                if (picking) return@PhotoSheet
+                picking = true
                 try {
                     camera.launch(vm.newCameraUri())
                 } catch (e: ActivityNotFoundException) {
+                    picking = false
                     vm.cameraUnavailable()
                 }
             },
@@ -220,8 +217,8 @@ fun JournalEditScreen(id: String, nav: Nav) {
         )
         viewing?.let { start ->
             PhotoViewer(
-                s.media.filter { it.kind == "photo" }, start, onClose = { viewing = null },
-                onRemove = { viewing = null; vm.removeMedia(it) },
+                vm.doc.photoRows(s.media), start, onClose = { viewing = null },
+                onRemove = { viewing = null; vm.removeBlock(it.id) },
             )
         }
         UndoHost("journal", Modifier.align(Alignment.TopCenter))
@@ -253,7 +250,7 @@ private fun paper(): Color = lerp(Cove.colors.canvas, Cove.colors.card, 0.6f)
 
 /** Body ink, slightly softer than headlines (#2E3036). */
 @Composable
-private fun bodyColor(): Color = lerp(Cove.colors.ink, Cove.colors.muted, 0.28f)
+internal fun bodyColor(): Color = lerp(Cove.colors.ink, Cove.colors.muted, 0.28f)
 
 @Composable
 private fun TopBar(status: SaveStatus, canDelete: Boolean, onBack: () -> Unit, onDone: () -> Unit, onDelete: () -> Unit) {
@@ -284,7 +281,7 @@ private fun TopBar(status: SaveStatus, canDelete: Boolean, onBack: () -> Unit, o
 }
 
 @Composable
-private fun EntryField(
+internal fun EntryField(
     state: TextFieldState,
     placeholder: String,
     style: TextStyle,

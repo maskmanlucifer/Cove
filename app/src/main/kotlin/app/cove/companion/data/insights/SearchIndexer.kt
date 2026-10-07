@@ -5,6 +5,8 @@ import app.cove.companion.core.Clock
 import app.cove.companion.data.local.CoveDatabase
 import app.cove.companion.data.local.entity.JournalEntryEntity
 import app.cove.companion.data.local.entity.SearchIndexEntity
+import app.cove.companion.feature.journal.blocks.BlockMedia
+import app.cove.companion.feature.journal.blocks.JournalBodyCodec
 import java.io.File
 
 /**
@@ -28,18 +30,21 @@ class SearchIndexer(
     /** Runs the on-device model over [entry]; a no-op in the background or when no model is available. */
     suspend fun enrich(entry: JournalEntryEntity) {
         if (entry.deletedAt != null) return
-        val text = "${entry.title}\n${entry.body}".trim()
-        val photos = db.journal().mediaOf(entry.id).filter { it.kind == "photo" }
-        if (text.isEmpty() && photos.isEmpty()) return
+        val media = db.journal().mediaOf(entry.id)
+        val photos = media.filter { it.kind == "photo" }
+        val hasText = entry.title.isNotBlank() || JournalBodyCodec.plainText(entry.body).isNotBlank()
+        // The model sees the entry in order, with [photo] and [voice note] where the media sit.
+        val text = "${entry.title}\n${JournalBodyCodec.textWithPlaceholders(entry.body, media.map { BlockMedia(it.id, it.kind) })}".trim()
+        if (!hasText && photos.isEmpty()) return
 
-        val summary = if (text.isEmpty()) null else ai.summarize(text).valueOrNull()
+        val summary = if (!hasText) null else ai.summarize(text).valueOrNull()
         val captions = captions(photos.mapNotNull { it.thumbPath })
         val old = db.journal().index(entry.id)
         val base = old ?: SearchIndexEntity(entry.id)
         val row = if (summary == null && captions.isEmpty()) base else base.copy(
-            summary = if (text.isEmpty()) "" else summary?.sentence.orEmpty().ifEmpty { base.summary },
-            aiMood = if (text.isEmpty()) null else summary?.mood ?: base.aiMood,
-            tags = if (text.isEmpty()) "" else summary?.tags.orEmpty().joinToString(" ").ifEmpty { base.tags },
+            summary = if (!hasText) "" else summary?.sentence.orEmpty().ifEmpty { base.summary },
+            aiMood = if (!hasText) null else summary?.mood ?: base.aiMood,
+            tags = if (!hasText) "" else summary?.tags.orEmpty().joinToString(" ").ifEmpty { base.tags },
             caption = captions.ifEmpty { base.caption },
         )
         val vector = ai.embed(searchableText(entry, row)).valueOrNull()
@@ -59,5 +64,5 @@ class SearchIndexer(
 
 /** Everything about [entry] that search should see. */
 internal fun searchableText(entry: JournalEntryEntity, index: SearchIndexEntity?): String =
-    listOfNotNull(entry.title, entry.body, entry.mood, index?.summary, index?.transcript, index?.caption, index?.tags)
+    listOfNotNull(entry.title, JournalBodyCodec.plainText(entry.body), entry.mood, index?.summary, index?.transcript, index?.caption, index?.tags)
         .filter { it.isNotBlank() }.joinToString("\n")

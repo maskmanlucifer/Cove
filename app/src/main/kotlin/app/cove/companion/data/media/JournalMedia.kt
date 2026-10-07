@@ -25,8 +25,7 @@ class JournalMedia(
      * Compresses [source] (photo picker or camera URI) at the user's photo quality (80 Balanced, 90 High) and attaches it to [entryId].
      * Returns null when the image cannot be read or decoded, so the caller can say so calmly.
      */
-    suspend fun addPhoto(entryId: String, source: Uri): JournalMediaEntity? {
-        val id = newId()
+    suspend fun addPhoto(entryId: String, source: Uri, id: String = newId()): JournalMediaEntity? {
         val webpQuality = quality()
         val media = withContext(Dispatchers.IO) {
             try {

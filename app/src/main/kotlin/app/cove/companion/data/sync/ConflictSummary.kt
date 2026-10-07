@@ -4,6 +4,7 @@ import app.cove.companion.core.clockText
 import app.cove.companion.core.toLocalDateTime
 import app.cove.companion.core.clock
 import app.cove.companion.data.local.entity.SyncConflictEntity
+import app.cove.companion.feature.journal.blocks.JournalBodyCodec
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
@@ -50,6 +51,10 @@ object ConflictDescriber {
                 differs("due_at") -> pair { j -> RowJson.string(j, "due_at")?.toLongOrNull()?.toLocalDateTime()?.clock()?.let { it.digits + it.suffix } ?: "No time" }
                 differs("done") -> pair { if (RowJson.string(it, "done") == "true") "Done" else "Not done" }
                 else -> pair { "Edited" }
+            }
+            "journal_entries" -> when {
+                differs("title") -> pair { RowJson.string(it, "title").orEmpty() }
+                else -> pair { j -> JournalBodyCodec.plainText(RowJson.string(j, "body").orEmpty()).trim().lineSequence().firstOrNull().orEmpty().take(80).ifEmpty { "Photos and voice notes" } }
             }
             else -> pair { "Edited" }
         }

@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -53,21 +52,13 @@ import app.cove.companion.design.components.pressable
 
 private val PhotoShape = RoundedCornerShape(24.dp)
 
-/** The entry's photos, one per row at the full width of the content column. [onOpen] gets the tapped photo's index. */
-@Composable
-fun JournalPhotos(photos: List<JournalMediaEntity>, onOpen: (Int) -> Unit, onRemove: (JournalMediaEntity) -> Unit) {
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        photos.forEachIndexed { i, photo -> key(photo.id) { JournalPhoto(photo, { onOpen(i) }, { onRemove(photo) }) } }
-    }
-}
-
 /**
  * One full-width photo at its own aspect ratio (tall photos are centre-cropped to 1.25 x the width). Shows the
  * blurred thumbnail while the stored image decodes off the main thread, then fades the image in over 150 ms.
  * Explains a missing or unreadable file in place, with Retry.
  */
 @Composable
-private fun JournalPhoto(photo: JournalMediaEntity, onOpen: () -> Unit, onRemove: () -> Unit) {
+internal fun JournalPhoto(photo: JournalMediaEntity, onOpen: () -> Unit, onRemove: () -> Unit) {
     val loader = LocalContext.current.container.photoLoader
     val reduce = LocalReduceMotion.current
     BoxWithConstraints(Modifier.fillMaxWidth()) {

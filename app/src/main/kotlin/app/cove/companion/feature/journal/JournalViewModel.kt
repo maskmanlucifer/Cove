@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import app.cove.companion.AppContainer
 import app.cove.companion.core.toLocalDate
 import app.cove.companion.data.local.entity.JournalEntryEntity
+import app.cove.companion.feature.journal.blocks.JournalBodyCodec
 import app.cove.companion.navigation.Routes
 import java.time.LocalDate
 import java.time.YearMonth
@@ -95,5 +96,5 @@ class JournalViewModel(private val c: AppContainer) : ViewModel() {
 
 /** Title shown in lists: the title, else the first line of the body, else "Untitled". */
 fun JournalEntryEntity.displayTitle(): String =
-    title.trim().ifEmpty { body.lineSequence().map(String::trim).firstOrNull { it.isNotEmpty() }.orEmpty() }
+    title.trim().ifEmpty { JournalBodyCodec.plainText(body).lineSequence().map(String::trim).firstOrNull { it.isNotEmpty() }.orEmpty() }
         .ifEmpty { mood?.takeIf { it.isNotBlank() }?.let { "Feeling $it" }.orEmpty() }.ifEmpty { "Untitled" }

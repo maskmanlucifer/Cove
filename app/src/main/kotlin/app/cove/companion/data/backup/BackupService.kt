@@ -39,7 +39,7 @@ class BackupService(
         drive.upload(folder, name, "application/gzip", ExportBuilder.gzip(json))
 
         val existing = drive.list(folder).map { it.name }.toSet()
-        ExportBuilder.journalMarkdown(tables["journal_entries"].orEmpty()).forEach { (m, text) ->
+        ExportBuilder.journalMarkdown(tables["journal_entries"].orEmpty(), tables["journal_media"].orEmpty()).forEach { (m, text) ->
             val file = ExportBuilder.journalName(m)
             if (m == month || file !in existing) drive.upload(folder, file, "text/markdown", text.toByteArray())
         }

@@ -13,6 +13,11 @@ import app.cove.companion.core.toLocalDate
 import app.cove.companion.data.local.entity.JournalEntryEntity
 import app.cove.companion.data.local.entity.JournalMediaEntity
 import app.cove.companion.data.media.PlaybackState
+import app.cove.companion.feature.journal.blocks.BlockMedia
+import app.cove.companion.feature.journal.blocks.JournalBlock
+import app.cove.companion.feature.journal.blocks.JournalBlockOps
+import app.cove.companion.feature.journal.blocks.JournalBodyCodec
+import app.cove.companion.feature.journal.blocks.Removal
 import java.io.File
 import java.time.LocalDate
 import kotlinx.coroutines.Job
@@ -43,21 +48,30 @@ data class JournalEditState(
     val voiceHints: Map<String, String> = emptyMap(),
     /** A short calm note about something that did not work ("Couldn't use that photo"); clears itself. */
     val notice: String? = null,
+    /** Media ids of photos and voice notes still being stored; their blocks show a quiet placeholder. */
+    val loading: Set<String> = emptySet(),
 )
 
 /** Area name of the journal's Undo offers. */
 internal const val JOURNAL_UNDO = "journal"
 
-/** Edits one journal entry: debounced autosave, attachments, voice recording and playback. */
+/** Edits one journal entry as a document of text, photo and voice blocks: debounced autosave, voice recording and playback. */
 class JournalEditViewModel(private val c: AppContainer, private val routeId: String) : ViewModel() {
     val title = TextFieldState()
-    val body = TextFieldState()
+    val doc = JournalDocument()
 
     private val _state = MutableStateFlow(JournalEditState())
     val state: StateFlow<JournalEditState> = _state.asStateFlow()
 
     private lateinit var entry: JournalEntryEntity
     private var persisted = false
+
+    /** Body last written or read, in block form; an unchanged document is never saved (so legacy entries migrate only when edited). */
+    private var knownBody = ""
+
+    /** Media ids the user removed here; the self-healing pass must not bring their blocks back. */
+    private val removedIds = HashSet<String>()
+    private var cleared = false
     private var loading = true
 
     /** Set once the entry is deleted, so neither autosave nor leaving the screen can bring it back. */
@@ -66,6 +80,7 @@ class JournalEditViewModel(private val c: AppContainer, private val routeId: Str
     private var recordJob: Job? = null
     private var playJob: Job? = null
     private var recordingId: String? = null
+    private var recordPoint: InsertPoint? = null
     private val recorder = c.voiceRecorder()
     private val player = c.voicePlayer()
 
@@ -78,13 +93,16 @@ class JournalEditViewModel(private val c: AppContainer, private val routeId: Str
             entry = existing ?: c.journal.newEntry(newEntryDay(routeId) ?: c.clock.now().toLocalDate())
             persisted = existing != null
             title.setTextAndPlaceCursorAtEnd(entry.title)
-            body.setTextAndPlaceCursorAtEnd(entry.body)
+            val media = c.journal.media(entry.id).first()
+            val blocks = JournalBodyCodec.parse(entry.body, media.map { BlockMedia(it.id, it.kind) })
+            doc.load(blocks)
+            knownBody = JournalBodyCodec.serialize(blocks)
             loading = false
             _state.update { it.copy(loaded = true, day = LocalDate.ofEpochDay(entry.day), mood = entry.mood, persisted = persisted, status = if (persisted) SaveStatus.Saved else SaveStatus.Idle) }
-            launch { c.journal.media(entry.id).collect { list -> _state.update { it.copy(media = list) } } }
+            launch { c.journal.media(entry.id).collect { list -> _state.update { it.copy(media = list) }; adopt(list) } }
             launch { player.state.collect { p -> _state.update { it.copy(playback = p) } } }
         }
-        val edits = snapshotFlow { title.text.toString() to body.text.toString() }.filter { !loading && it != entry.title to entry.body }
+        val edits = snapshotFlow { title.text.toString() to doc.body() }.filter { !loading && it != entry.title to knownBody }
         viewModelScope.launch { edits.collect { _state.update { it.copy(status = SaveStatus.Saving) } } }
         viewModelScope.launch { edits.debounce(AUTOSAVE_MS).collect { save() } }
     }
@@ -98,9 +116,15 @@ class JournalEditViewModel(private val c: AppContainer, private val routeId: Str
     suspend fun save() {
         if (loading || deleted) return
         val s = _state.value
-        val blank = title.text.isBlank() && body.text.isBlank() && s.media.isEmpty()
+        val blank = title.text.isBlank() && JournalBodyCodec.isBlank(doc.snapshot()) && s.media.isEmpty()
         if (blank && !persisted) return
-        entry = entry.copy(title = title.text.toString(), body = body.text.toString(), mood = s.mood)
+        val body = doc.body()
+        if (persisted && title.text.toString() == entry.title && body == knownBody && s.mood == entry.mood) {
+            _state.update { it.copy(status = SaveStatus.Saved) }
+            return
+        }
+        knownBody = body
+        entry = entry.copy(title = title.text.toString(), body = body, mood = s.mood)
         c.journal.save(entry)
         persisted = true
         _state.update { it.copy(status = SaveStatus.Saved, persisted = true) }
@@ -125,15 +149,17 @@ class JournalEditViewModel(private val c: AppContainer, private val routeId: Str
 
     /** An entry that holds only a voice note or photos gets that as its title, never "Untitled". */
     private suspend fun nameMediaOnlyEntry() {
-        if (title.text.isNotBlank() || body.text.isNotBlank()) return
-        val first = _state.value.media.firstOrNull() ?: return
-        entry = entry.copy(title = if (first.kind == "voice") "Voice note" else "Photo")
+        if (title.text.isNotBlank() || hasWrittenText()) return
+        val first = doc.snapshot().firstOrNull { it !is JournalBlock.Text } ?: return
+        entry = entry.copy(title = if (first is JournalBlock.Voice) "Voice note" else "Photo")
         c.journal.save(entry)
     }
 
+    private fun hasWrittenText() = doc.snapshot().any { it is JournalBlock.Text && it.text.isNotBlank() }
+
     private suspend fun saveMoodOnly() {
         val mood = _state.value.mood ?: return
-        if (title.text.isNotBlank() || body.text.isNotBlank()) return
+        if (title.text.isNotBlank() || !JournalBodyCodec.isBlank(doc.snapshot())) return
         val sameDay = c.journal.entries.first().firstOrNull { it.day == entry.day }
         if (sameDay != null) {
             c.journal.save(sameDay.copy(mood = mood))
@@ -150,7 +176,7 @@ class JournalEditViewModel(private val c: AppContainer, private val routeId: Str
         deleted = true
         loading = true
         if (!persisted) return
-        val snapshot = entry.copy(title = title.text.toString(), body = body.text.toString(), mood = _state.value.mood)
+        val snapshot = entry.copy(title = title.text.toString(), body = doc.body(), mood = _state.value.mood)
         val media = _state.value.media
         media.forEach { c.journalMedia.softRemove(it) }
         c.journal.delete(snapshot.id)
@@ -163,6 +189,7 @@ class JournalEditViewModel(private val c: AppContainer, private val routeId: Str
         }
     }
 
+
     private fun notice(text: String) {
         _state.update { it.copy(notice = text) }
         noticeJob?.cancel()
@@ -172,15 +199,30 @@ class JournalEditViewModel(private val c: AppContainer, private val routeId: Str
         }
     }
 
+    /** Adds a photo block at the caret at once (a placeholder), then stores the picture off the main thread. */
     fun addPhoto(uri: Uri) {
+        if (deleted || loading) return
+        val id = newId()
+        _state.update { it.copy(loading = it.loading + id) }
+        doc.insert(JournalBlock.Photo(id))
         viewModelScope.launch {
-            if (deleted) return@launch
             ensurePersisted()
-            val added = c.journalMedia.addPhoto(entry.id, uri)
+            val added = c.journalMedia.addPhoto(entry.id, uri, id)
             cameraTarget?.first?.delete()
             cameraTarget = null
-            if (added == null) notice("Couldn’t use that photo")
+            _state.update { it.copy(loading = it.loading - id) }
+            if (added == null) {
+                doc.remove(id)
+                notice("Couldn’t use that photo")
+            }
             save()
+        }
+    }
+
+    /** Shows media rows that exist but have no block (restored or synced after the body was written) at the end. */
+    private fun adopt(list: List<JournalMediaEntity>) {
+        list.filter { !doc.hasMedia(it.id) && it.id !in removedIds && it.id !in _state.value.loading }.forEach {
+            doc.append(if (it.kind == "voice") JournalBlock.Voice(it.id) else JournalBlock.Photo(it.id))
         }
     }
 
@@ -193,24 +235,47 @@ class JournalEditViewModel(private val c: AppContainer, private val routeId: Str
 
     fun newCameraUri(): Uri = c.journalFiles.newCameraTarget().also { cameraTarget = it }.second
 
-    fun removeMedia(media: JournalMediaEntity) {
-        if (player.state.value.id == media.id) player.stop()
+    /** Removes the photo or voice block [id] and its row; Undo puts back both the block and the row. */
+    fun removeBlock(id: String) {
+        val media = _state.value.media.firstOrNull { it.id == id }
+        if (player.state.value.id == id) player.stop()
+        removedIds += id
+        val removal = doc.remove(id) ?: return
+        val kind = media?.kind ?: if (removal.block is JournalBlock.Voice) "voice" else "photo"
         viewModelScope.launch {
-            c.journalMedia.softRemove(media)
+            media?.let { c.journalMedia.softRemove(it) }
             save()
-            val what = if (media.kind == "photo") "Photo removed" else "Voice note removed"
-            Undo.center.post(JOURNAL_UNDO, what, onExpire = { c.journalMedia.deleteFiles(media) }) { c.journalMedia.restore(media) }
+            val what = if (kind == "photo") "Photo removed" else "Voice note removed"
+            Undo.center.post(JOURNAL_UNDO, what, onExpire = { media?.let { c.journalMedia.deleteFiles(it) } }) { undoRemoval(media, removal) }
         }
+    }
+
+    private suspend fun undoRemoval(media: JournalMediaEntity?, removal: Removal) {
+        removedIds -= removal.block.id
+        media?.let { c.journalMedia.restore(it) }
+        if (!cleared) {
+            doc.restore(removal)
+            return
+        }
+        // The editor is gone: patch the stored body the same way.
+        val stored = c.journal.get(entry.id) ?: return
+        val rows = c.journal.media(stored.id).first().map { BlockMedia(it.id, it.kind) }
+        val blocks = JournalBlockOps.restore(JournalBodyCodec.parse(stored.body, rows), removal)
+        val saved = stored.copy(body = JournalBodyCodec.serialize(blocks))
+        c.journal.save(saved)
+        c.searchIndexer.indexText(saved)
     }
 
     /** Starts a voice note; false when the microphone could not be opened. */
     fun startRecording(): Boolean {
+        if (recorder.isRecording || recordingId != null) return true
         val id = newId()
         if (!recorder.start(c.journalFiles.voice(id))) {
             notice("The microphone is busy right now. Try again in a moment.")
             return false
         }
         recordingId = id
+        recordPoint = doc.insertPoint()
         player.stop()
         _state.update { it.copy(recordingMs = 0) }
         recordJob = viewModelScope.launch {
@@ -236,7 +301,10 @@ class JournalEditViewModel(private val c: AppContainer, private val routeId: Str
         _state.update { it.copy(recordingMs = null) }
         if (recording == null || deleted) return false
         ensurePersisted()
+        _state.update { it.copy(loading = it.loading + id) }
+        doc.insert(JournalBlock.Voice(id), recordPoint ?: doc.insertPoint())
         c.journalMedia.addVoice(entry.id, id, recording)
+        _state.update { it.copy(loading = it.loading - id) }
         save()
         return true
     }
@@ -274,7 +342,8 @@ class JournalEditViewModel(private val c: AppContainer, private val routeId: Str
 
     private suspend fun ensurePersisted() {
         if (!persisted && !deleted) {
-            entry = entry.copy(title = title.text.toString(), body = body.text.toString(), mood = _state.value.mood)
+            knownBody = doc.body()
+            entry = entry.copy(title = title.text.toString(), body = knownBody, mood = _state.value.mood)
             c.journal.save(entry)
             persisted = true
             _state.update { it.copy(persisted = true) }
@@ -282,6 +351,7 @@ class JournalEditViewModel(private val c: AppContainer, private val routeId: Str
     }
 
     override fun onCleared() {
+        cleared = true
         if (recorder.isRecording) recorder.cancel()
         player.stop()
     }
