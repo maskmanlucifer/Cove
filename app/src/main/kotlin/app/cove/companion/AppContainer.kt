@@ -47,7 +47,11 @@ import app.cove.companion.data.repo.HabitRepository
 import app.cove.companion.data.repo.JournalRepository
 import app.cove.companion.data.categorize.LiveCategoryResolver
 import app.cove.companion.data.repo.MoneyRepository
+import app.cove.companion.core.Permissions
 import app.cove.companion.data.sms.ContentResolverSmsInbox
+import app.cove.companion.data.sms.SmsCapturePrefs
+import app.cove.companion.data.sms.SmsCatchUp
+import app.cove.companion.data.sms.SmsLiveCapture
 import app.cove.companion.data.sms.SmsImportRepository
 import app.cove.companion.data.sms.SmsSource
 import app.cove.companion.data.repo.PlanRepository
@@ -165,6 +169,20 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
 
     /** The phone's SMS inbox; reading needs the READ_SMS permission the Import screen asks for. */
     val smsInbox: SmsSource = ContentResolverSmsInbox(context.applicationContext)
+
+    /** "Payments from messages": this device's mode, in plain preferences so the SMS receiver can read it first. */
+    val smsCapturePrefs = SmsCapturePrefs(context.applicationContext)
+
+    /** Handles payments found in new messages and the Add / Skip / Undo notification actions (see `docs/SMS_IMPORT.md`). */
+    val smsCapture = SmsLiveCapture(database, money, smsImport, smsCapturePrefs)
+
+    /** Silent catch-up scan when the app opens (throttled), for messages the receiver could not handle. */
+    val smsCatchUp by lazy {
+        SmsCatchUp(
+            appScope, smsCapture, smsCapturePrefs, smsInbox, clock, dbReady,
+            canRead = { Permissions.granted(context, android.Manifest.permission.READ_SMS) },
+        )
+    }
 
     /** Programme, sessions, sets and body weight (see `docs/TRAINING.md`). */
     val training = TrainingRepository(database, clock, changeLog)

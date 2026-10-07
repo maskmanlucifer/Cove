@@ -29,6 +29,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.cove.companion.core.PermissionStep
+import app.cove.companion.data.sms.CaptureMode
 import app.cove.companion.data.sms.ImportRange
 import app.cove.companion.design.Cove
 import app.cove.companion.design.CoveShapes
@@ -47,6 +48,9 @@ import app.cove.companion.feature.money.BudgetBar
 import app.cove.companion.feature.money.MoneyType
 import app.cove.companion.feature.money.RowDivider
 import app.cove.companion.feature.money.RowsCard
+import app.cove.companion.feature.money.live.PaymentTexts
+import app.cove.companion.feature.money.live.PaymentsModePicker
+import app.cove.companion.feature.money.live.PaymentsPrivacyNote
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -80,11 +84,7 @@ internal fun IntroStage(message: String?, step: PermissionStep, deniedBefore: Bo
         }
         message?.let { CoveText(it, Modifier.semantics { liveRegion = LiveRegionMode.Polite }, style = MoneyType.Note, color = c.muted) }
         if (step == PermissionStep.OpenSettings) {
-            GuideBanner(
-                "Messages are off for Cove",
-                "Allow Messages for Cove in Settings. If it says \"Restricted setting\", open the three dots in App info and choose \"Allow restricted settings\" first.",
-                "Open settings", onSettings,
-            )
+            GuideBanner(PaymentTexts.GUIDE_TITLE, PaymentTexts.GUIDE_BODY, "Open settings", onSettings)
         } else {
             PillButton(if (deniedBefore) "Try allowing again" else "Allow reading messages", onAllow, Modifier.fillMaxWidth(), height = 56.dp, textStyle = BigButton)
         }
@@ -102,7 +102,7 @@ private fun Fact(text: String) {
 
 /** Range choice with an estimate of how many messages will be looked at. */
 @Composable
-internal fun RangeStage(s: ImportState, onRange: (ImportRange) -> Unit, onFind: () -> Unit, onPaste: () -> Unit) {
+internal fun RangeStage(s: ImportState, onRange: (ImportRange) -> Unit, onFind: () -> Unit, onPaste: () -> Unit, payments: @Composable () -> Unit) {
     val c = Cove.colors
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 40.dp),
@@ -132,6 +132,34 @@ internal fun RangeStage(s: ImportState, onRange: (ImportRange) -> Unit, onFind: 
         s.message?.let { CoveText(it, Modifier.semantics { liveRegion = LiveRegionMode.Polite }, style = MoneyType.Note, color = c.muted) }
         PillButton("Find transactions", onFind, Modifier.fillMaxWidth(), height = 56.dp, textStyle = BigButton)
         AccentButton("Paste a message instead", onPaste, Modifier.align(Alignment.CenterHorizontally))
+        payments()
+    }
+}
+
+/** The one-time offer to turn on "Payments from messages": three choices, one sentence each, and the privacy promise. */
+@Composable
+internal fun OfferStage(mode: CaptureMode, onMode: (CaptureMode) -> Unit, onContinue: () -> Unit) {
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 40.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
+    ) {
+        Illustration(Scene.Messages, Modifier.align(Alignment.CenterHorizontally).height(120.dp))
+        CoveText("Catch payments as they arrive?", style = CoveType.Section)
+        CoveText("Cove can notice a payment the moment its message arrives, so you do not have to come looking.", style = MoneyType.Quote, color = Cove.colors.muted)
+        PaymentsModePicker(mode, onMode)
+        PaymentsPrivacyNote()
+        PillButton("Continue", onContinue, Modifier.fillMaxWidth(), height = 56.dp, textStyle = BigButton)
+    }
+}
+
+/** "Payments from messages" on the range step: the mode picker, the privacy promise and any permission guide. */
+@Composable
+internal fun PaymentsSection(mode: CaptureMode, onMode: (CaptureMode) -> Unit, guide: @Composable () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        CoveText("Payments from messages", style = CoveType.Section)
+        PaymentsModePicker(mode, onMode)
+        guide()
+        PaymentsPrivacyNote()
     }
 }
 

@@ -12,7 +12,7 @@ class SmsPendingSchemaTest {
     @Test fun schema11HasThePendingTable() {
         assertTrue(schema.contains("\"version\": 11"))
         assertTrue(schema.contains("\"tableName\": \"sms_pending\""))
-        for (col in listOf("key", "messageKeys", "amountPaise", "direction", "merchant", "paidWith", "ref", "bank", "payeeKey", "categoryId", "matchExpenseId", "matchNote")) {
+        for (col in listOf("key", "messageKeys", "amountPaise", "direction", "merchant", "paidWith", "ref", "bank", "payeeKey", "matchExpenseId", "matchNote")) {
             assertTrue(col, schema.contains("`$col`"))
         }
         assertTrue(schema.contains("index_sms_pending_at"))
@@ -29,7 +29,7 @@ class SmsPendingSchemaTest {
         assertTrue(database.contains("MIGRATION_9_10, MIGRATION_10_11"))
         val columns = "(`key` TEXT NOT NULL, `messageKeys` TEXT NOT NULL, `amountPaise` INTEGER NOT NULL, `direction` TEXT NOT NULL, `merchant` TEXT, " +
             "`at` INTEGER NOT NULL, `dateFromText` INTEGER NOT NULL, `last4` TEXT, `paidWith` TEXT NOT NULL, `ref` TEXT, `bank` TEXT, " +
-            "`confidence` REAL NOT NULL, `payeeKey` TEXT, `categoryId` TEXT, `matchExpenseId` TEXT, `matchNote` TEXT, `matchAmountPaise` INTEGER, " +
+            "`confidence` REAL NOT NULL, `payeeKey` TEXT, `matchExpenseId` TEXT, `matchNote` TEXT, `matchAmountPaise` INTEGER, " +
             "`createdAt` INTEGER NOT NULL, PRIMARY KEY(`key`))"
         val flat = database.replace("\" +\n                        \"", "")
         assertTrue(flat.contains("CREATE TABLE IF NOT EXISTS `sms_pending` $columns"))

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import app.cove.companion.AppContainer
 import app.cove.companion.core.toLocalDate
 import app.cove.companion.data.categorize.ReviewLogic
+import app.cove.companion.data.sms.CaptureMode
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -32,6 +33,16 @@ data class MoneyState(
 
 /** Month overview for the Money tab: spend so far, daily strip and the busiest categories (the rest fold into Other). */
 class MoneyViewModel(c: AppContainer) : ViewModel() {
+    /** Payments found in new messages that wait for the user ("Payments from messages"). */
+    val pending: StateFlow<Int> = c.smsImport.pendingCount().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    /** This device's "Payments from messages" mode. */
+    val captureMode: StateFlow<CaptureMode> = c.smsCapturePrefs.mode
+
+    init {
+        c.smsCatchUp.runIfDue()
+    }
+
     private val today = c.clock.now().toLocalDate()
     private val range = ledgerRange(today)
 

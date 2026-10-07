@@ -39,7 +39,6 @@ data class SmsImportLogEntity(
  * @property key key of the first message ([app.cove.companion.data.sms.Candidate.id]).
  * @property messageKeys keys of every message that described this payment, comma separated.
  * @property direction `debit` or `credit`.
- * @property categoryId suggested spending category at the time it was found; null for money received.
  * @property matchExpenseId existing expense this payment may repeat, with [matchNote] and [matchAmountPaise] for the explanation.
  */
 @Entity(tableName = "sms_pending", indices = [Index("at")])
@@ -57,7 +56,6 @@ data class SmsPendingEntity(
     val bank: String?,
     val confidence: Float,
     val payeeKey: String?,
-    val categoryId: String?,
     val matchExpenseId: String?,
     val matchNote: String?,
     val matchAmountPaise: Long?,

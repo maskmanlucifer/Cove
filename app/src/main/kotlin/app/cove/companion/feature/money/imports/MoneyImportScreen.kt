@@ -28,7 +28,11 @@ import app.cove.companion.core.appViewModel
 import app.cove.companion.core.permissionStep
 import app.cove.companion.design.components.CoveScreen
 import app.cove.companion.design.components.coveTopInset
+import app.cove.companion.data.sms.CaptureMode
 import app.cove.companion.feature.money.MoneyTopBar
+import app.cove.companion.feature.money.live.PaymentsPermissionGuide
+import app.cove.companion.feature.money.live.paymentPermissions
+import app.cove.companion.feature.money.live.rememberPaymentsAccess
 import app.cove.companion.feature.money.MoneyUndoBar
 import app.cove.companion.feature.money.RetroTagBar
 import app.cove.companion.feature.permissions.openFix
@@ -48,14 +52,15 @@ private tailrec fun Context.activity(): Activity? = when (this) {
  * "Paste a message" path that needs no permission. See `docs/SMS_IMPORT.md`.
  */
 @Composable
-fun MoneyImportScreen(nav: Nav) {
-    val vm = appViewModel { ImportViewModel(it) }
+fun MoneyImportScreen(nav: Nav, pendingOnly: Boolean = false) {
+    val vm = appViewModel(key = if (pendingOnly) "pending" else null) { ImportViewModel(it, pendingOnly) }
     val s by vm.state.collectAsState()
     val context = LocalContext.current
     var granted by remember { mutableStateOf(Permissions.granted(context, READ_SMS)) }
     var deniedBefore by rememberSaveable { mutableStateOf(false) }
     var canAskAgain by rememberSaveable { mutableStateOf(true) }
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        val ok = Permissions.granted(context, READ_SMS)
         granted = ok
         if (ok) vm.permissionGranted() else {
             deniedBefore = true
@@ -69,13 +74,23 @@ fun MoneyImportScreen(nav: Nav) {
         if (now) vm.permissionGranted()
     }
     val step = permissionStep(granted, deniedBefore, canAskAgain)
+    val access = rememberPaymentsAccess()
+    var offerMode by rememberSaveable { mutableStateOf(CaptureMode.Ask) }
 
     CoveScreen {
         Column(Modifier.fillMaxSize().coveTopInset()) {
             MoneyTopBar("Import", "Close", nav.back, nav.back, actionStrong = false)
             when (s.stage) {
-                ImportStage.Intro -> IntroStage(s.message, step, deniedBefore, { launcher.launch(READ_SMS) }, { openFix(context, FixTarget.AppSettings) }, vm::openPaste)
-                ImportStage.Range -> RangeStage(s, vm::setRange, vm::scanInbox, vm::openPaste)
+                ImportStage.Offer -> OfferStage(offerMode, { offerMode = it }) {
+                    vm.finishOffer(offerMode, granted)
+                    if (offerMode != CaptureMode.Off && !Permissions.messagesGranted(context)) launcher.launch(paymentPermissions(context, offerMode))
+                }
+                ImportStage.Intro -> IntroStage(s.message, step, deniedBefore, { launcher.launch(paymentPermissions(context, s.mode)) }, { openFix(context, FixTarget.AppSettings) }, vm::openPaste)
+                ImportStage.Range -> RangeStage(s, vm::setRange, vm::scanInbox, vm::openPaste) {
+                    PaymentsSection(s.mode, { m -> vm.setMode(m); if (m != CaptureMode.Off && !access.granted) access.askPermissions() }) {
+                        PaymentsPermissionGuide(s.mode, access)
+                    }
+                }
                 ImportStage.Scanning -> ScanningStage(s, vm::cancelScan)
                 ImportStage.Paste -> PasteStage(s.message, granted, vm::scanPasted) { vm.backToStart(granted) }
                 ImportStage.Review, ImportStage.Importing -> ReviewStage(s, vm, importing = s.stage == ImportStage.Importing)

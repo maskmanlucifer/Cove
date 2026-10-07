@@ -26,6 +26,7 @@ fun permissionSnapshot(c: Context) = PermissionSnapshot(
     microphone = Permissions.micGranted(c),
     calendar = Permissions.calendarGranted(c),
     usageStats = usageAccessGranted(c),
+    messages = Permissions.messagesGranted(c),
 )
 
 private fun usageAccessGranted(c: Context): Boolean {

@@ -37,6 +37,9 @@ object Permissions {
 
     fun micGranted(c: Context) = granted(c, Manifest.permission.RECORD_AUDIO)
 
+    /** Whether "Payments from messages" may run: Cove can both receive and read text messages. */
+    fun messagesGranted(c: Context) = granted(c, Manifest.permission.RECEIVE_SMS) && granted(c, Manifest.permission.READ_SMS)
+
     /** Whether the morning brief may read the device calendar. */
     fun calendarGranted(c: Context) = granted(c, Manifest.permission.READ_CALENDAR)
 

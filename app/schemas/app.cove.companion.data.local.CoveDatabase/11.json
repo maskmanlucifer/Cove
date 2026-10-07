@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 11,
-    "identityHash": "2d92ec82e3806197fd46a1915047bf66",
+    "identityHash": "70e81624100492b0e03142ca92228e79",
     "entities": [
       {
         "tableName": "settings",
@@ -1750,7 +1750,7 @@
       },
       {
         "tableName": "sms_pending",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`key` TEXT NOT NULL, `messageKeys` TEXT NOT NULL, `amountPaise` INTEGER NOT NULL, `direction` TEXT NOT NULL, `merchant` TEXT, `at` INTEGER NOT NULL, `dateFromText` INTEGER NOT NULL, `last4` TEXT, `paidWith` TEXT NOT NULL, `ref` TEXT, `bank` TEXT, `confidence` REAL NOT NULL, `payeeKey` TEXT, `categoryId` TEXT, `matchExpenseId` TEXT, `matchNote` TEXT, `matchAmountPaise` INTEGER, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`key`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`key` TEXT NOT NULL, `messageKeys` TEXT NOT NULL, `amountPaise` INTEGER NOT NULL, `direction` TEXT NOT NULL, `merchant` TEXT, `at` INTEGER NOT NULL, `dateFromText` INTEGER NOT NULL, `last4` TEXT, `paidWith` TEXT NOT NULL, `ref` TEXT, `bank` TEXT, `confidence` REAL NOT NULL, `payeeKey` TEXT, `matchExpenseId` TEXT, `matchNote` TEXT, `matchAmountPaise` INTEGER, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`key`))",
         "fields": [
           {
             "fieldPath": "key",
@@ -1826,11 +1826,6 @@
             "affinity": "TEXT"
           },
           {
-            "fieldPath": "categoryId",
-            "columnName": "categoryId",
-            "affinity": "TEXT"
-          },
-          {
             "fieldPath": "matchExpenseId",
             "columnName": "matchExpenseId",
             "affinity": "TEXT"
@@ -1873,7 +1868,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2d92ec82e3806197fd46a1915047bf66')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '70e81624100492b0e03142ca92228e79')"
     ]
   }
 }

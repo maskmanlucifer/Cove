@@ -34,7 +34,10 @@ class CoveApp : Application() {
         val crashLoop = CrashLoop.isLooping(CrashHandler.storeFor(this).all(), System.currentTimeMillis())
         container = AppContainer(this)
         container.foreground.attach(this)
-        container.foreground.onEnter = { container.appScope.launch { container.sync.onForeground() } }
+        container.foreground.onEnter = {
+            container.appScope.launch { container.sync.onForeground() }
+            container.smsCatchUp.runIfDue()
+        }
         // Everything below touches Room, WorkManager, the Keystore or AlarmManager: keep it off the main thread
         // so the first frame is not delayed. Alarms, nudges and widgets are registered within moments of launch.
         container.appScope.launch(Dispatchers.IO) {

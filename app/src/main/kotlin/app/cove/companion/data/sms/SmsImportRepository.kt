@@ -12,6 +12,7 @@ import app.cove.companion.data.repo.PayeeSnapshot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import java.time.ZoneId
 
@@ -157,14 +158,43 @@ class SmsImportRepository(
         }
         val open = collapsed.filter { it.id !in covered }
         if (open.isEmpty()) return ScanResult(emptyList(), scanned, handled, dropped.coerceAtLeast(0))
-        val existing = (dao.expensesBetween(open.minOf { it.tx.at } - SmsDedupe.EXISTING_WINDOW_MS, open.maxOf { it.tx.at } + SmsDedupe.EXISTING_WINDOW_MS) +
-            open.mapNotNull { it.tx.ref }.distinct().chunked(400).flatMap { dao.expensesByRefs(it) }).distinctBy { it.id }
-            .map { ExistingExpense(it.id, it.amountPaise, it.kind, it.spentAt, it.note, it.externalRef) }
-        val matches = SmsDedupe.matchExisting(open, existing, zone)
+        val matches = matchesFor(open)
         return ScanResult(open.map { ReviewItem(it, matches[it.id]) }, scanned, handled, dropped.coerceAtLeast(0))
     }
 
-    private fun logRows(c: Candidate, outcome: String, expenseId: String?, batchId: String?, now: Long) = c.messages.mapIndexed { i, m ->
+    /** For each of [open] (by candidate id), the existing expense it probably repeats. */
+    private suspend fun matchesFor(open: List<Candidate>): Map<String, ExistingMatch> {
+        if (open.isEmpty()) return emptyMap()
+        val existing = (dao.expensesBetween(open.minOf { it.tx.at } - SmsDedupe.EXISTING_WINDOW_MS, open.maxOf { it.tx.at } + SmsDedupe.EXISTING_WINDOW_MS) +
+            open.mapNotNull { it.tx.ref }.distinct().chunked(400).flatMap { dao.expensesByRefs(it) }).distinctBy { it.id }
+            .map { ExistingExpense(it.id, it.amountPaise, it.kind, it.spentAt, it.note, it.externalRef) }
+        return SmsDedupe.matchExisting(open, existing, zone)
+    }
+
+    /**
+     * Stores [items] as waiting for the user (parsed fields in `sms_pending`) and marks their messages `pending` in the log,
+     * so a rescan, or a twin message from another sender, does not find them again. Safe to repeat.
+     */
+    suspend fun savePending(items: List<ReviewItem>) = withContext(Dispatchers.IO) {
+        if (items.isEmpty()) return@withContext
+        val now = clock.now()
+        db.withTransaction {
+            dao.insertPending(items.map { it.toPending(now) })
+            dao.upsertAll(items.flatMap { logRows(it.candidate, SmsImportOutcome.PENDING, null, null, now) })
+        }
+    }
+
+    /** Payments waiting for the user, newest first, with the existing expense each may repeat (looked up again, so it is current). */
+    suspend fun pendingItems(): List<ReviewItem> = withContext(Dispatchers.IO) {
+        val candidates = dao.pending().map { it.toCandidate() }
+        val matches = matchesFor(candidates)
+        candidates.map { ReviewItem(it, matches[it.id]) }
+    }
+
+    /** How many payments wait for the user; drives the quiet row on Money. */
+    fun pendingCount(): Flow<Int> = dao.observePendingCount()
+
+    internal fun logRows(c: Candidate, outcome: String, expenseId: String?, batchId: String?, now: Long) = c.messages.mapIndexed { i, m ->
         SmsImportLogEntity(
             key = m.key, providerId = m.providerId,
             outcome = if (i == 0) outcome else if (outcome == SmsImportOutcome.IMPORTED) SmsImportOutcome.DUPLICATE else outcome,
@@ -217,6 +247,7 @@ class SmsImportRepository(
                 }
             }
             dao.upsertAll(logs)
+            decisions.map { it.item.id }.chunked(400).forEach { dao.deletePending(it) }
         }
         ImportSummary(batch, ids, ids.size, skipped, taught, snapshots, picks)
     }

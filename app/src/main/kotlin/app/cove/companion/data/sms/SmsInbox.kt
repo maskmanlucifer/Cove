@@ -82,3 +82,10 @@ class PastedSource(text: String, private val receivedAt: Long) : SmsSource {
         parts.chunked(pageSize).forEach { chunk -> onPage(chunk.map { SmsMessage(null, null, it, receivedAt) }) }
     }
 }
+
+/** One message handed over by the live receiver; nothing is read from the inbox. */
+class OneMessageSource(private val message: SmsMessage) : SmsSource {
+    override suspend fun count(since: Long): Int = 1
+
+    override suspend fun read(since: Long, pageSize: Int, onPage: suspend (List<SmsMessage>) -> Unit) = onPage(listOf(message))
+}

@@ -69,7 +69,7 @@ private fun safeBack(controller: NavHostController) {
 
 /** App-wide navigation graph. Screens receive [Nav] and route ids, never the controller. */
 @Composable
-fun CoveNavHost(start: String, voiceRequest: Int = 0, briefRequest: Int = 0) {
+fun CoveNavHost(start: String, voiceRequest: Int = 0, briefRequest: Int = 0, paymentsRequest: Int = 0) {
     val reduce = LocalReduceMotion.current
     val density = LocalDensity.current
     val slide = with(density) { NavMotion.SLIDE_DP.dp.roundToPx() }
@@ -132,6 +132,7 @@ fun CoveNavHost(start: String, voiceRequest: Int = 0, briefRequest: Int = 0) {
         composable(Routes.MoneyCategory, idArg) { MoneyCategoryEditScreen(id(it), nav) }
         composable(Routes.MoneyReview) { MoneyReviewScreen(nav) }
         composable(Routes.MoneyImport) { MoneyImportScreen(nav) }
+        composable(Routes.MoneyImportPending) { MoneyImportScreen(nav, pendingOnly = true) }
         composable(Routes.MoneyCategoryDetail, idArg) { MoneyCategoryDetailScreen(id(it), nav) }
 
         composable(Routes.Habits) { HabitsScreen(nav) }
@@ -148,5 +149,6 @@ fun CoveNavHost(start: String, voiceRequest: Int = 0, briefRequest: Int = 0) {
     }
     LaunchedEffect(voiceRequest) { if (voiceRequest > 0 && start == Routes.Main) nav.go(Routes.Voice) }
     LaunchedEffect(briefRequest) { if (briefRequest > 0 && start == Routes.Main) nav.go(Routes.Brief) }
+    LaunchedEffect(paymentsRequest) { if (paymentsRequest > 0 && start == Routes.Main) nav.go(Routes.MoneyImportPending) }
 }
 

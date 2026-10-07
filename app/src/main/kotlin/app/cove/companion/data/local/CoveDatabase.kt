@@ -173,7 +173,7 @@ abstract class CoveDatabase : RoomDatabase() {
                 db.execSQL(
                     "CREATE TABLE IF NOT EXISTS `sms_pending` (`key` TEXT NOT NULL, `messageKeys` TEXT NOT NULL, `amountPaise` INTEGER NOT NULL, " +
                         "`direction` TEXT NOT NULL, `merchant` TEXT, `at` INTEGER NOT NULL, `dateFromText` INTEGER NOT NULL, `last4` TEXT, " +
-                        "`paidWith` TEXT NOT NULL, `ref` TEXT, `bank` TEXT, `confidence` REAL NOT NULL, `payeeKey` TEXT, `categoryId` TEXT, " +
+                        "`paidWith` TEXT NOT NULL, `ref` TEXT, `bank` TEXT, `confidence` REAL NOT NULL, `payeeKey` TEXT, " +
                         "`matchExpenseId` TEXT, `matchNote` TEXT, `matchAmountPaise` INTEGER, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`key`))",
                 )
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_sms_pending_at` ON `sms_pending` (`at`)")
