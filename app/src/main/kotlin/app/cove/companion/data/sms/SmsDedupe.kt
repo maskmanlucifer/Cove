@@ -12,6 +12,9 @@ object SmsImportOutcome {
     const val DUPLICATE = "duplicate"
     const val IGNORED = "ignored"
     const val SKIPPED = "skipped"
+
+    /** Found by live capture and waiting for the user; the details are in `sms_pending`. */
+    const val PENDING = "pending"
 }
 
 /** A message as read from the inbox or pasted. The text lives only in memory while it is parsed. */
