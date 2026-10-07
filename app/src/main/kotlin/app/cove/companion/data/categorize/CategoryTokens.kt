@@ -15,7 +15,7 @@ object CategoryTokens {
     )
 
     /** Words of the generic fallback notes ("Payment"); they never teach or match, so they cannot pollute every unknown payee. */
-    val genericWords = setOf("payment", "payments")
+    val genericWords = setOf("payment", "payments", "wallet")
 
     /** Distinct tokens of [text] in order: lowercase letters only, accents folded, digits/currency/stop words dropped. */
     fun tokens(text: String): List<String> =

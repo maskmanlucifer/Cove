@@ -234,6 +234,6 @@ class SmsImportRepository(
     /** Clears the import log. Expenses stay; the log is rebuilt from them on the next scan. */
     suspend fun forgetHistory() = withContext(Dispatchers.IO) { dao.clear() }
 
-    /** Note text of an imported expense: the merchant or payee, or a plain label when there is none. */
-    fun noteFor(tx: ParsedSms, kind: String): String = tx.merchant ?: if (kind == "received") "Money received" else "Payment"
+    /** Note text of an imported expense: the merchant or payee, the wallet for a wallet payment, or a plain label. */
+    fun noteFor(tx: ParsedSms, kind: String): String = tx.noteFor(kind)
 }

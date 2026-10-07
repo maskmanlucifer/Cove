@@ -21,7 +21,7 @@ internal object BuiltInRules {
             words(
                 "lunch dinner breakfast brunch snack snacks food meal meals pizza burger biryani cafe coffee tea chai restaurant " +
                     "swiggy zomato dominos mcdonalds kfc starbucks juice dessert icecream bakery dhaba eatery thali sandwich " +
-                    "momos dosa idli paratha takeaway",
+                    "momos dosa idli paratha takeaway pluxee sodexo",
             ),
             listOf("eating out", "dining", "dining out", "restaurants", "restaurant", "food", "meals", "food drink", "eats"),
         ),

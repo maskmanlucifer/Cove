@@ -14,6 +14,7 @@ import app.cove.companion.data.sms.ImportSummary
 import app.cove.companion.data.sms.PastedSource
 import app.cove.companion.data.sms.ReviewItem
 import app.cove.companion.data.sms.ScanProgress
+import app.cove.companion.data.sms.noteFor
 import app.cove.companion.data.sms.SmsReadException
 import app.cove.companion.data.sms.SmsSource
 import app.cove.companion.feature.money.RetroOffer
@@ -59,8 +60,8 @@ data class ImportRow(
     val isDuplicate: Boolean get() = item.match != null
 }
 
-/** Merchant name of [tx], or the plain fallback for a payment of [kind] with no readable name. */
-internal fun generatedNote(tx: app.cove.companion.data.sms.ParsedSms, kind: String): String = tx.merchant ?: if (kind == "received") "Money received" else "Payment"
+/** Merchant name of [tx], the wallet for a wallet payment, or the plain fallback for a payment of [kind] with no readable name. */
+internal fun generatedNote(tx: app.cove.companion.data.sms.ParsedSms, kind: String): String = tx.noteFor(kind)
 
 /**
  * The review row for [item]: category and label from the payee's memory when [payees] knows it (it wins over word
