@@ -118,6 +118,13 @@ class PayeeKeyTest {
         assertEquals("name:UPI:NETFLIX", parsed("VM-ICICIB", "ICICI Bank Acct XX123 debited Rs. 799.00 on 05-Oct-26 Info: UPI/628374650192/NETFLIX. Avl Bal Rs 10,000.00").payeeKey)
     }
 
+    @Test fun walletPaymentsKeyOnTheMerchantOrFallBackToTheWallet() {
+        assertEquals("name:WALLET:PLUXEE", parsed("VM-PLUXEE", "Rs 8 spent from Pluxee wallet").payeeKey)
+        assertEquals("name:WALLET:CAFE", parsed("VM-PLUXEE", "Rs. 8.00 spent from your Pluxee wallet at CAFE on 05-10-2026. Bal Rs. 1,250").payeeKey)
+        assertEquals("name:WALLET:PLUXEE", PayeeKey.fromName("Pluxee", "Wallet"))
+        assertNull("a plain wallet has no name to key on", parsed("VM-WALLET", "Rs 8 spent from your wallet").payeeKey)
+    }
+
     @Test fun accountDigitsAloneNeverMakeAKey() {
         val atm = parsed("AX-HDFCBK", "Rs.2000.00 withdrawn from A/c XX1234 at ATM on 05-10-26. Avl Bal Rs 10,000.00")
         assertNull(atm.payeeKey)

@@ -29,6 +29,14 @@ class ExpenseCategorizerTest {
         assertEquals("id-food", id("Lunch · Café Ivy"))
     }
 
+    @Test fun mealWalletsAreFood() {
+        assertEquals("id-food", id("Pluxee wallet"))
+        assertEquals("id-food", id("Sodexo wallet"))
+        assertEquals("id-food", id("Meal card"))
+        assertEquals("id-fun", id("Pluxee wallet", memory = mapOf(mem("pluxee", "id-fun", 3))))
+        assertNull("a bare wallet says nothing about what was bought", id("Wallet"))
+    }
+
     @Test fun nothingMatchedIsNullAndFallbackIsOther() {
         assertEquals(Suggestion.NONE, ExpenseCategorizer.suggest("zxqv", defaults, emptyMap()))
         assertEquals("id-other", ExpenseCategorizer.fallback(defaults)?.id)

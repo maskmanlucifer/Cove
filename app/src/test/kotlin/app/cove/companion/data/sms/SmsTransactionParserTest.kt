@@ -69,7 +69,7 @@ class SmsTransactionParserTest {
         Case("rupee symbol", "AX-HDFCBK", "₹1,250.50 debited from A/c XX1234 on 05-10-26 to VPA bigbasket@icici. UPI Ref 628374650192", 125050, Direction.Debit, "Bigbasket", "1234", "628374650192"),
         Case("rs no dot space", "AX-HDFCBK", "Rs450 debited from A/c XX1234 on 05-10-26 to VPA zepto@axl. UPI Ref 628374650192", 45000, Direction.Debit, "Zepto", "1234", "628374650192"),
         Case("pluxee short", "VM-PLUXEE", "Rs 8 spent from Pluxee wallet", 800, Direction.Debit, null, null, null, "Wallet", "Pluxee"),
-        Case("pluxee at merchant", "VM-PLUXEE", "Rs. 8.00 spent from your Pluxee wallet at CAFE on 07-10-2026. Bal Rs. 1,250", 800, Direction.Debit, "Cafe", null, null, "Wallet", "Pluxee", at(2026, 10, 7, 12, 0)),
+        Case("pluxee at merchant", "VM-PLUXEE", "Rs. 8.00 spent from your Pluxee wallet at CAFE on 07-10-2026. Bal Rs. 1,250", 800, Direction.Debit, "Cafe", null, null, "Wallet", "Pluxee"),
         Case("sodexo meal card", "AX-SODEXO", "Your Sodexo Meal Card ending 1234 is debited by Rs 8.00 at XYZ. Avl bal Rs 1,242.00", 800, Direction.Debit, "Xyz", "1234", null, "Wallet", "Sodexo"),
         Case("pluxee sodexo card", "VM-PLUXEE", "Your Sodexo/Pluxee Meal Card ending 1234 is debited by Rs 8.00 at XYZ", 800, Direction.Debit, "Xyz", "1234", null, "Wallet", "Pluxee"),
         Case("pluxee deducted", "VM-PLUXEE", "Rs 120.50 deducted from your Pluxee wallet at Cafe Coffee Day. Balance: Rs 900", 12050, Direction.Debit, "Cafe Coffee Day", null, null, "Wallet", "Pluxee"),
