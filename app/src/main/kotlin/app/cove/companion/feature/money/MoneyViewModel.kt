@@ -57,12 +57,7 @@ class MoneyViewModel(c: AppContainer) : ViewModel() {
         val perCategory = categoryMonths(spending, all, today)
         val spent = MoneyMath.spentOf(month)
         val budget = perCategory.sumOf { it.budget }
-        val loose = month.filter { it.kind == "spent" && it.categoryId == null }.sumOf { it.amountPaise }
-        val rows = MoneyMath.collapseRows(
-            perCategory.filter { it.spent > 0 }
-                .map { MoneyRow(it.category.id, it.category.name, it.spent, it.budget) }
-                .let { if (loose > 0) it + MoneyRow(null, "Other", loose, 0) else it },
-        )
+        val rows = MoneyMath.collapseRows(moneyRows(perCategory, month))
         MoneyState(
             month = today.month.getDisplayName(TextStyle.FULL, Locale.ENGLISH),
             spent = spent,

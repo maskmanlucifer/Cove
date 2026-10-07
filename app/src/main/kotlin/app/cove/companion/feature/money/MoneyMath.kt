@@ -56,6 +56,10 @@ object MoneyMath {
         return sorted.take(limit) + tail
     }
 
+    /** The rows [collapseRows] folds into its "Other" row (same [limit]); empty when nothing is folded. */
+    fun foldedRows(rows: List<MoneyRow>, limit: Int = 4): List<MoneyRow> =
+        rows.sortedByDescending { it.spent }.drop(limit).takeIf { it.size > 1 }.orEmpty()
+
     fun spentOf(expenses: List<ExpenseEntity>): Long = expenses.filter { it.kind == "spent" }.sumOf { it.amountPaise }
 
     /** Days left in the month after [today]. */

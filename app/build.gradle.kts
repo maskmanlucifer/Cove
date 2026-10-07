@@ -16,8 +16,8 @@ android {
         applicationId = "app.cove.companion"
         minSdk = 31
         targetSdk = 36
-        versionCode = 6
-        versionName = "0.2.2"
+        versionCode = 12
+        versionName = "0.2.8"
 
         buildConfigField("String", "SUPABASE_URL", "\"${providers.gradleProperty("supabaseUrl").getOrElse("")}\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"${providers.gradleProperty("supabaseAnonKey").getOrElse("")}\"")
@@ -84,6 +84,7 @@ dependencies {
     debugImplementation(libs.compose.ui.tooling)
 
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime)
     implementation(libs.androidx.lifecycle.viewmodel)

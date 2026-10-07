@@ -44,7 +44,6 @@ import app.cove.companion.design.components.IllustrationFill
 import app.cove.companion.design.illustrations.SceneBanner
 import app.cove.companion.design.illustrations.Scene
 import app.cove.companion.design.components.PillButton
-import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.navigation.Nav
 import app.cove.companion.navigation.Routes
 
@@ -53,34 +52,35 @@ import app.cove.companion.navigation.Routes
 fun WelcomeScreen(nav: Nav) {
     val next = { nav.go(OnboardingStep.Welcome.next!!.route) }
     CoveScreen {
-        WelcomeBlob()
-        Column(Modifier.fillMaxSize().coveTopInset().padding(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 40.dp)) {
-            Box(Modifier.weight(1f))
-            Column(Modifier.padding(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                BalancedText(
-                    "Say it once.", " Cove remembers the rest.",
-                    CoveType.Title.copy(fontSize = 40.sp, lineHeight = 44.sp, letterSpacing = (-0.4).sp),
-                )
-                CoveText(
-                    "Alarms, to-dos, money and a journal, all by voice. Everything stays in your own space.",
-                    style = Body16.copy(lineHeight = 24.sp),
-                    color = Cove.colors.muted,
-                )
-            }
-            BigButton("Get started", next)
-            Box(Modifier.padding(top = 4.dp)) {
-                TextAction("I already use Cove") { nav.go(Routes.ConnectOnboarding) }
+        Column(Modifier.fillMaxSize()) {
+            WelcomeBlob(Modifier.weight(1f))
+            Column(Modifier.padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 40.dp)) {
+                Column(Modifier.padding(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    BalancedText(
+                        "Say it once.", " Cove remembers the rest.",
+                        CoveType.Title.copy(fontSize = 40.sp, lineHeight = 44.sp, letterSpacing = (-0.4).sp),
+                    )
+                    CoveText(
+                        "Alarms, to-dos, money and a journal, all by voice. Everything stays in your own space.",
+                        style = Body16.copy(lineHeight = 24.sp),
+                        color = Cove.colors.muted,
+                    )
+                }
+                BigButton("Get started", next)
+                Box(Modifier.padding(top = 4.dp)) {
+                    TextAction("I already use Cove") { nav.go(Routes.ConnectOnboarding) }
+                }
             }
         }
     }
 }
 
-/** The signature meadow scene with the companion waving, filling the top of the page above the headline. */
+/** The signature meadow scene with the companion waving; takes whatever height the text below leaves, so it never sits under it. */
 @Composable
-private fun WelcomeBlob() {
-    BoxWithConstraints(Modifier.fillMaxSize()) {
+private fun WelcomeBlob(modifier: Modifier = Modifier) {
+    BoxWithConstraints(modifier.fillMaxWidth()) {
         SceneBanner(
-            Scene.Welcome, maxHeight * 0.6f, Modifier.fillMaxWidth(), anchorY = 1f,
+            Scene.Welcome, maxHeight, Modifier.fillMaxWidth(), anchorY = 1f,
             shape = RoundedCornerShape(bottomStart = 36.dp, bottomEnd = 36.dp),
         )
     }

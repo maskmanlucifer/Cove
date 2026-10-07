@@ -33,6 +33,17 @@ class MoneyLayoutLogicTest {
         assertNull(rows.last().id)
     }
 
+    @Test fun foldedRowsAreExactlyWhatTheOtherRowAbsorbs() {
+        val all = listOf(row("A", 500), row("B", 400), row("C", 300), row("D", 200), row("E", 100), row("F", 50))
+        assertEquals(listOf("E", "F"), MoneyMath.foldedRows(all).map { it.name })
+        assertEquals(all.sumOf { it.spent } - MoneyMath.collapseRows(all).dropLast(1).sumOf { it.spent }, MoneyMath.foldedRows(all).sumOf { it.spent })
+    }
+
+    @Test fun nothingIsFoldedWhenFewRowsOrASingleLeftover() {
+        assertEquals(emptyList<MoneyRow>(), MoneyMath.foldedRows(listOf(row("A", 500), row("B", 400))))
+        assertEquals(emptyList<MoneyRow>(), MoneyMath.foldedRows(listOf(row("A", 5), row("B", 4), row("C", 3), row("D", 2), row("E", 1))))
+    }
+
     @Test fun aSingleLeftoverRowKeepsItsOwnName() {
         val all = listOf(row("A", 500), row("B", 400), row("C", 300), row("D", 200), row("Other", 100))
         val rows = MoneyMath.collapseRows(all)

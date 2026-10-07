@@ -57,7 +57,7 @@ fun MoneyCategoriesScreen(nav: Nav) {
                         key = { it.category.id },
                         onReorder = { ids -> vm.reorder(ids) },
                     ) { item, first -> CategoryRow(item, first, onClick = { nav.go(Routes.moneyCategoryDetail(item.category.id)) }) }
-                    RowDivider()
+                    if (s.items.isNotEmpty()) RowDivider()
                     Row(
                         Modifier.fillMaxWidth().heightIn(min = 56.dp).pressable({ nav.go(Routes.moneyCategory()) }),
                         verticalAlignment = Alignment.CenterVertically,

@@ -52,11 +52,16 @@ data class CategoryDetailState(
     val budget: Long = 0,
     val daysToGo: Int = 0,
     val groups: List<DayGroup> = emptyList(),
+    /** Category names by id; only the Other page uses them, to say where each folded expense belongs. */
+    val categoryNames: Map<String, String> = emptyMap(),
 ) {
     val left: Long get() = budget - spent
 }
 
-/** One category's month: progress against budget and its transactions grouped by day. */
+/** Detail-page id for spending with no category ("Other" on the Money tab); not a stored category. */
+const val OTHER_CATEGORY_ID = "other"
+
+/** One category's month: progress against budget and its transactions grouped by day. [id] may be [OTHER_CATEGORY_ID]. */
 class CategoryDetailViewModel(c: AppContainer, id: String) : ViewModel() {
     private val today = c.clock.now().toLocalDate()
     private val range = ledgerRange(today)
@@ -64,18 +69,35 @@ class CategoryDetailViewModel(c: AppContainer, id: String) : ViewModel() {
     val state: StateFlow<CategoryDetailState> = combine(
         c.money.categories, c.money.expenses(range.first, range.last),
     ) { categories, all ->
-        val cat = categories.firstOrNull { it.id == id }
-        if (cat == null) CategoryDetailState(loaded = true) else {
-            val month = categoryMonths(listOf(cat), all, today).single()
+        if (id == OTHER_CATEGORY_ID) {
+            val month = thisMonth(all, today)
+            val perCategory = categoryMonths(categories.filter { it.kind == "spending" }, all, today)
+            // The Money tab's "Other" row is the uncategorised spending plus any small categories folded into it.
+            val folded = MoneyMath.foldedRows(moneyRows(perCategory, month)).mapNotNull { it.id }.toSet()
+            val shown = month.filter { it.kind == "spent" && (it.categoryId == null || it.categoryId in folded) }
             CategoryDetailState(
                 loaded = true,
-                category = cat,
+                category = ExpenseCategoryEntity(OTHER_CATEGORY_ID, "Other"),
                 month = monthName(today),
-                spent = month.spent,
-                budget = month.budget,
+                spent = MoneyMath.spentOf(shown),
                 daysToGo = MoneyMath.daysToGo(today),
-                groups = MoneyMath.groupByDay(thisMonth(all, today).filter { it.categoryId == id }, today),
+                groups = MoneyMath.groupByDay(shown, today),
+                categoryNames = categories.associate { it.id to it.name },
             )
+        } else {
+            val cat = categories.firstOrNull { it.id == id }
+            if (cat == null) CategoryDetailState(loaded = true) else {
+                val month = categoryMonths(listOf(cat), all, today).single()
+                CategoryDetailState(
+                    loaded = true,
+                    category = cat,
+                    month = monthName(today),
+                    spent = month.spent,
+                    budget = month.budget,
+                    daysToGo = MoneyMath.daysToGo(today),
+                    groups = MoneyMath.groupByDay(thisMonth(all, today).filter { it.categoryId == id }, today),
+                )
+            }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CategoryDetailState())
 }

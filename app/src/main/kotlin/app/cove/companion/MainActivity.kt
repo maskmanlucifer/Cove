@@ -5,6 +5,8 @@ import android.content.Intent
 import android.widget.Toast
 import app.cove.companion.data.wipe.DeviceWipe
 import android.os.Bundle
+import android.os.SystemClock
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import android.provider.Settings
 import android.view.WindowManager
 import androidx.activity.compose.setContent
@@ -81,7 +83,13 @@ class MainActivity : FragmentActivity() {
         container.driveKit.onConsentResult(it.data)
     }
 
+    /** True once the first real frame (recovery, "Updating…" or the app itself) has been composed; the system splash stays up until then. */
+    private var firstFrameReady = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        val startedAt = SystemClock.uptimeMillis()
+        // Capped so a stuck database can never hold the splash forever.
+        installSplashScreen().setKeepOnScreenCondition { !firstFrameReady && SystemClock.uptimeMillis() - startedAt < SPLASH_MAX_MS }
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         lifecycleScope.launch {
@@ -102,16 +110,21 @@ class MainActivity : FragmentActivity() {
         setContent {
             val startup by container.startup.collectAsState()
             (startup as? StartupState.Recovery)?.let {
+                SideEffect { firstFrameReady = true }
                 RecoveryScreen(it.reason)
                 return@setContent
             }
             val ready by container.dbReady.collectAsState()
             if (!ready) {
-                UpdatingSplash(container.dbMigrating.collectAsState().value)
+                val migrating = container.dbMigrating.collectAsState().value
+                // A plain wait keeps the system splash up; only the visible "Updating…" hands over.
+                SideEffect { if (migrating) firstFrameReady = true }
+                UpdatingSplash(migrating)
                 return@setContent
             }
             val settings by container.settings.settings.collectAsState(initial = null)
             val s = settings ?: return@setContent
+            SideEffect { firstFrameReady = true }
             LaunchedEffect(Unit) { reportFullyDrawn() }
             val dark = when (s.theme) {
                 "dark" -> true
@@ -290,6 +303,8 @@ class MainActivity : FragmentActivity() {
     }
 
     companion object {
+        private const val SPLASH_MAX_MS = 2000L
+
         /** Opens the app straight into listening; sent by the Quick Settings tile and the shortcut. */
         const val ACTION_LISTEN = "app.cove.companion.action.LISTEN"
 

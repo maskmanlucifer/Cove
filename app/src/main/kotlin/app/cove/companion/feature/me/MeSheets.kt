@@ -1,5 +1,7 @@
 package app.cove.companion.feature.me
 
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.Arrangement
@@ -103,11 +105,12 @@ fun MeSheets(sheet: MeSheet?, s: SettingsEntity, vm: MeViewModel, briefPlay: () 
         MeSheet.Privacy -> PrivacySheet(onDismiss) { onDismiss(); onOpen(MeSheet.ClearData) }
         MeSheet.PaymentsFromMessages -> PaymentsSheet(vm, onDismiss)
         MeSheet.ForgetMessages -> PlanSheet(onDismiss, gap = 16) { close ->
+            val context = LocalContext.current
             SheetHeading("Forget imported-message history")
             SheetCaption("Cove will no longer remember which messages it has already looked at. Your expenses stay exactly as they are. Next time, Cove checks for repeats against your expenses.")
-            PillButton("Forget history", { vm.forgetImportedMessages(); close() }, Modifier.fillMaxWidth(), height = 52.dp)
+            PillButton("Forget history", { vm.forgetImportedMessages(); Toast.makeText(context, "Message history forgotten", Toast.LENGTH_SHORT).show(); close() }, Modifier.fillMaxWidth(), height = 52.dp)
             SheetCaption("Cove also remembers how you tagged payees, so the next payment to the same shop or QR is tagged like last time. You can forget that on its own: your expenses and their tags stay as they are.")
-            PillButton("Forget what Cove learned about payees", { vm.forgetPayees(); close() }, Modifier.fillMaxWidth(), kind = ButtonKind.Secondary, height = 52.dp)
+            PillButton("Forget learned payees", { vm.forgetPayees(); Toast.makeText(context, "Learned payees forgotten", Toast.LENGTH_SHORT).show(); close() }, Modifier.fillMaxWidth(), kind = ButtonKind.Secondary, height = 52.dp)
             PillButton("Cancel", close, Modifier.fillMaxWidth(), kind = ButtonKind.Secondary, height = 52.dp)
         }
         MeSheet.ClearData -> app.cove.companion.feature.datacontrols.ClearDataSheet(onDismiss)

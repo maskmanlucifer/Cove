@@ -57,6 +57,7 @@ fun MoneyCategoryDetailScreen(id: String, nav: Nav) {
     val s by vm.state.collectAsState()
     val c = Cove.colors
     val cat = s.category
+    val isOther = id == OTHER_CATEGORY_ID
     val owner = LocalLifecycleOwner.current
     // A category deleted from its Edit sheet leaves this page empty: close it once it is the screen on top.
     LaunchedEffect(s.loaded, cat == null) {
@@ -66,9 +67,9 @@ fun MoneyCategoryDetailScreen(id: String, nav: Nav) {
         Column(Modifier.fillMaxSize().coveTopInset()) {
             MoneyTopBar(
                 label = if (cat == null) "" else "${cat.name} · ${s.month}",
-                action = "Edit",
+                action = if (isOther) "" else "Edit",
                 onBack = nav.back,
-                onAction = { nav.go(Routes.moneyCategory(id)) },
+                onAction = { if (!isOther) nav.go(Routes.moneyCategory(id)) },
                 actionStrong = false,
             )
             if (cat != null) {
@@ -79,7 +80,7 @@ fun MoneyCategoryDetailScreen(id: String, nav: Nav) {
                 ) {
                     item { Hero(s) }
                     if (s.groups.isEmpty()) {
-                        item { EmptyState(Scene.Money, "Nothing here yet.", "No spending in this category this month.", compact = true) }
+                        item { EmptyState(Scene.Money, "Nothing here yet.", if (isOther) "Everything this month has a category." else "No spending in this category this month.", compact = true) }
                     }
                     items(s.groups, key = { it.label }) { group ->
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -93,8 +94,9 @@ fun MoneyCategoryDetailScreen(id: String, nav: Nav) {
                                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                                     ) {
                                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                            CoveText(e.note.ifBlank { cat.name }, style = CoveType.Body)
-                                            CoveText(MoneyMath.methodLine(e), style = MoneyType.Small, color = c.muted)
+                                            val home = e.categoryId?.let { s.categoryNames[it] }
+                                            CoveText(e.note.ifBlank { home ?: cat.name }, style = CoveType.Body)
+                                            CoveText(listOfNotNull(home, MoneyMath.methodLine(e).ifBlank { null }).joinToString(" · "), style = MoneyType.Small, color = c.muted)
                                         }
                                         CoveText((if (e.kind == "received") "+" else "") + rupees(e.amountPaise), Modifier.semantics { contentDescription = (if (e.kind == "received") "received " else "") + rupeesSpoken(e.amountPaise) }, style = CoveType.Body)
                                     }
@@ -112,7 +114,7 @@ fun MoneyCategoryDetailScreen(id: String, nav: Nav) {
                     .height(52.dp)
                     .shadow(24.dp, CoveShapes.Pill, ambientColor = shadow, spotColor = shadow)
                     .background(c.ink, CoveShapes.Pill)
-                    .pressable({ nav.go(Routes.expenseEdit("new@$id")) })
+                    .pressable({ nav.go(Routes.expenseEdit(if (isOther) "new" else "new@$id")) })
                     .padding(horizontal = 20.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -144,7 +146,7 @@ private fun Hero(s: CategoryDetailState) {
             BudgetBar(MoneyMath.progress(s.spent, s.budget), MoneyMath.isOver(s.spent, s.budget))
             CoveText(heroLine(s), style = MoneyType.Sub, color = c.muted)
         } else {
-            CoveText("No budget set · tap Edit to add one", style = MoneyType.Sub, color = c.muted)
+            if (s.category?.id != OTHER_CATEGORY_ID) CoveText("No budget set · tap Edit to add one", style = MoneyType.Sub, color = c.muted)
         }
     }
 }

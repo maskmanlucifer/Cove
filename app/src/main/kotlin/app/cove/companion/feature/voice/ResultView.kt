@@ -54,7 +54,7 @@ fun ResultView(s: VoiceState, nowMillis: Long, vm: VoiceViewModel) {
         if (intent is VoiceIntent.AddTodos) {
             intent.items.map { item ->
                 val index = todoIndex++
-                @Composable { CardRow(item.title) { CategoryChip(item.category ?: "Choose", s.categories) { vm.setTodoCategory(index, it) } } }
+                @Composable { CardRow(item.title) { if (s.categories.isNotEmpty()) CategoryChip(item.category ?: "Choose", s.categories) { vm.setTodoCategory(index, it) } } }
             }
         } else listOf(@Composable { CardRow(describe(intent, today, nowMinutes)) {} })
     }

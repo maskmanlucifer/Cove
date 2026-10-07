@@ -6,4 +6,11 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">true</item>
     </style>
+
+    <!-- Launch theme for MainActivity: the system splash in the canvas colour, then Theme.Cove once the first frame is ready. -->
+    <style name="Theme.Cove.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/canvas</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_fg</item>
+        <item name="postSplashScreenTheme">@style/Theme.Cove</item>
+    </style>
 </resources>

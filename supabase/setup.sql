@@ -1,4 +1,4 @@
--- Cove: complete Supabase setup in one paste (migrations 0001 to 0008 combined).
+-- Cove: complete Supabase setup in one paste (migrations 0001 to 0010 combined).
 -- Run it once in the Supabase dashboard: SQL Editor > New query > paste > Run.
 -- Safe to run again: every statement is idempotent.
 -- Keep in sync with supabase/migrations/*.sql (a unit test checks the copy in app/src/main/assets).
@@ -675,3 +675,7 @@ create index if not exists payee_memory_user_updated_idx on public.payee_memory 
 -- Data API access for the new table (same rule as 0006_data_api_grants).
 revoke all on table public.payee_memory from anon;
 grant select, insert, update, delete on table public.payee_memory to authenticated;
+
+-- ===== 0010_settings_one_thing_until =====
+-- One-thing mode's switch-off time (epoch ms, 0 = until switched off). Settings rows are pushed whole, so the column must exist.
+alter table public.settings add column if not exists one_thing_until bigint not null default 0;

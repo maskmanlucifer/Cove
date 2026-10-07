@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "cove"
+rootProject.name = "Cove"
 include(":app")

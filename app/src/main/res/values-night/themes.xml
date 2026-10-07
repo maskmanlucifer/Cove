@@ -6,4 +6,10 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">false</item>
     </style>
+
+    <style name="Theme.Cove.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#121A14</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_fg</item>
+        <item name="postSplashScreenTheme">@style/Theme.Cove</item>
+    </style>
 </resources>

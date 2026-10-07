@@ -23,6 +23,17 @@ fun ledgerRange(today: LocalDate): LongRange {
 fun thisMonth(expenses: List<ExpenseEntity>, today: LocalDate): List<ExpenseEntity> =
     expenses.filter { YearMonth.from(it.spentAt.toLocalDate()) == YearMonth.from(today) }
 
+/**
+ * The Money tab's category rows before folding: each spending category with spend this month, then spending with no
+ * category as "Other" (null id). [monthExpenses] must already be this month's.
+ */
+fun moneyRows(perCategory: List<CategoryMonth>, monthExpenses: List<ExpenseEntity>): List<MoneyRow> {
+    val loose = monthExpenses.filter { it.kind == "spent" && it.categoryId == null }.sumOf { it.amountPaise }
+    return perCategory.filter { it.spent > 0 }
+        .map { MoneyRow(it.category.id, it.category.name, it.spent, it.budget) }
+        .let { if (loose > 0) it + MoneyRow(null, "Other", loose, 0) else it }
+}
+
 /** Per-category spend and budget for [today]'s month, in the user's category order. */
 fun categoryMonths(
     categories: List<ExpenseCategoryEntity>,

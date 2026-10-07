@@ -142,7 +142,7 @@ private fun CategoryCard(rows: List<MoneyRow>, nav: Nav) {
     RowsCard {
         rows.forEachIndexed { i, row ->
             if (i > 0) RowDivider()
-            val open = { nav.go(row.id?.let { Routes.moneyCategoryDetail(it) } ?: Routes.MoneyCategories) }
+            val open = { nav.go(Routes.moneyCategoryDetail(row.id ?: OTHER_CATEGORY_ID)) }
             val spoken = "${row.name}, ${MoneyMath.spokenRupees(row.spent)}" + (MoneyMath.overInline(row.spent, row.budget)?.let { ", " + it.removePrefix(" · ") } ?: "")
             val rowModifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).pressable(open).semantics(mergeDescendants = true) { contentDescription = spoken }
             if (stacked) {
