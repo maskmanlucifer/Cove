@@ -4,6 +4,7 @@ import androidx.room.withTransaction
 import app.cove.companion.core.rupees
 import app.cove.companion.data.categorize.ExpenseCategorizer
 import app.cove.companion.data.categorize.Reason
+import app.cove.companion.data.categorize.Suggestion
 import app.cove.companion.data.local.CoveDatabase
 import app.cove.companion.data.local.entity.CategoryMemoryEntity
 import app.cove.companion.data.local.entity.ExpenseCategoryEntity
@@ -29,6 +30,18 @@ data class Suggested(val categoryId: String?, val label: String?)
 
 /** The same suggestion the import review shows: payee memory, then learned words, then built-ins, then "Other". Pure. */
 object CaptureSuggestion {
+    private val mealWallets = setOf("Pluxee", "Sodexo", "Meal card")
+
+    /**
+     * The categorizer's guess for a spent [tx]. A meal wallet (Pluxee, Sodexo, meal card) is food unless the merchant or
+     * what Cove learned says otherwise: the merchant is tried first, and only when it says nothing the wallet itself is.
+     */
+    fun categorize(tx: ParsedSms, categories: List<ExpenseCategoryEntity>, memory: Map<String, CategoryMemoryEntity>, payee: PayeeMemoryEntity?): Suggestion {
+        val first = ExpenseCategorizer.suggest(tx.noteFor("spent"), categories, memory, payee)
+        if (first.categoryId != null || tx.paidWith != "Wallet" || tx.bank !in mealWallets) return first
+        return ExpenseCategorizer.suggest("${tx.bank} wallet", categories, memory)
+    }
+
     fun of(
         tx: ParsedSms,
         categories: List<ExpenseCategoryEntity>,
@@ -37,7 +50,7 @@ object CaptureSuggestion {
     ): Suggested {
         if (tx.direction == Direction.Credit) return Suggested(null, null)
         val payee = tx.payeeKey?.let(payees::get)
-        val s = ExpenseCategorizer.suggest(tx.noteFor("spent"), categories, memory, payee)
+        val s = categorize(tx, categories, memory, payee)
         return Suggested(s.categoryId ?: ExpenseCategorizer.fallback(categories)?.id, payee?.label?.takeIf { s.reason == Reason.Payee })
     }
 }

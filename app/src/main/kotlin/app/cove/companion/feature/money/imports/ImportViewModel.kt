@@ -8,6 +8,7 @@ import app.cove.companion.data.categorize.ExpenseCategorizer
 import app.cove.companion.data.categorize.Reason
 import app.cove.companion.data.local.entity.ExpenseCategoryEntity
 import app.cove.companion.data.sms.CaptureMode
+import app.cove.companion.data.sms.CaptureSuggestion
 import app.cove.companion.data.sms.Direction
 import app.cove.companion.data.sms.ImportDecision
 import app.cove.companion.data.sms.ImportRange
@@ -77,7 +78,7 @@ internal fun rowFor(
     val tx = item.candidate.tx
     val kind = if (tx.direction == Direction.Credit) "received" else "spent"
     val payee = if (kind == "spent") tx.payeeKey?.let(payees::get) else null
-    val s = if (kind == "spent") ExpenseCategorizer.suggest(generatedNote(tx, kind), cats, memory, payee) else null
+    val s = if (kind == "spent") CaptureSuggestion.categorize(tx, cats, memory, payee) else null
     val id = s?.categoryId ?: if (kind == "spent") ExpenseCategorizer.fallback(cats)?.id else null
     val recalled = s?.reason == Reason.Payee
     return ImportRow(
