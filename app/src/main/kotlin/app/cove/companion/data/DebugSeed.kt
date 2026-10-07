@@ -74,6 +74,76 @@ object DebugSeed {
      * Categories and this month's spending. Default matches frame 07 (Food ₹7,000, total ₹18,420.50);
      * [logged] matches frames 25/34/36 (Food ₹7,340 of ₹9,000, with today's and yesterday's rows).
      */
+    /**
+     * Debug (`--ez journalBlocks true`): journal entries in August 2026 that show every block layout. Open one with
+     * `--es route journal/blocks-<name>`: `text` (the frame 08 entry), `mid` (text, photo, text), `start` (photo, photo,
+     * text), `mixed` (text, photo, photo, text, voice, text), `legacy` (text plus two attachments, no markers),
+     * `missing` (a marker whose media does not exist) and `long` (30 blocks). Photos are coloured gradients.
+     */
+    suspend fun seedJournalBlocks(c: AppContainer) {
+        val month = LocalDate.of(2026, 8, 1)
+        var hue = 0f
+        suspend fun photo(entry: String, id: String): String {
+            val file = java.io.File(c.journalFiles.photoBase(id).path + ".webp")
+            val w = 900
+            val h = if (id.hashCode() % 3 == 0) 1200 else 600
+            val bitmap = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
+            val paint = android.graphics.Paint().apply {
+                shader = android.graphics.LinearGradient(
+                    0f, 0f, w.toFloat(), h.toFloat(),
+                    android.graphics.Color.HSVToColor(floatArrayOf(hue % 360, 0.45f, 0.95f)),
+                    android.graphics.Color.HSVToColor(floatArrayOf((hue + 50) % 360, 0.55f, 0.65f)),
+                    android.graphics.Shader.TileMode.CLAMP,
+                )
+            }
+            hue += 67f
+            android.graphics.Canvas(bitmap).drawRect(0f, 0f, w.toFloat(), h.toFloat(), paint)
+            file.outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.WEBP_LOSSY, 80, it) }
+            val thumb = c.journalFiles.thumb(id)
+            app.cove.companion.data.media.ThumbnailMaker.make(file, thumb)
+            c.journal.saveMedia(app.cove.companion.data.local.entity.JournalMediaEntity(id, entry, "photo", file.path, thumb.path, bytes = file.length()))
+            return id
+        }
+        suspend fun voice(entry: String, id: String, seconds: Long): String {
+            val file = c.journalFiles.voice(id).also { it.writeBytes(ByteArray(64)) }
+            c.journal.saveMedia(app.cove.companion.data.local.entity.JournalMediaEntity(id, entry, "voice", file.path, durationMs = seconds * 1000, bytes = 64))
+            return id
+        }
+        fun m(id: String) = app.cove.companion.feature.journal.blocks.JournalBodyCodec.marker(id)
+        suspend fun entry(name: String, dayOfMonth: Int, title: String, mood: String, body: suspend (String) -> String) {
+            val id = "blocks-$name"
+            val date = month.withDayOfMonth(dayOfMonth)
+            c.journal.save(JournalEntryEntity(id, date.toEpochDay(), title, body(id), mood, createdAt = LocalDateTime.of(date, LocalTime.of(21, 0)).toEpochMillis()))
+        }
+        entry("text", 3, "A slow Sunday", "calm") {
+            "Slept in without the alarm. Made coffee and sat by the window for a while before doing anything at all.\n\nWalked to the market later. Bought too many tomatoes"
+        }
+        entry("mid", 5, "Market morning", "good") { e ->
+            "Early walk to the market, the light was lovely.\n${m(photo(e, "bm-mid-1"))}\nCame home with far too many tomatoes."
+        }
+        entry("start", 7, "Garden shots", "calm") { e ->
+            "${m(photo(e, "bm-start-1"))}\n${m(photo(e, "bm-start-2"))}\nThe garden after the rain."
+        }
+        entry("mixed", 9, "Saturday in pieces", "good") { e ->
+            "Morning first.\n${m(photo(e, "bm-mixed-1"))}\n${m(photo(e, "bm-mixed-2"))}\nThen a note to myself.\n${m(voice(e, "bm-mixed-v1", 42))}\nAnd the walk home.\n${m(voice(e, "bm-mixed-v2", 8))}"
+        }
+        entry("legacy", 11, "Before blocks", "calm") { e ->
+            photo(e, "bm-legacy-1"); photo(e, "bm-legacy-2"); voice(e, "bm-legacy-v1", 15)
+            "An older entry: text first, then its attachments below, exactly as it was written."
+        }
+        entry("missing", 13, "Not synced yet", "tired") {
+            "A photo that has not arrived on this phone yet.\n${m("bm-gone")}\nThe text around it is safe."
+        }
+        entry("long", 15, "A long day", "good") { e ->
+            val lines = ArrayList<String>()
+            for (i in 0 until 15) {
+                lines += "Paragraph ${i + 1}. " + "Some more words to fill the line and wrap. ".repeat(3)
+                lines += m(if (i % 5 == 4) voice(e, "bm-long-v$i", 20L + i) else photo(e, "bm-long-$i"))
+            }
+            lines.joinToString("\n") + "\nThe end."
+        }
+    }
+
     /** Debug: [n] to-dos, events, expenses, journal entries and alarms to check that long lists scroll smoothly. */
     suspend fun seedBulk(c: AppContainer, n: Int) {
         val day = c.clock.now().let { java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneId.systemDefault()).toLocalDate() }

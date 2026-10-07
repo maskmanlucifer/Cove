@@ -165,7 +165,7 @@ expenses(id, amount_paise bigint, category_id fk, merchant, note, spent_at,
 budgets(id, month text 'YYYY-MM', total_paise bigint, updated_at, deleted_at)
 
 -- journal
-journal_entries(id, day date, title, body, mood text, updated_at, deleted_at)
+journal_entries(id, day date, title, body, mood text, updated_at, deleted_at)   -- body: text with `⟦media:<id>⟧` marker lines for photos/voice notes in order (docs/JOURNAL.md)
 journal_media(id, entry_id fk, kind text,                              -- photo|voice
               storage_path, local_uri, duration_ms, bytes, caption,
               upload_state text,                                       -- pending|done|failed
