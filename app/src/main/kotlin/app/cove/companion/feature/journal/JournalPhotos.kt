@@ -1,5 +1,6 @@
 package app.cove.companion.feature.journal
 
+import app.cove.companion.design.components.HoldToRemoveButton
 import android.graphics.Bitmap
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -88,15 +89,7 @@ internal fun JournalPhoto(photo: JournalMediaEntity, onOpen: () -> Unit, onRemov
                 else -> Unit
             }
         }
-        Box(
-            Modifier.align(Alignment.TopEnd).padding(2.dp).size(48.dp)
-                .pressable(onRemove, role = Role.Button).semantics { contentDescription = "Remove photo" },
-            contentAlignment = Alignment.Center,
-        ) {
-            Box(Modifier.size(32.dp).background(Color(0x99000000), CoveShapes.Circle), contentAlignment = Alignment.Center) {
-                CoveIcon(CoveIcons.Close, Color.White, size = 14.dp)
-            }
-        }
+        HoldToRemoveButton("photo", onRemove, Modifier.align(Alignment.TopEnd).padding(2.dp), idle = Color(0x99000000), iconColor = Color.White)
     }
 }
 

@@ -1,5 +1,6 @@
 package app.cove.companion.feature.journal
 
+import app.cove.companion.design.components.HoldToRemoveButton
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -207,10 +208,7 @@ internal fun MediaPlaceholder(label: String, onRemove: (() -> Unit)?) {
     ) {
         CoveText(label, style = CoveType.Meta, color = c.muted)
         if (onRemove != null) {
-            Box(
-                Modifier.align(Alignment.TopEnd).padding(2.dp).size(48.dp).pressable(onRemove, role = Role.Button).semantics { contentDescription = "Remove" },
-                contentAlignment = Alignment.Center,
-            ) { CoveIcon(CoveIcons.Close, c.tail, size = 14.dp) }
+            HoldToRemoveButton("item", onRemove, Modifier.align(Alignment.TopEnd).padding(2.dp))
         }
     }
 }

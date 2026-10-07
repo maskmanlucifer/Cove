@@ -1,5 +1,6 @@
 package app.cove.companion.feature.journal
 
+import app.cove.companion.design.components.HoldToRemoveButton
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -78,9 +79,7 @@ fun VoiceRow(note: JournalMediaEntity, playback: PlaybackState, onToggle: () -> 
             Box(Modifier.weight(1f)) { VoiceProgress(progress, hint) }
             if (hint == null) VoiceDuration(duration)
         }
-        Box(Modifier.size(48.dp).pressable(onRemove, role = Role.Button).semantics { contentDescription = "Remove voice note" }, contentAlignment = Alignment.Center) {
-            CoveIcon(CoveIcons.Close, c.tail, size = 14.dp)
-        }
+        HoldToRemoveButton("voice note", onRemove)
     }
 }
 

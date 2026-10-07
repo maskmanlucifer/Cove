@@ -1,5 +1,6 @@
 package app.cove.companion.feature.journal
 
+import app.cove.companion.design.components.HoldToRemoveButton
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -102,12 +103,11 @@ private fun ViewerBar(index: Int, total: Int, photo: JournalMediaEntity, onClose
         BarButton(PhotoIcons.Share, "Share photo") {
             scope.launch { fetcher.file(photo)?.let { sharePhoto(context, it) } }
         }
-        BarButton(PhotoIcons.Trash, "Remove photo") {
-            if (!removing) {
-                removing = true
-                onRemove(photo)
-            }
-        }
+        HoldToRemoveButton(
+            "photo",
+            { if (!removing) { removing = true; onRemove(photo) } },
+            icon = PhotoIcons.Trash, iconSize = 20.dp, disc = 40.dp, idle = Color(0x40FFFFFF), iconColor = Color.White,
+        )
     }
 }
 
