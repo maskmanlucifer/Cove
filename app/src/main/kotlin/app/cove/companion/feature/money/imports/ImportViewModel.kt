@@ -20,6 +20,7 @@ import app.cove.companion.data.sms.noteFor
 import app.cove.companion.data.sms.SmsReadException
 import app.cove.companion.data.sms.SmsSource
 import app.cove.companion.feature.money.RetroOffer
+import app.cove.companion.feature.money.live.PaymentNotifier
 import app.cove.companion.feature.money.RetroTag
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -274,6 +275,10 @@ class ImportViewModel(private val c: AppContainer, private val pendingOnly: Bool
             try {
                 val decisions = rows.map { ImportDecision(it.item, it.checked, it.kind, it.categoryId, it.suggestedId, it.picked, it.label, it.labelEdited) }
                 val summary = c.smsImport.import(decisions)
+                runCatching {
+                    rows.forEach { PaymentNotifier.dismissAsk(c.appContext, it.id) }
+                    PaymentNotifier.refreshSummary(c.appContext)
+                }
                 val dups = rows.count { !it.checked && it.isDuplicate }
                 val left = rows.count { !it.checked && !it.isDuplicate }
                 val text = summaryText(summary.added, dups, left)

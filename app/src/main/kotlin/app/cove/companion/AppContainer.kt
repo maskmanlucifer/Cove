@@ -332,7 +332,7 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
         appScope.launch { settings.settings.collect { lock.configure(it.biometricLock, LockAfter.fromKey(it.lockAfter)) } }
     }
     val journalFiles = JournalFiles(context)
-    private val appContext = context
+    val appContext = context
     fun voiceRecorder() = VoiceNoteRecorder(appContext)
     fun voicePlayer() = VoiceNotePlayer()
     val photoLoader by lazy {
