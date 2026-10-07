@@ -85,6 +85,25 @@ sealed interface VoiceIntent {
         override val type get() = "log_body_weight"
     }
 
+    /**
+     * Something to keep ("I parked on level 3, pillar B"). [subject] is what it is about, [detail] the part that answers a
+     * question later, [kind] `place` or `note`, [keepForMs] how long it stays useful (null keeps it). Stays on the device.
+     */
+    data class Remember(
+        val text: String,
+        val subject: String,
+        val detail: String = "",
+        val kind: String = "note",
+        val keepForMs: Long? = null,
+    ) : VoiceIntent {
+        override val type get() = "remember"
+    }
+
+    /** "Where did I park?": answered from what the user asked Cove to remember. Read-only. */
+    data class Recall(val question: String) : VoiceIntent {
+        override val type get() = "recall"
+    }
+
     /** "What is my workout today?" */
     data object QueryNextWorkout : VoiceIntent {
         override val type get() = "next_workout"

@@ -81,6 +81,7 @@ class RuleParser(private val clock: Clock, private val categories: CategoryResol
         if (c.isBlank()) return emptyList()
         undo.find(c)?.let { return listOf(VoiceIntent.UndoLast) }
         if (queryNext.containsMatchIn(c)) return listOf(VoiceIntent.QueryNext)
+        MemoryRules.question(c)?.let { return listOf(it) }
         journalPrefix.find(c)?.let { m ->
             val body = m.groupValues[1].trim()
             return if (body.isBlank()) emptyList() else listOf(VoiceIntent.JournalNote(body.replaceFirstChar { it.uppercase() }))
@@ -91,6 +92,7 @@ class RuleParser(private val clock: Clock, private val categories: CategoryResol
         expense(c)?.let { return listOf(it) }
         habit(c, habits)?.let { return listOf(it) }
         todo(c)?.let { return it }
+        MemoryRules.statement(c)?.let { return listOf(it) }
         return emptyList()
     }
 

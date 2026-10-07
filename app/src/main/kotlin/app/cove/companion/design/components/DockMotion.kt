@@ -4,8 +4,8 @@ import androidx.compose.animation.core.CubicBezierEasing
 import kotlin.math.abs
 
 /**
- * Pure geometry and timing of the bottom bar's open/close motion, in dp. Slot centres never change between the two
- * states: the current tab's icon sits at [Geometry.iconCenter] collapsed and expanded, so nothing jumps.
+ * Pure geometry and timing of the bottom bar's open/close motion, in dp. The collapsed pill stays at a fixed left edge
+ * on every page; the open row is centred, and slot centres never change, so the current icon fades in exactly at its slot.
  */
 object DockMotion {
     /** One coordinated duration for every part, opening and closing. */
@@ -14,14 +14,17 @@ object DockMotion {
     /** Ease-out, no overshoot. */
     val Ease = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 
-    /** Tabs from this index on get their label to the left of the icon, so the pill never runs into the orb. */
-    const val LEFT_EXTENDING_FROM = 3
+    /** The collapsed pill always starts here, whichever page is showing, so it never moves when you swipe. */
+    const val COLLAPSED_LEFT = 24f
+
+    /** Space inside the collapsed pill before the page name and after the dots. */
+    const val PILL_PADDING = 18f
 
     const val SLOT_SPACING = 52f
     const val ROW_WIDTH = 4 * SLOT_SPACING + 46f
     private const val ORB_ZONE = 28f + 44f + 8f
 
-    /** Positions for one tab at a given screen width. */
+    /** Positions for one tab at a given screen width. The collapsed pill holds only the page name and dots and sits at a fixed spot; the open row is centred and the current icon fades in at its own slot. */
     class Geometry(val expandedLeft: Float, val expandedRight: Float, val collapsedLeft: Float, val collapsedRight: Float, val iconCenter: Float, private val firstCenter: Float) {
         /** Centre x of slot [index] in the open row. */
         fun slotCenter(index: Int): Float = firstCenter + SLOT_SPACING * index
@@ -32,12 +35,7 @@ object DockMotion {
         val left = (screenWidth - ORB_ZONE - ROW_WIDTH) / 2f
         val first = left + 23f
         val cx = first + SLOT_SPACING * selected
-        val extent = 10f + 8f + labelWidth
-        return if (selected < LEFT_EXTENDING_FROM) {
-            Geometry(left, left + ROW_WIDTH, cx - 23f, cx + extent + 16f, cx, first)
-        } else {
-            Geometry(left, left + ROW_WIDTH, cx - extent - 16f, cx + 23f, cx, first)
-        }
+        return Geometry(left, left + ROW_WIDTH, COLLAPSED_LEFT, COLLAPSED_LEFT + labelWidth + 2 * PILL_PADDING, cx, first)
     }
 
     /** What to draw at animation progress [p] (0 collapsed, 1 open). */

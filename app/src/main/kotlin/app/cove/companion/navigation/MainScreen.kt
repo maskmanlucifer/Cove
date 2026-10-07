@@ -2,15 +2,19 @@ package app.cove.companion.navigation
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-import androidx.compose.animation.core.Animatable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.key
-import androidx.compose.runtime.saveable.rememberSaveableStateHolder
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.fillMaxSize
 import app.cove.companion.design.LocalReduceMotion
 import app.cove.companion.design.ReducedMotionMillis
 import androidx.compose.animation.core.tween
+import kotlinx.coroutines.launch
+import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import app.cove.companion.design.Cove
@@ -45,41 +49,58 @@ import app.cove.companion.feature.voice.UndoToastHost
 private val DockFadeHeight = 112.dp
 
 /**
- * Shows only the current tab (the others are not composed), keeps each tab's saved state (scroll, selections) in a
- * [androidx.compose.runtime.saveable.SaveableStateHolder] so coming back does not reset it, and fades the new one in.
+ * The four swipeable pages. Me is not one of them: it opens over the pages from the dock or the profile bubble on Today,
+ * so the dots in the dock always count these four.
+ */
+private val Pages = Tab.entries.filter { it != Tab.Me }
+
+/**
+ * Swipe sideways between Today, Plan, Money and Journal; the dock's pill and dots follow the page. Each page keeps its
+ * scroll position while it is off screen, and Me fades in over the pages without disturbing them.
  */
 @Composable
-private fun TabHost(tab: Tab, nav: Nav) {
-    val holder = rememberSaveableStateHolder()
+private fun PageHost(state: PagerState, onMe: Boolean, nav: Nav, openMe: () -> Unit) {
     val reduce = LocalReduceMotion.current
-    val first = remember { booleanArrayOf(true) }
-    key(tab) {
-        val alpha = remember { Animatable(if (first[0]) 1f else 0f).also { first[0] = false } }
-        LaunchedEffect(Unit) {
-            alpha.animateTo(1f, tween(if (reduce) ReducedMotionMillis else NavMotion.TAB_MS, easing = NavMotion.Ease))
-        }
-        Box(Modifier.fillMaxSize().graphicsLayer { this.alpha = alpha.value }) {
-        holder.SaveableStateProvider(tab.name) {
-            when (tab) {
-                Tab.Today -> TodayScreen(nav)
+    HorizontalPager(state, Modifier.fillMaxSize(), key = { Pages[it].name }) { index ->
+        Box(Modifier.fillMaxSize()) {
+            when (Pages[index]) {
+                Tab.Today -> TodayScreen(nav, onOpenMe = openMe)
                 Tab.Plan -> PlanScreen(nav)
                 Tab.Money -> MoneyScreen(nav)
                 Tab.Journal -> JournalScreen(nav)
-                Tab.Me -> MeScreen(nav)
+                Tab.Me -> Unit
             }
         }
-        }
+    }
+    AnimatedVisibility(
+        onMe,
+        enter = fadeIn(tween(if (reduce) ReducedMotionMillis else NavMotion.TAB_MS, easing = NavMotion.Ease)),
+        exit = fadeOut(tween(if (reduce) ReducedMotionMillis else NavMotion.TAB_MS, easing = NavMotion.Ease)),
+    ) {
+        Box(Modifier.fillMaxSize().background(Cove.colors.canvas)) { MeScreen(nav) }
     }
 }
 
-/** The five dock destinations. Each tab screen draws its own content and leaves room for the dock. */
+/** The dock destinations. Each screen draws its own content and leaves room for the dock. */
 @Composable
 fun MainScreen(nav: Nav) {
     val container = LocalContext.current.container
-    var tab by rememberSaveable { mutableStateOf(Tab.entries.firstOrNull { it.name.equals(DebugLaunch.tab, true) } ?: Tab.Today) }
+    val start = Tab.entries.firstOrNull { it.name.equals(DebugLaunch.tab, true) } ?: Tab.Today
+    val pager = rememberPagerState(initialPage = Pages.indexOf(start).coerceAtLeast(0)) { Pages.size }
+    var onMe by rememberSaveable { mutableStateOf(start == Tab.Me) }
+    val scope = rememberCoroutineScope()
+    val tab = if (onMe) Tab.Me else Pages[pager.currentPage]
+    BackHandler(enabled = onMe) { onMe = false }
     val oneThing by remember(container) { container.settings.settings.map { it.oneThingMode } }.collectAsState(false)
+    val select: (Tab) -> Unit = { target ->
+        if (target == Tab.Me) onMe = true
+        else {
+            onMe = false
+            scope.launch { pager.animateScrollToPage(Pages.indexOf(target)) }
+        }
+    }
     CoveScreen {
-        TabHost(tab, nav)
+        PageHost(pager, onMe, nav, openMe = { onMe = true })
         // Keeps scrolled content from running under the clock; invisible at rest because it matches the canvas.
         val topInset = with(LocalDensity.current) { WindowInsets.statusBars.getTop(this).toDp() }
         Box(
@@ -93,7 +114,7 @@ fun MainScreen(nav: Nav) {
                     .background(Brush.verticalGradient(listOf(Color.Transparent, Cove.colors.canvas.copy(alpha = 0.92f), Cove.colors.canvas))),
             )
         }
-        if (!(oneThing && tab == Tab.Today)) CoveDock(tab, onSelect = { tab = it }, onVoice = { nav.go(Routes.Voice) })
+        if (!(oneThing && tab == Tab.Today)) CoveDock(tab, onSelect = select, onVoice = { nav.go(Routes.Voice) })
         UndoToastHost(Modifier.align(Alignment.TopCenter))
     }
 }

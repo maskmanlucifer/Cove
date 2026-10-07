@@ -13,18 +13,27 @@ class PlanLogicTest {
         ScheduleItem(kind, min, end, title)
 
     @Test
-    fun nowLineSitsBeforeFirstFutureItemAndNextEventIsCard() {
+    fun nextEventIsTheCardAndTheNextItemIsCurrent() {
         val rows = buildTimeline(
             listOf(item(ItemKind.Alarm, 390), item(ItemKind.Event, 660, 705, "Coffee"), item(ItemKind.Event, 840, 960, "Deep")),
             nowMinutes = 635,
         )
-        assertTrue(rows[1] is TimelineRow.Now)
-        val coffee = rows[2] as TimelineRow.Entry
+        assertEquals(3, rows.size)
+        val coffee = rows[1]
         assertTrue(coffee.card)
         assertEquals("45 min", coffee.detail)
-        val deep = rows[3] as TimelineRow.Entry
-        assertEquals("until 4", deep.detail)
-        assertTrue((rows[0] as TimelineRow.Entry).past)
+        assertEquals("until 4", rows[2].detail)
+        assertTrue(rows[0].past)
+        assertEquals(listOf(false, true, false), rows.map { it.current })
+    }
+
+    @Test
+    fun anEventInProgressIsCurrentAndOtherDaysMarkNothing() {
+        val items = listOf(item(ItemKind.Event, 600, 700, "Review"), item(ItemKind.Event, 840, 900, "Deep"))
+        assertEquals(listOf(true, false), buildTimeline(items, nowMinutes = 650).map { it.current })
+        assertEquals(listOf(false, true), buildTimeline(items, nowMinutes = 750).map { it.current })
+        assertEquals(listOf(false, false), buildTimeline(items, nowMinutes = 950).map { it.current })
+        assertEquals(listOf(false, false), buildTimeline(items, nowMinutes = 650, markCurrent = false).map { it.current })
     }
 
     @Test

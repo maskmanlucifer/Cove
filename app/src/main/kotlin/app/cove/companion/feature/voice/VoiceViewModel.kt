@@ -13,8 +13,10 @@ import app.cove.companion.ai.model.SpeechEvent
 import app.cove.companion.ai.model.SpeechFailure
 import app.cove.companion.ai.model.SpeechSession
 import app.cove.companion.ai.model.VoiceIntent
+import app.cove.companion.ai.model.MemoryNotes
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -166,13 +168,16 @@ class VoiceViewModel(private val c: AppContainer) : ViewModel() {
         job = viewModelScope.launch { collect(typed, showsLevel = false) }
     }
 
-    /** One engine run: its final text (or last partial) and why it ended, if it failed. */
-    private class Segment(val text: String, val failure: SpeechEvent.Failure?)
+    /**
+     * One engine run: its final text (or last partial) and why it ended, if it failed.
+     * [quiet] is true when the run was cut short because nobody resumed speaking in time (see [EndpointPolicy]).
+     */
+    private class Segment(val text: String, val failure: SpeechEvent.Failure?, val quiet: Boolean = false)
 
     /**
      * Keeps listening across the recognizer's own pauses: Android engines end a run after a short silence, which used to
-     * cut a sentence in half. Each run's words are appended; the loop ends on Done, a long silence, a hard failure or
-     * [MAX_DICTATION_MS]. Then everything heard is understood at once.
+     * cut a sentence in half. Each run's words are appended; the loop ends on Done, a pause after speech longer than
+     * [EndpointPolicy] allows (so Done is optional), a hard failure or [MAX_DICTATION_MS]. Then everything heard is understood at once.
      */
     private suspend fun dictate(first: SpeechSession) {
         heard.clear()
@@ -181,18 +186,22 @@ class VoiceViewModel(private val c: AppContainer) : ViewModel() {
         var engine: SpeechSession = first
         var silentRuns = 0
         var busyRetries = 0
+        var lastSpeechAt = 0L
         while (true) {
-            val seg = listenSegment(engine)
+            val resumeBy = if (heard.isEmpty()) null else lastSpeechAt + EndpointPolicy.graceMs(heard.toString())
+            val seg = listenSegment(engine, resumeBy)
             val said = seg.text.trim()
             if (said.isNotEmpty()) {
                 if (heard.isNotEmpty()) heard.append(' ')
                 heard.append(said)
                 silentRuns = 0
+                lastSpeechAt = android.os.SystemClock.elapsedRealtime()
             }
             val failure = seg.failure
             val elapsed = android.os.SystemClock.elapsedRealtime() - began
             when {
                 finishRequested -> break
+                seg.quiet && said.isEmpty() && heard.isNotEmpty() -> break
                 failure?.reason == SpeechFailure.PermissionDenied -> return trouble(failure.reason, failure.code)
                 failure?.reason == SpeechFailure.NoMatch || (failure == null && said.isEmpty()) -> {
                     silentRuns++
@@ -213,17 +222,35 @@ class VoiceViewModel(private val c: AppContainer) : ViewModel() {
         if (text.isEmpty()) trouble(SpeechFailure.NoMatch, 0) else understand(text, heardByVoice = true)
     }
 
-    private suspend fun listenSegment(source: SpeechSession): Segment {
+    /**
+     * Collects one engine run. With [resumeBy] set (words were already heard), the run is stopped as [quiet] if nobody has
+     * started speaking by then, but never sooner than [EndpointPolicy.MIN_LISTEN_MS] after the engine was ready.
+     */
+    private suspend fun listenSegment(source: SpeechSession, resumeBy: Long? = null): Segment = coroutineScope {
         var final: String? = null
         var lastPartial = ""
         var failure: SpeechEvent.Failure? = null
+        var spoke = false
+        var quiet = false
+        var readyAt = 0L
+        val watchdog = launch {
+            if (resumeBy == null) return@launch
+            while (readyAt == 0L) delay(50)
+            val deadline = maxOf(resumeBy, readyAt + EndpointPolicy.MIN_LISTEN_MS)
+            delay((deadline - android.os.SystemClock.elapsedRealtime()).coerceAtLeast(0))
+            if (!spoke) { quiet = true; source.stop() }
+        }
         segmentActive = true
         try {
             source.events.collect { e ->
                 when (e) {
-                    is SpeechEvent.Ready -> _state.update { it.copy(ready = true, onDevice = e.source.location.isLocal) }
-                    SpeechEvent.Began -> Unit
+                    is SpeechEvent.Ready -> {
+                        readyAt = android.os.SystemClock.elapsedRealtime()
+                        _state.update { it.copy(ready = true, onDevice = e.source.location.isLocal) }
+                    }
+                    SpeechEvent.Began -> spoke = true
                     is SpeechEvent.Partial -> {
+                        spoke = true
                         lastPartial = e.text
                         _state.update { it.copy(transcript = joinHeard(e.text)) }
                     }
@@ -234,10 +261,11 @@ class VoiceViewModel(private val c: AppContainer) : ViewModel() {
             }
         } finally {
             segmentActive = false
+            watchdog.cancel()
         }
         val text = final ?: lastPartial
         if (text.isNotBlank()) _state.update { it.copy(transcript = joinHeard(text), level = 0f) }
-        return Segment(text, failure)
+        Segment(text, failure, quiet)
     }
 
     /** Words from earlier runs plus [tail], for the live transcript. */
@@ -276,7 +304,7 @@ class VoiceViewModel(private val c: AppContainer) : ViewModel() {
         when (val result = outcome) {
             is AiResult.Ok -> {
                 val only = result.value.intents.singleOrNull()
-                if (only == VoiceIntent.UndoLast || only == VoiceIntent.QueryNext || only == VoiceIntent.QueryNextWorkout) {
+                if (only == VoiceIntent.UndoLast || only == VoiceIntent.QueryNext || only == VoiceIntent.QueryNextWorkout || only is VoiceIntent.Recall) {
                     val r = kit.executor.execute(text, result.value.intents)
                     if (only == VoiceIntent.UndoLast) {
                         kit.feedback.show(r.summary, null)
@@ -290,8 +318,15 @@ class VoiceViewModel(private val c: AppContainer) : ViewModel() {
                     _state.update { it.copy(busy = false, stage = Stage.Result, drafts = result.value.intents, categories = categories, expenseCategories = expenseCats, moneyHint = hint) }
                 }
             }
-            is AiResult.Failed ->
-                _state.update { it.copy(busy = false, stage = Stage.Partial, guesses = c.ai.guessIntents(text), transcript = text) }
+            is AiResult.Failed -> {
+                val guesses = c.ai.guessIntents(text)
+                // Nothing in the app fits and nothing looks like a half-heard command: if it reads like something to keep, offer to keep it.
+                if (guesses.isEmpty() && MemoryNotes.looksLikeNote(text)) {
+                    _state.update { it.copy(busy = false, stage = Stage.Result, drafts = listOf(MemoryNotes.note(text)), categories = categories, expenseCategories = expenseCats) }
+                } else {
+                    _state.update { it.copy(busy = false, stage = Stage.Partial, guesses = guesses, transcript = text) }
+                }
+            }
         }
     }
 

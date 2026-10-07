@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -37,33 +38,29 @@ import app.cove.companion.design.components.pressable
 private val TimeColumn = 56.dp
 private val Detail = CoveType.Meta.copy(fontSize = 13.sp, lineHeight = 17.55.sp)
 private val CardTitle = CoveType.Body.copy(fontSize = 18.sp, lineHeight = 24.3.sp, fontWeight = FontWeight.Medium)
-private val NowLabel = CoveType.Label.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.sp)
 
-/** The "Schedule" segment as lazy rows: the day's events, alarms and dated to-dos around the now line. */
+/** The "Schedule" segment as lazy rows: the day's events, alarms and dated to-dos; the current or next one has its time in the accent colour. */
 fun LazyListScope.scheduleRows(
-    rows: List<TimelineRow>,
+    rows: List<TimelineRow.Entry>,
     onOpenTodo: (String) -> Unit,
     onOpenEvent: (String) -> Unit,
     onOpenAlarm: (String) -> Unit = {},
 ) {
-    itemsIndexed(rows, key = { i, row -> if (row is TimelineRow.Entry) "${row.item.kind}-${row.item.todoId ?: row.item.eventId ?: row.item.alarmId ?: row.item.title}-$i" else "now" }) { _, row ->
+    itemsIndexed(rows, key = { i, row -> "${row.item.kind}-${row.item.todoId ?: row.item.eventId ?: row.item.alarmId ?: row.item.title}-$i" }) { _, row ->
         Box(Modifier.padding(horizontal = 4.dp)) {
-            when (row) {
-                is TimelineRow.Now -> NowLine(row.minutes)
-                is TimelineRow.Entry -> if (row.card) EventCard(row, onOpenEvent) else EntryRow(row, onOpenTodo, onOpenEvent, onOpenAlarm)
-            }
+            if (row.card) EventCard(row, onOpenEvent) else EntryRow(row, onOpenTodo, onOpenEvent, onOpenAlarm)
         }
     }
 }
 
 @Composable
-private fun TimeLabel(minutes: Int, modifier: Modifier = Modifier, strong: Boolean = false) {
+private fun TimeLabel(minutes: Int, modifier: Modifier = Modifier, strong: Boolean = false, current: Boolean = false) {
     val c = Cove.colors
     CoveText(
         clockText(minutes).digits,
         modifier.semantics { contentDescription = clockText(minutes).let { it.digits + " " + it.suffix.trim() } },
-        style = if (strong) CoveType.MetaMedium else CoveType.Meta,
-        color = if (strong) c.ink else c.muted,
+        style = if (strong || current) CoveType.MetaMedium else CoveType.Meta,
+        color = if (current) c.accent else if (strong) c.ink else c.muted,
         maxLines = 1,
     )
 }
@@ -79,11 +76,11 @@ private fun EntryRow(row: TimelineRow.Entry, onOpenTodo: (String) -> Unit, onOpe
             .fillMaxWidth()
             .heightIn(min = 56.dp)
             .let { if (open != null) it.pressable({ onOpen(open) }, role = Role.Button) else it }
-            .semantics(mergeDescendants = true) {}
+            .semantics(mergeDescendants = true) { if (row.current) stateDescription = "Current" }
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        TimeLabel(item.minutes, Modifier.widthIn(min = TimeColumn).padding(end = 8.dp))
+        TimeLabel(item.minutes, Modifier.widthIn(min = TimeColumn).padding(end = 8.dp), current = row.current)
         Column(Modifier.weight(1f)) {
             val style: TextStyle = if (row.past) CoveType.Body.copy(textDecoration = TextDecoration.LineThrough) else CoveType.Body
             CoveText(item.title, style = style, color = if (row.past) c.tail else c.ink)
@@ -93,20 +90,11 @@ private fun EntryRow(row: TimelineRow.Entry, onOpenTodo: (String) -> Unit, onOpe
 }
 
 @Composable
-private fun NowLine(minutes: Int) {
-    val c = Cove.colors
-    Row(Modifier.fillMaxWidth().heightIn(min = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-        CoveText(clockText(minutes).digits, Modifier.widthIn(min = TimeColumn).padding(end = 8.dp), style = NowLabel)
-        Box(Modifier.weight(1f).height(1.5.dp).background(c.accent, RoundedCornerShape(1.dp)))
-    }
-}
-
-@Composable
 private fun EventCard(row: TimelineRow.Entry, onOpen: (String) -> Unit) {
     val c = Cove.colors
     val id = row.item.eventId
-    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp).let { if (id != null) it.pressable({ onOpen(id) }, role = Role.Button).semantics(mergeDescendants = true) {} else it }) {
-        TimeLabel(row.item.minutes, Modifier.widthIn(min = TimeColumn).padding(top = 20.dp, end = 8.dp), strong = true)
+    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp).let { if (id != null) it.pressable({ onOpen(id) }, role = Role.Button).semantics(mergeDescendants = true) { if (row.current) stateDescription = "Current" } else it }) {
+        TimeLabel(row.item.minutes, Modifier.widthIn(min = TimeColumn).padding(top = 20.dp, end = 8.dp), strong = true, current = row.current)
         Column(
             Modifier
                 .weight(1f)

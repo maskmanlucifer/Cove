@@ -37,6 +37,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
@@ -73,10 +74,7 @@ fun ProfileHeader(name: String, onEditName: () -> Unit) {
     val context = LocalContext.current
     val store = context.container.profilePhoto
     val scope = rememberCoroutineScope()
-    val version by store.version.collectAsState()
-    val photo by produceState<ImageBitmap?>(null, version) {
-        value = withContext(Dispatchers.IO) { store.file()?.let { runCatching { BitmapFactory.decodeFile(it.path)?.asImageBitmap() }.getOrNull() } }
-    }
+    val photo = rememberProfilePhoto()
     var sheet by rememberSaveable { mutableStateOf(false) }
     var cropping by remember { mutableStateOf<Uri?>(null) }
     var cameraFile by remember { mutableStateOf<File?>(null) }
@@ -147,18 +145,28 @@ fun ProfileHeader(name: String, onEditName: () -> Unit) {
 private fun cameraUri(context: Context, file: File): Uri =
     FileProvider.getUriForFile(context, "${context.packageName}.files", file)
 
-/** The 56 dp circle: the photo, else the name's initial, else a person icon. */
+/** The profile photo, decoded off the main thread and refreshed whenever it changes; null when there is none. */
 @Composable
-private fun Avatar(name: String, photo: ImageBitmap?, onClick: () -> Unit) {
+fun rememberProfilePhoto(): ImageBitmap? {
+    val store = LocalContext.current.container.profilePhoto
+    val version by store.version.collectAsState()
+    return produceState<ImageBitmap?>(null, version) {
+        value = withContext(Dispatchers.IO) { store.file()?.let { runCatching { BitmapFactory.decodeFile(it.path)?.asImageBitmap() }.getOrNull() } }
+    }.value
+}
+
+/** The circle (56 dp by default): the photo, else the name's initial, else a person icon. */
+@Composable
+fun Avatar(name: String, photo: ImageBitmap?, size: Dp = 56.dp, description: String = "Profile photo, double tap to change", onClick: () -> Unit) {
     val c = Cove.colors
     val initial = avatarInitial(name)
     Box(
-        Modifier.size(56.dp).clip(CoveShapes.Circle).background(c.hue(HueName.Leaf).tint)
-            .pressable(onClick, role = Role.Button).semantics { contentDescription = "Profile photo, double tap to change" },
+        Modifier.size(size).clip(CoveShapes.Circle).background(c.hue(HueName.Leaf).tint)
+            .pressable(onClick, role = Role.Button).semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
         when {
-            photo != null -> Image(photo, null, Modifier.size(56.dp), contentScale = ContentScale.Crop)
+            photo != null -> Image(photo, null, Modifier.size(size), contentScale = ContentScale.Crop)
             initial != null -> CoveText(initial, style = CoveType.Value.copy(fontSize = 20.sp, lineHeight = 27.sp), color = c.accent)
             else -> CoveIcon(CoveIcons.Me, c.muted, size = 24.dp)
         }

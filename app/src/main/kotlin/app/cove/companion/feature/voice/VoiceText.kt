@@ -65,6 +65,8 @@ fun describe(intent: VoiceIntent, today: LocalDate, nowMinutes: Int? = null): St
     is VoiceIntent.PlanExercise -> workoutDayLabel(intent.date, today) + ": " + planText(intent)
     is VoiceIntent.ChangeWeight -> "Today: ${intent.exercise} to " + trainingWeight(intent.weight) + " " + (intent.unit ?: "kg")
     is VoiceIntent.LogBodyWeight -> "Body weight " + trainingWeight(intent.weight) + " " + (intent.unit ?: "kg")
+    is VoiceIntent.Remember -> "Remember: " + (intent.detail.takeIf { it.isNotBlank() }?.let { "${intent.subject} $it" } ?: intent.text).take(48)
+    is VoiceIntent.Recall -> "Where is " + intent.question
     VoiceIntent.QueryNextWorkout -> "What's my workout today"
     VoiceIntent.QueryNext -> "What's next"
     VoiceIntent.UndoLast -> "Undo the last thing"
@@ -87,6 +89,7 @@ fun resultHeadline(intents: List<VoiceIntent>, today: LocalDate, nowMinutes: Int
         single is VoiceIntent.ChangeWeight -> "${single.exercise}." to " New weight for today."
         intents.isNotEmpty() && intents.all { it is VoiceIntent.PlanExercise } -> planHeadline(intents.filterIsInstance<VoiceIntent.PlanExercise>(), today)
         single is VoiceIntent.JournalNote -> "A journal note." to " Kept on this phone."
+        single is VoiceIntent.Remember -> "I'll remember that." to " Kept on this phone."
         else -> "${countWord(intents.size)} things." to " Check them over."
     }
 }

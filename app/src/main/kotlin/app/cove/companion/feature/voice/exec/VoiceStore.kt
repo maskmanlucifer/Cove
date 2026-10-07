@@ -1,6 +1,7 @@
 package app.cove.companion.feature.voice.exec
 
 import app.cove.companion.AppContainer
+import app.cove.companion.data.memory.MemorySaved
 import app.cove.companion.core.newId
 import app.cove.companion.data.local.entity.AlarmEntity
 import app.cove.companion.data.local.entity.EventEntity
@@ -36,6 +37,11 @@ interface VoiceStore {
     suspend fun saveJournal(entry: JournalEntryEntity)
     suspend fun deleteJournal(id: String)
 
+    /** Keeps a memory; returns its id and the ids of the older memories it replaced. */
+    suspend fun addMemory(text: String, subject: String, detail: String, kind: String, keepForMs: Long?): MemorySaved
+    suspend fun undoMemory(id: String, replaced: List<String>)
+    suspend fun recall(question: String): String
+
     suspend fun recordCommand(transcript: String, intent: String, undoPayload: String?): VoiceCommandEntity
     suspend fun lastCommand(): VoiceCommandEntity?
     suspend fun commandById(id: String): VoiceCommandEntity?
@@ -68,6 +74,11 @@ class RepoVoiceStore(private val c: AppContainer) : VoiceStore {
         c.database.habits().log(habitId, day.toEpochDay())?.let { it.deletedAt == null } == true
 
     override suspend fun toggleHabit(habitId: String, day: LocalDate) = c.habits.toggle(habitId, day)
+    override suspend fun addMemory(text: String, subject: String, detail: String, kind: String, keepForMs: Long?) =
+        c.memories.remember(text, subject, detail, kind, keepForMs)
+    override suspend fun undoMemory(id: String, replaced: List<String>) = c.memories.undo(id, replaced)
+    override suspend fun recall(question: String) = c.memories.recall(question)
+
     override suspend fun saveJournal(entry: JournalEntryEntity) = c.journal.save(entry)
 
     override suspend fun deleteJournal(id: String) {

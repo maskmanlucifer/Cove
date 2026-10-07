@@ -10,7 +10,7 @@ class DockMotionTest {
     @Test
     fun activeIconNeverMovesAndBarFitsBesideTheOrb() {
         for (w in listOf(360f, 392f, 411f, 480f)) {
-            for (tab in Tab.entries) assertTrue("$w ${tab.name}", DockMotion.fits(w, tab.ordinal, 52f))
+            for (tab in Tab.entries) assertTrue("$w ${tab.name}", DockMotion.fits(w, tab.ordinal, 112f))
         }
     }
 

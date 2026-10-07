@@ -10,6 +10,9 @@ import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import app.cove.companion.feature.me.rememberProfilePhoto
+import app.cove.companion.feature.me.Avatar
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -96,7 +99,7 @@ private val numberWords = listOf("Zero", "One", "Two", "Three", "Four", "Five", 
 
 /** Today tab: greeting, the single next item, a few to-dos and two quick numbers. */
 @Composable
-fun TodayScreen(nav: Nav) {
+fun TodayScreen(nav: Nav, onOpenMe: () -> Unit = {}) {
     val vm = appViewModel { TodayViewModel(it) }
     val state by vm.state.collectAsState()
     val evening = state.phase == DayPhase.Evening
@@ -142,7 +145,10 @@ fun TodayScreen(nav: Nav) {
         if (offline) OfflineNotice()
         PermissionGuides(permissionIssues, alarmsInUse = false)
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            if (!offline) CoveText(state.date.longLabel(), style = CoveType.Meta, color = c.muted)
+            Row(Modifier.fillMaxWidth().heightIn(min = 44.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                if (!offline) CoveText(state.date.longLabel(), style = CoveType.Meta, color = c.muted) else Spacer(Modifier)
+                Avatar(state.name, rememberProfilePhoto(), size = 44.dp, description = "Me and settings", onClick = onOpenMe)
+            }
             BalancedText(greeting(state), suggestion?.let { " ${it.title}" } ?: headline(state, offline), CoveType.Title)
         }
         if (suggestion != null) SuggestionCard(suggestion, sug.detail, suggest)

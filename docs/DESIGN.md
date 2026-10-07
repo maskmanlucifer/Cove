@@ -32,7 +32,7 @@ Highlight hues (`CoveColors.hues`, `Hue(strong, tint)`; tint is a quiet surface 
 Orb gradient (`OrbColors`): peach, sun, leaf, lilac over a cream base; used by the dock orb, voice wash, ring glow, onboarding blob and widgets.
 
 ## Usage rules
-- Tint main surfaces, not everything: Today Next card = sun (wind-down = lilac), workout = leaf, Money overview = coral, Journal calendar = lilac, Training weight = sun, Schedule events = sun, habit rows and Plan categories = `hueFor(id)`. Use `CoveCard(color = hue.tint)`; rows inside a tinted card read `LocalSurface` (swipe rows).
+- Tint main surfaces, not everything: Today Next card = sun (wind-down = lilac), workout = leaf, Money overview = coral, Journal calendar = neutral `card` with a soft `accentSoft` selected day, Training weight = sun, Schedule events = sun, habit rows = `hueFor(id)`. Plan to-do categories are neutral `card` surfaces with only a small `hueFor(id)` dot, so the page stays calm. Use `CoveCard(color = hue.tint)`; rows inside a tinted card read `LocalSurface` (swipe rows).
 - `hueFor(key)` is deterministic (FNV hash over leaf, sun, coral, lilac, blossom); sky is only used on purpose. `moodHue(mood)`: calm leaf, good sun, tired lilac, low coral.
 - Selected/active/on = accent with `onAccent`. Primary buttons stay ink-green with cream text.
 - Charts: lines and bars in accent, soft sun area under lines, coral/paper behind money bars.

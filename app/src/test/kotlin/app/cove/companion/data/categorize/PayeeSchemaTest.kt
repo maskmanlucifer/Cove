@@ -36,7 +36,7 @@ class PayeeSchemaTest {
     }
 
     @Test fun migration9To10MatchesTheExportedSchema() {
-        assertTrue(database.contains("version = 11"))
+        assertTrue(database.contains("version = 12"))
         assertTrue(database.contains("MIGRATION_9_10"))
         assertTrue(database.contains("MIGRATION_8_9, MIGRATION_9_10"))
         assertTrue(database.contains("ALTER TABLE `expenses` ADD COLUMN `payeeKey` TEXT"))

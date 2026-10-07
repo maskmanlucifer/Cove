@@ -29,4 +29,18 @@ class DockSwitcherTest {
         assertTrue(DockClearance >= DockBarHeight)
         assertTrue(DockFloatBottom < DockBarHeight)
     }
+
+    @Test
+    fun pageDotsCountTheSwipeablePagesOnly() {
+        assertEquals(4, DockSwitcher.pageCount)
+        assertEquals(0, DockSwitcher.pageIndex(Tab.Today))
+        assertEquals(3, DockSwitcher.pageIndex(Tab.Journal))
+        assertEquals(-1, DockSwitcher.pageIndex(Tab.Me))
+    }
+
+    @Test
+    fun pillSaysWhichPageAndHowToChoose() {
+        assertEquals("Page 2 of 4, Plan. Tap to choose a page", DockSwitcher.pillDescription(Tab.Plan))
+        assertEquals("Me. Tap to choose a page", DockSwitcher.pillDescription(Tab.Me))
+    }
 }

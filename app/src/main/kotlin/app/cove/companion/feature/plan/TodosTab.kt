@@ -134,7 +134,7 @@ private fun CollapsedCard(group: CategoryGroup, drag: TodoDragState, onClick: ()
             .fillMaxWidth()
             .onGloballyPositioned { drag.recordCard(group.category.id, it.boundsInRoot()) }
             .heightIn(min = 60.dp)
-            .background(hue.tint, shape)
+            .background(c.card, shape)
             .let { if (hovered) it.border(1.5.dp, c.ink, shape) else it }
             .pressable(onClick, onClickLabel = "Expand", role = Role.Button)
             .semantics(mergeDescendants = true) {}
@@ -175,13 +175,13 @@ private fun ExpandedCard(
     val lifted = drag.id != null && drag.id in openIds
     val hue = c.hueFor(id)
 
-    CompositionLocalProvider(LocalSurface provides hue.tint) {
+    CompositionLocalProvider(LocalSurface provides c.card) {
     Column(
         Modifier
             .fillMaxWidth()
             .zIndex(if (lifted) 1f else 0f)
             .onGloballyPositioned { drag.recordCard(id, it.boundsInRoot()) }
-            .background(hue.tint, RoundedCornerShape(28.dp))
+            .background(c.card, RoundedCornerShape(28.dp))
             .padding(top = if (empty) 18.dp else 4.dp, bottom = 8.dp),
     ) {
         Row(

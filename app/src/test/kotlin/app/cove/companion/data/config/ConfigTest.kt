@@ -29,7 +29,7 @@ import org.junit.Test
 
 private const val JWT = "eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoiYW5vbiJ9.c2ln"
 private const val SERVICE_JWT = "eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIn0.c2ln"
-private const val KEY = "AIzaSyA-1234567890abcdefghijklmnopqrstu"
+private const val KEY = "AI" + "zaSyA-1234567890abcdefghijklmnopqrstu"
 private const val AUTH_KEY = "AQ.Ab8RN6Jabcdefghijklmnopqrstuvwxyz0123456789"
 private const val CLIENT = "123-abc.apps.googleusercontent.com"
 

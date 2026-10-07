@@ -16,6 +16,7 @@ import app.cove.companion.data.local.dao.ExpenseDao
 import app.cove.companion.data.local.dao.HabitDao
 import app.cove.companion.data.local.dao.JournalDao
 import app.cove.companion.data.local.dao.SettingsDao
+import app.cove.companion.data.local.dao.MemoryDao
 import app.cove.companion.data.local.dao.SmsImportDao
 import app.cove.companion.data.local.dao.SyncDao
 import app.cove.companion.data.local.dao.TodoDao
@@ -37,6 +38,7 @@ import app.cove.companion.data.local.entity.HabitEntity
 import app.cove.companion.data.local.entity.HabitLogEntity
 import app.cove.companion.data.local.entity.JournalEntryEntity
 import app.cove.companion.data.local.entity.JournalMediaEntity
+import app.cove.companion.data.local.entity.MemoryEntity
 import app.cove.companion.data.local.entity.OutboxEntity
 import app.cove.companion.data.local.entity.SearchIndexEntity
 import app.cove.companion.data.local.entity.SettingsEntity
@@ -60,9 +62,9 @@ import app.cove.companion.data.local.entity.VoiceCommandEntity
         CategoryMemoryEntity::class,
         PlanExerciseEntity::class, DayOverrideEntity::class, ExerciseLogEntity::class,
         BodyWeightEntity::class, TrainingSettingsEntity::class,
-        SmsImportLogEntity::class, PayeeMemoryEntity::class, SmsPendingEntity::class,
+        SmsImportLogEntity::class, PayeeMemoryEntity::class, SmsPendingEntity::class, MemoryEntity::class,
     ],
-    version = 11,
+    version = 12,
     exportSchema = true,
 )
 abstract class CoveDatabase : RoomDatabase() {
@@ -77,6 +79,7 @@ abstract class CoveDatabase : RoomDatabase() {
     abstract fun sync(): SyncDao
     abstract fun training(): TrainingDao
     abstract fun smsImport(): SmsImportDao
+    abstract fun memories(): MemoryDao
 
     companion object {
         /** Adds the local-only `sync_conflicts` table. */
@@ -180,12 +183,25 @@ abstract class CoveDatabase : RoomDatabase() {
             }
         }
 
+        /** Adds the local-only `memories` table: things the user asked the assistant to remember. */
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `memories` (`id` TEXT NOT NULL, `text` TEXT NOT NULL, `subject` TEXT NOT NULL, " +
+                        "`detail` TEXT NOT NULL, `kind` TEXT NOT NULL, `keywords` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, " +
+                        "`expiresAt` INTEGER, `active` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_memories_subject` ON `memories` (`subject`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_memories_createdAt` ON `memories` (`createdAt`)")
+            }
+        }
+
         /** File name of the database in the app's databases directory. */
         const val NAME = "cove.db"
 
         fun create(context: Context, factory: SupportSQLiteOpenHelper.Factory? = null): CoveDatabase =
             Room.databaseBuilder(context, CoveDatabase::class.java, NAME)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
                 // Room's own background coroutines (invalidation tracking) would crash the process on a failing database; report instead.
                 .setQueryCoroutineContext(Dispatchers.IO + CrashHandler.coroutineHandler("room"))
                 .apply { if (factory != null) openHelperFactory(factory) }

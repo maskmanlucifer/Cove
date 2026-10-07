@@ -5,6 +5,9 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -72,6 +75,30 @@ object DockSwitcher {
 
     /** Open the switcher unless it is already open; the same tap closes it. */
     fun toggle(expanded: Boolean): Boolean = !expanded
+
+    /** The swipeable pages are every tab except Me. */
+    val pageCount: Int = Tab.entries.size - 1
+
+    /** Which page dot is lit for [tab]: its position among the swipeable pages, or -1 for Me. */
+    fun pageIndex(tab: Tab): Int = if (tab == Tab.Me) -1 else tab.ordinal
+
+    /** Spoken description of the collapsed pill, e.g. "Page 2 of 4, Plan. Tap to choose a page". */
+    fun pillDescription(tab: Tab): String =
+        (if (tab == Tab.Me) tab.label else "Page ${pageIndex(tab) + 1} of $pageCount, ${tab.label}") + ". Tap to choose a page"
+}
+
+/** The page dots: the current page is a short green bar, the others small muted dots. */
+@Composable
+private fun PageDots(active: Int) {
+    val c = Cove.colors
+    val reduce = LocalReduceMotion.current
+    Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
+        repeat(DockSwitcher.pageCount) { i ->
+            val on = i == active
+            val width by animateDpAsState(if (on) 16.dp else 6.dp, if (reduce) snap() else tween(180), label = "dotWidth")
+            Box(Modifier.size(width, 6.dp).background(if (on) c.accent else c.dockInactive.copy(alpha = 0.5f), CoveShapes.Pill))
+        }
+    }
 }
 
 /**
@@ -137,11 +164,10 @@ private fun DockMorph(
             Row(
                 Modifier.layoutId("label").graphicsLayer { alpha = DockMotion.frame(progress.value, reduce).labelAlpha },
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                if (selected.ordinal >= DockMotion.LEFT_EXTENDING_FROM) CoveIcon(CoveIcons.ChevronUp, c.muted, size = 14.dp)
-                CoveText(selected.label, style = CoveType.Button, color = c.ink, maxLines = 1)
-                if (selected.ordinal < DockMotion.LEFT_EXTENDING_FROM) CoveIcon(CoveIcons.ChevronUp, c.muted, size = 14.dp)
+                CoveText(selected.label, style = CoveType.Button.copy(fontWeight = FontWeight.SemiBold), color = c.ink, maxLines = 1)
+                PageDots(DockSwitcher.pageIndex(selected))
             }
             Tab.entries.forEach { tab ->
                 val on = tab == selected
@@ -174,11 +200,11 @@ private fun DockMorph(
                     Modifier
                         .layoutId("hit")
                         .semantics(mergeDescendants = true) {
-                            contentDescription = "Switch section"
-                            stateDescription = "${selected.label}, collapsed"
+                            contentDescription = DockSwitcher.pillDescription(selected)
+                            stateDescription = "Collapsed"
                             role = Role.Button
                         }
-                        .clickable(onClickLabel = "Show menu", role = Role.Button, onClick = onToggle),
+                        .clickable(onClickLabel = "Choose a page", role = Role.Button, onClick = onToggle),
                 )
             }
         },
@@ -193,7 +219,7 @@ private fun DockMorph(
         val f = DockMotion.frame(progress.value, reduce)
         val bgW = px(DockMotion.lerp(geo.collapsedRight - geo.collapsedLeft, geo.expandedRight - geo.expandedLeft, f.geom))
         val bgX = px(DockMotion.lerp(geo.collapsedLeft, geo.expandedLeft, f.geom))
-        val labelX = if (selected.ordinal < DockMotion.LEFT_EXTENDING_FROM) geo.iconCenter + 18f else geo.iconCenter - 18f - label.width / density
+        val labelX = geo.collapsedLeft + DockMotion.PILL_PADDING
         val placed = measurables.filter { it.layoutId != "label" }.map { m ->
             val id = m.layoutId
             val size = when (id) {
@@ -210,7 +236,7 @@ private fun DockMorph(
                     "hit" -> pl.place(px(geo.collapsedLeft), 0)
                     is Tab -> {
                         val cx = geo.slotCenter(id.ordinal)
-                        if (id == selected) pl.place(px(cx) - slot / 2, 0)
+                        if (id == selected) pl.placeWithLayer(px(cx) - slot / 2, 0) { alpha = f.geom }
                         else pl.placeWithLayer(px(cx) - slot / 2, 0) {
                             alpha = f.otherAlpha
                             translationX = px((geo.slotCenter(selected.ordinal) - cx) * (1f - f.geom)).toFloat()

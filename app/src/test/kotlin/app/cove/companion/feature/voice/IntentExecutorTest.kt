@@ -2,6 +2,7 @@ package app.cove.companion.feature.voice
 
 import app.cove.companion.core.Clock
 import app.cove.companion.core.toEpochMillis
+import app.cove.companion.data.memory.MemorySaved
 import app.cove.companion.data.local.entity.AlarmEntity
 import app.cove.companion.data.local.entity.EventEntity
 import app.cove.companion.data.local.entity.ExpenseCategoryEntity
@@ -51,6 +52,15 @@ private class FakeStore : VoiceStore {
     override suspend fun toggleHabit(habitId: String, day: LocalDate) {
         if (!ticks.remove(habitId to day)) ticks += habitId to day
     }
+    val memories = mutableMapOf<String, String>()
+    override suspend fun addMemory(text: String, subject: String, detail: String, kind: String, keepForMs: Long?): MemorySaved {
+        val replaced = memories.keys.filter { it.startsWith("$subject:") }
+        val id = "$subject:${memories.size}"
+        memories[id] = text
+        return MemorySaved(id, replaced)
+    }
+    override suspend fun undoMemory(id: String, replaced: List<String>) { memories.remove(id) }
+    override suspend fun recall(question: String) = memories.values.firstOrNull() ?: "nothing"
     override suspend fun saveJournal(entry: JournalEntryEntity) { journal[entry.id] = entry }
     override suspend fun deleteJournal(id: String) { journal.remove(id) }
     override suspend fun recordCommand(transcript: String, intent: String, undoPayload: String?) =
@@ -142,5 +152,22 @@ class IntentExecutorTest {
         assertEquals("Undone: removed ₹250 expense", run(VoiceIntent.UndoLast).summary)
         assertEquals("Undone: removed 'Buy milk'", run(VoiceIntent.UndoLast).summary)
         assertEquals("Nothing to undo", run(VoiceIntent.UndoLast).summary)
+    }
+
+    @Test
+    fun rememberingIsSavedAndUndone() {
+        val r = run(VoiceIntent.Remember("I parked on level 3", "car", "on level 3", "place"))
+        assertEquals("Remembered", r.summary)
+        assertEquals(1, store.memories.size)
+        assertEquals("Undone: forgot 'car'", run(VoiceIntent.UndoLast).summary)
+        assertTrue(store.memories.isEmpty())
+    }
+
+    @Test
+    fun recallIsAnsweredAndNotRecorded() {
+        run(VoiceIntent.Remember("Passport is in the blue folder", "passport", "in the blue folder", "place"))
+        val before = store.commands.size
+        assertEquals("Passport is in the blue folder", run(VoiceIntent.Recall("passport")).summary)
+        assertEquals(before, store.commands.size)
     }
 }

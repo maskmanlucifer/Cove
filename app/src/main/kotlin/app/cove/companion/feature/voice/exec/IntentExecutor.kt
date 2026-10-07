@@ -29,6 +29,9 @@ data class UndoPayload(
     val expenses: List<String> = emptyList(),
     val habits: List<HabitTick> = emptyList(),
     val journal: List<String> = emptyList(),
+    /** Memories a command added, and the older ones they replaced (brought back on undo). */
+    val memories: List<String> = emptyList(),
+    val memoriesReplaced: List<String> = emptyList(),
     val habitsCreated: List<String> = emptyList(),
     /** Plan, log and weigh-in changes a training command made. */
     val training: TrainingUndo = TrainingUndo(),
@@ -65,6 +68,7 @@ class IntentExecutor(private val store: VoiceStore, private val clock: Clock, pr
             when (only) {
                 VoiceIntent.UndoLast -> return undoLast()
                 VoiceIntent.QueryNext -> return ExecResult(null, nextUp())
+                is VoiceIntent.Recall -> return ExecResult(null, store.recall(only.question))
                 VoiceIntent.QueryNextWorkout -> return ExecResult(null, training?.todaySummary() ?: "Training isn't available")
                 else -> Unit
             }
@@ -78,7 +82,8 @@ class IntentExecutor(private val store: VoiceStore, private val clock: Clock, pr
             acc = step.undo.let { u ->
                 acc.copy(training = acc.training + u.training,
                     todos = acc.todos + u.todos, alarms = acc.alarms + u.alarms, alarmRestore = acc.alarmRestore + u.alarmRestore,
-                    expenses = acc.expenses + u.expenses, habits = acc.habits + u.habits, journal = acc.journal + u.journal,
+                    expenses = acc.expenses + u.expenses, habits = acc.habits + u.habits, journal = acc.journal + u.journal, memories = acc.memories + u.memories,
+                    memoriesReplaced = acc.memoriesReplaced + u.memoriesReplaced,
                     habitsCreated = acc.habitsCreated + u.habitsCreated, labels = acc.labels + u.labels,
                 )
             }
@@ -110,6 +115,7 @@ class IntentExecutor(private val store: VoiceStore, private val clock: Clock, pr
             if (store.isHabitTicked(t.habitId, day)) store.toggleHabit(t.habitId, day)
         }
         p.journal.forEach { store.deleteJournal(it) }
+        p.memories.forEach { store.undoMemory(it, p.memoriesReplaced) }
         p.habitsCreated.forEach { store.deleteHabit(it) }
         if (!p.training.isEmpty) training?.undo(p.training)
         store.markUndone(cmd.id)
@@ -146,6 +152,11 @@ class IntentExecutor(private val store: VoiceStore, private val clock: Clock, pr
             store.saveJournal(entry)
             Step("Saved to your journal", UndoPayload(journal = listOf(entry.id), labels = listOf("removed journal note")))
         }
+        is VoiceIntent.Remember -> {
+            val saved = store.addMemory(intent.text, intent.subject, intent.detail, intent.kind, intent.keepForMs)
+            Step("Remembered", UndoPayload(memories = listOf(saved.id), memoriesReplaced = saved.replaced, labels = listOf("forgot '${intent.subject}'")))
+        }
+        is VoiceIntent.Recall -> Step(store.recall(intent.question))
         is VoiceIntent.AddHabit -> {
             val habit = HabitEntity(newId(), intent.name, sort = store.habits().size)
             store.saveHabit(habit)

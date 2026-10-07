@@ -112,7 +112,7 @@ fun PlanScreen(nav: Nav) {
             ) {
                 item { header(); Spacer(Modifier.height(24.dp)) }
                 scheduleRows(state.timeline, { sheet = TASK + it }, { sheet = EVENT + it }, { nav.go(Routes.alarmEdit(it)) })
-                if (state.now != 0L && state.timeline.none { it is TimelineRow.Entry }) item {
+                if (state.now != 0L && state.timeline.isEmpty()) item {
                     EmptyState(
                         Scene.Schedule,
                         if (state.isToday) "Nothing planned." else "A free day.",

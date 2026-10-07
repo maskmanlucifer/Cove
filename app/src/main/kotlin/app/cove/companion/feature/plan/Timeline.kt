@@ -26,11 +26,11 @@ data class ScheduleItem(
 
 /** A row of the schedule list. */
 sealed interface TimelineRow {
-    /** [card] marks the next event, which gets a white card with its length instead of an "until" line. */
-    data class Entry(val item: ScheduleItem, val past: Boolean, val card: Boolean, val detail: String?) : TimelineRow
-
-    /** The "now" marker line. */
-    data class Now(val minutes: Int) : TimelineRow
+    /**
+     * [card] marks the next event, which gets a white card with its length instead of an "until" line.
+     * [current] marks the one entry that is happening now or comes next; its time is drawn in the accent colour.
+     */
+    data class Entry(val item: ScheduleItem, val past: Boolean, val card: Boolean, val detail: String?, val current: Boolean = false) : TimelineRow
 }
 
 /** True when [alarm] rings on [day]; `daysMask` bit 0 is Monday and 0 means once. */
@@ -82,29 +82,25 @@ fun scheduleItems(
 }
 
 /**
- * Lays [items] out for the schedule at [nowMinutes]: finished items are marked past, the next event
- * becomes the card and the now marker (omitted unless [showNow]) sits before the first item that has not started yet.
+ * Lays [items] out for the schedule at [nowMinutes]: finished items are marked past and the next event becomes the card.
+ * With [markCurrent] (today only) the event in progress, or else the first item that has not started yet, is marked
+ * [TimelineRow.Entry.current] so its time can stand out; there is no separate "now" line.
  */
-fun buildTimeline(items: List<ScheduleItem>, nowMinutes: Int, showNow: Boolean = true): List<TimelineRow> {
+fun buildTimeline(items: List<ScheduleItem>, nowMinutes: Int, markCurrent: Boolean = true): List<TimelineRow.Entry> {
     val sorted = items.sortedBy { it.minutes }
     val cardIndex = sorted.indexOfFirst { it.kind == ItemKind.Event && (it.endMinutes ?: it.minutes) > nowMinutes }
-    val rows = mutableListOf<TimelineRow>()
-    var nowPlaced = false
-    sorted.forEachIndexed { i, item ->
-        if (!nowPlaced && item.minutes > nowMinutes) {
-            rows += TimelineRow.Now(nowMinutes)
-            nowPlaced = true
-        }
+    val currentIndex = if (!markCurrent) -1 else
+        sorted.indexOfFirst { it.kind == ItemKind.Event && it.minutes <= nowMinutes && (it.endMinutes ?: it.minutes) > nowMinutes }
+            .takeIf { it >= 0 } ?: sorted.indexOfFirst { it.minutes > nowMinutes }
+    return sorted.mapIndexed { i, item ->
         val past = when (item.kind) {
             ItemKind.Alarm -> item.minutes < nowMinutes
             ItemKind.Event -> (item.endMinutes ?: item.minutes) <= nowMinutes
             ItemKind.Todo -> item.done
         }
         val card = i == cardIndex
-        rows += TimelineRow.Entry(item, past, card, detailFor(item, card))
+        TimelineRow.Entry(item, past, card, detailFor(item, card), current = i == currentIndex)
     }
-    if (!nowPlaced) rows += TimelineRow.Now(nowMinutes)
-    return if (showNow) rows else rows.filterNot { it is TimelineRow.Now }
 }
 
 private fun detailFor(item: ScheduleItem, card: Boolean): String? {

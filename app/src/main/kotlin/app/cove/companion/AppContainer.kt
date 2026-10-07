@@ -52,6 +52,7 @@ import app.cove.companion.data.sms.ContentResolverSmsInbox
 import app.cove.companion.data.sms.SmsCapturePrefs
 import app.cove.companion.data.sms.SmsCatchUp
 import app.cove.companion.data.sms.SmsLiveCapture
+import app.cove.companion.data.memory.MemoryRepository
 import app.cove.companion.data.sms.SmsImportRepository
 import app.cove.companion.data.sms.SmsSource
 import app.cove.companion.data.repo.PlanRepository
@@ -166,6 +167,7 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
 
     /** "Import from messages": local scan, dedupe and log (see `docs/SMS_IMPORT.md`). */
     val smsImport = SmsImportRepository(database, clock, money)
+    val memories = MemoryRepository(database, clock)
 
     /** The phone's SMS inbox; reading needs the READ_SMS permission the Import screen asks for. */
     val smsInbox: SmsSource = ContentResolverSmsInbox(context.applicationContext)

@@ -25,7 +25,7 @@ class SmsPendingSchemaTest {
     }
 
     @Test fun migration10To11MatchesTheExportedSchema() {
-        assertTrue(database.contains("version = 11"))
+        assertTrue(database.contains("version = 12"))
         assertTrue(database.contains("MIGRATION_9_10, MIGRATION_10_11"))
         val columns = "(`key` TEXT NOT NULL, `messageKeys` TEXT NOT NULL, `amountPaise` INTEGER NOT NULL, `direction` TEXT NOT NULL, `merchant` TEXT, " +
             "`at` INTEGER NOT NULL, `dateFromText` INTEGER NOT NULL, `last4` TEXT, `paidWith` TEXT NOT NULL, `ref` TEXT, `bank` TEXT, " +

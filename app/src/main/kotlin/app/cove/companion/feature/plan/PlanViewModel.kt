@@ -27,7 +27,7 @@ import kotlinx.coroutines.launch
 
 /** Everything the Plan tab draws. */
 data class PlanState(
-    val timeline: List<TimelineRow> = emptyList(),
+    val timeline: List<TimelineRow.Entry> = emptyList(),
     val groups: List<CategoryGroup> = emptyList(),
     /** Every live to-do, including uncategorised ones that only show on the schedule. */
     val todos: List<TodoEntity> = emptyList(),
@@ -92,7 +92,7 @@ class PlanViewModel(private val c: AppContainer) : ViewModel() {
             else -> -1
         }
         PlanState(
-            buildTimeline(items, nowMin, showNow = day == today), groupTodos(categories, todos, now),
+            buildTimeline(items, nowMin, markCurrent = day == today), groupTodos(categories, todos, now),
             todos.filter { it.deletedAt == null }, events, now, day, day == today,
         )
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), PlanState())

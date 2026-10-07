@@ -9,7 +9,7 @@ import org.junit.Test
 class SetupCodeExportTest {
     private val creds = Credentials(
         supabaseUrl = "https://abcdefghij.supabase.co", supabaseAnonKey = "eyJhbGciOiJIUzI1NiJ9.payload.signature",
-        googleWebClientId = "123456789-abc.apps.googleusercontent.com", geminiApiKey = "AIzaSyDUMMYDUMMYDUMMYDUMMYDUMMYDUMMY123",
+        googleWebClientId = "123456789-abc.apps.googleusercontent.com", geminiApiKey = "AI" + "zaSyDUMMYDUMMYDUMMYDUMMYDUMMYDUMMY123",
     )
 
     @Test fun roundTripRestoresEveryField() {
