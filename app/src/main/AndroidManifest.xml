@@ -15,6 +15,8 @@
     <!-- Sensitive: "Import from messages" (Money) reads bank and UPI texts on this phone only. This app is sideloaded, so
          Play Store SMS policy does not apply. See docs/SMS_IMPORT.md. Telephony is not required (tablets can paste instead). -->
     <uses-permission android:name="android.permission.READ_SMS" />
+    <!-- "Payments from messages": the receiver below finds payments in new texts, parsed on this phone and never stored. -->
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
@@ -170,6 +172,20 @@
 
         <receiver
             android:name=".feature.nudges.NudgeReceiver"
+            android:exported="false" />
+
+        <!-- Only the system may send SMS_RECEIVED (BROADCAST_SMS), so no other app can feed it fake messages. -->
+        <receiver
+            android:name=".feature.money.live.SmsReceiver"
+            android:exported="true"
+            android:permission="android.permission.BROADCAST_SMS">
+            <intent-filter>
+                <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".feature.money.live.PaymentActionReceiver"
             android:exported="false" />
 
         <receiver

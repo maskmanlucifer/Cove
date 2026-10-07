@@ -41,6 +41,7 @@ import app.cove.companion.data.local.entity.OutboxEntity
 import app.cove.companion.data.local.entity.SearchIndexEntity
 import app.cove.companion.data.local.entity.SettingsEntity
 import app.cove.companion.data.local.entity.SmsImportLogEntity
+import app.cove.companion.data.local.entity.SmsPendingEntity
 import app.cove.companion.data.local.entity.SuggestionPrefEntity
 import app.cove.companion.data.local.entity.SyncConflictEntity
 import app.cove.companion.data.local.entity.SyncStateEntity
@@ -59,9 +60,9 @@ import app.cove.companion.data.local.entity.VoiceCommandEntity
         CategoryMemoryEntity::class,
         PlanExerciseEntity::class, DayOverrideEntity::class, ExerciseLogEntity::class,
         BodyWeightEntity::class, TrainingSettingsEntity::class,
-        SmsImportLogEntity::class, PayeeMemoryEntity::class,
+        SmsImportLogEntity::class, PayeeMemoryEntity::class, SmsPendingEntity::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = true,
 )
 abstract class CoveDatabase : RoomDatabase() {
@@ -166,12 +167,25 @@ abstract class CoveDatabase : RoomDatabase() {
             }
         }
 
+        /** Adds the local-only `sms_pending` table for payments found in incoming messages (see `docs/SMS_IMPORT.md`). */
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `sms_pending` (`key` TEXT NOT NULL, `messageKeys` TEXT NOT NULL, `amountPaise` INTEGER NOT NULL, " +
+                        "`direction` TEXT NOT NULL, `merchant` TEXT, `at` INTEGER NOT NULL, `dateFromText` INTEGER NOT NULL, `last4` TEXT, " +
+                        "`paidWith` TEXT NOT NULL, `ref` TEXT, `bank` TEXT, `confidence` REAL NOT NULL, `payeeKey` TEXT, " +
+                        "`matchExpenseId` TEXT, `matchNote` TEXT, `matchAmountPaise` INTEGER, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`key`))",
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_sms_pending_at` ON `sms_pending` (`at`)")
+            }
+        }
+
         /** File name of the database in the app's databases directory. */
         const val NAME = "cove.db"
 
         fun create(context: Context, factory: SupportSQLiteOpenHelper.Factory? = null): CoveDatabase =
             Room.databaseBuilder(context, CoveDatabase::class.java, NAME)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
                 // Room's own background coroutines (invalidation tracking) would crash the process on a failing database; report instead.
                 .setQueryCoroutineContext(Dispatchers.IO + CrashHandler.coroutineHandler("room"))
                 .apply { if (factory != null) openHelperFactory(factory) }

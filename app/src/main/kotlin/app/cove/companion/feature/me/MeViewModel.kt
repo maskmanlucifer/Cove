@@ -6,6 +6,7 @@ import app.cove.companion.AppContainer
 import app.cove.companion.data.backup.BackupResult
 import app.cove.companion.data.local.entity.AlarmEntity
 import app.cove.companion.data.local.entity.SettingsEntity
+import app.cove.companion.data.sms.CaptureMode
 import app.cove.companion.feature.onboarding.saveWakeTime
 import app.cove.companion.data.sync.ConflictDescriber
 import app.cove.companion.resilience.CrashHandler
@@ -28,6 +29,12 @@ import kotlinx.coroutines.launch
 class MeViewModel(private val c: AppContainer) : ViewModel() {
     val settings: StateFlow<SettingsEntity?> =
         c.settings.settings.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    /** This device's "Payments from messages" mode. */
+    val captureMode: StateFlow<CaptureMode> = c.smsCapturePrefs.mode
+
+    /** Saves the "Payments from messages" mode for this device. */
+    fun setCaptureMode(mode: CaptureMode) = c.smsCapturePrefs.setMode(mode, c.clock.now())
 
     /** Clears the "Import from messages" log; expenses stay. */
     fun forgetImportedMessages() {

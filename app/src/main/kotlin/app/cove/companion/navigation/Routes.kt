@@ -30,6 +30,9 @@ object Routes {
     const val MoneyReview = "money/review"
     const val MoneyImport = "money/import"
 
+    /** The import review with only the payments found in new messages, opened from Money and from notifications. */
+    const val MoneyImportPending = "money/import-pending"
+
     const val Habits = "habits"
     const val HabitNew = "habits/new"
     const val HabitEdit = "habits/edit/{id}"

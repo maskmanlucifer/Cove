@@ -7,6 +7,8 @@ import app.cove.companion.core.Undo
 import app.cove.companion.data.categorize.ExpenseCategorizer
 import app.cove.companion.data.categorize.Reason
 import app.cove.companion.data.local.entity.ExpenseCategoryEntity
+import app.cove.companion.data.sms.CaptureMode
+import app.cove.companion.data.sms.CaptureSuggestion
 import app.cove.companion.data.sms.Direction
 import app.cove.companion.data.sms.ImportDecision
 import app.cove.companion.data.sms.ImportRange
@@ -14,9 +16,11 @@ import app.cove.companion.data.sms.ImportSummary
 import app.cove.companion.data.sms.PastedSource
 import app.cove.companion.data.sms.ReviewItem
 import app.cove.companion.data.sms.ScanProgress
+import app.cove.companion.data.sms.noteFor
 import app.cove.companion.data.sms.SmsReadException
 import app.cove.companion.data.sms.SmsSource
 import app.cove.companion.feature.money.RetroOffer
+import app.cove.companion.feature.money.live.PaymentNotifier
 import app.cove.companion.feature.money.RetroTag
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -28,7 +32,7 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 
 /** Where the flow is. */
-enum class ImportStage { Intro, Range, Scanning, Review, Importing, Done, Paste }
+enum class ImportStage { Offer, Intro, Range, Scanning, Review, Importing, Done, Paste }
 
 /** One review row: the found transaction and what the user has chosen for it so far. */
 data class ImportRow(
@@ -59,8 +63,8 @@ data class ImportRow(
     val isDuplicate: Boolean get() = item.match != null
 }
 
-/** Merchant name of [tx], or the plain fallback for a payment of [kind] with no readable name. */
-internal fun generatedNote(tx: app.cove.companion.data.sms.ParsedSms, kind: String): String = tx.merchant ?: if (kind == "received") "Money received" else "Payment"
+/** Merchant name of [tx], the wallet for a wallet payment, or the plain fallback for a payment of [kind] with no readable name. */
+internal fun generatedNote(tx: app.cove.companion.data.sms.ParsedSms, kind: String): String = tx.noteFor(kind)
 
 /**
  * The review row for [item]: category and label from the payee's memory when [payees] knows it (it wins over word
@@ -75,7 +79,7 @@ internal fun rowFor(
     val tx = item.candidate.tx
     val kind = if (tx.direction == Direction.Credit) "received" else "spent"
     val payee = if (kind == "spent") tx.payeeKey?.let(payees::get) else null
-    val s = if (kind == "spent") ExpenseCategorizer.suggest(generatedNote(tx, kind), cats, memory, payee) else null
+    val s = if (kind == "spent") CaptureSuggestion.categorize(tx, cats, memory, payee) else null
     val id = s?.categoryId ?: if (kind == "spent") ExpenseCategorizer.fallback(cats)?.id else null
     val recalled = s?.reason == Reason.Payee
     return ImportRow(
@@ -101,15 +105,20 @@ data class ImportState(
     val summaryText: String? = null,
     val undone: Boolean = false,
     val added: Int = 0,
+    /** This device's "Payments from messages" mode. */
+    val mode: CaptureMode = CaptureMode.Off,
 ) {
     val checkedCount: Int get() = rows.count { it.checked }
     val newRows: List<ImportRow> get() = rows.filterNot { it.isDuplicate }
     val dupRows: List<ImportRow> get() = rows.filter { it.isDuplicate }
 }
 
-/** Runs the scan, holds the user's choices and performs the one-shot import with its Undo. */
-class ImportViewModel(private val c: AppContainer) : ViewModel() {
-    private val _state = MutableStateFlow(ImportState())
+/**
+ * Runs the scan, holds the user's choices and performs the one-shot import with its Undo. With [pendingOnly] it skips the scan and
+ * reviews the payments live capture found in new messages (`sms_pending`).
+ */
+class ImportViewModel(private val c: AppContainer, private val pendingOnly: Boolean = false) : ViewModel() {
+    private val _state = MutableStateFlow(ImportState(mode = c.smsCapturePrefs.mode.value))
     val state: StateFlow<ImportState> = _state
     private var job: Job? = null
     private val importing = AtomicBoolean(false)
@@ -120,6 +129,41 @@ class ImportViewModel(private val c: AppContainer) : ViewModel() {
             val cats = c.money.categories.first().filter { it.kind == "spending" && it.deletedAt == null }
             val has = c.smsImport.hasHistory()
             _state.update { it.copy(categories = cats, hasHistory = has, range = if (has) ImportRange.SinceLast else ImportRange.Last30) }
+        }
+        viewModelScope.launch { c.smsCapturePrefs.mode.collect { m -> _state.update { it.copy(mode = m) } } }
+        if (pendingOnly) loadPending() else if (!c.smsCapturePrefs.offerShown) _state.update { it.copy(stage = ImportStage.Offer) }
+    }
+
+    /** Saves the mode chosen on the one-time offer or in the range step. */
+    fun setMode(mode: CaptureMode) = c.smsCapturePrefs.setMode(mode, c.clock.now())
+
+    /** Answers the one-time offer with [mode] and moves on to the permission step, or straight to the range when [readGranted]. */
+    fun finishOffer(mode: CaptureMode, readGranted: Boolean) {
+        setMode(mode)
+        c.smsCapturePrefs.offerShown = true
+        _state.update { it.copy(stage = if (readGranted) ImportStage.Range else ImportStage.Intro) }
+        if (readGranted) loadEstimate()
+    }
+
+    /** Shows the payments found in new messages for review. */
+    private fun loadPending() {
+        _state.update { it.copy(stage = ImportStage.Scanning, progress = null) }
+        job = viewModelScope.launch {
+            try {
+                val items = c.smsImport.pendingItems()
+                val cats = c.money.categories.first().filter { it.kind == "spending" && it.deletedAt == null }
+                val memory = c.money.memory.first()
+                val payees = c.money.payees(items.mapNotNull { it.candidate.tx.payeeKey })
+                val rows = items.map { rowFor(it, cats, memory, payees) }
+                _state.update {
+                    if (rows.isEmpty()) it.copy(stage = ImportStage.Done, summaryText = "Nothing is waiting", added = 0, categories = cats)
+                    else it.copy(stage = ImportStage.Review, rows = rows, categories = cats, scanned = rows.size)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                _state.update { it.copy(stage = ImportStage.Done, summaryText = "Could not look just now", added = 0, message = null) }
+            }
         }
     }
 
@@ -231,6 +275,10 @@ class ImportViewModel(private val c: AppContainer) : ViewModel() {
             try {
                 val decisions = rows.map { ImportDecision(it.item, it.checked, it.kind, it.categoryId, it.suggestedId, it.picked, it.label, it.labelEdited) }
                 val summary = c.smsImport.import(decisions)
+                runCatching {
+                    rows.forEach { PaymentNotifier.dismissAsk(c.appContext, it.id) }
+                    PaymentNotifier.refreshSummary(c.appContext)
+                }
                 val dups = rows.count { !it.checked && it.isDuplicate }
                 val left = rows.count { !it.checked && !it.isDuplicate }
                 val text = summaryText(summary.added, dups, left)

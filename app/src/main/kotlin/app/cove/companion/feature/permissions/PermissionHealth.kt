@@ -1,7 +1,7 @@
 package app.cove.companion.feature.permissions
 
 /** Things the user can switch off after the fact that make a feature quietly stop working. */
-enum class PermissionIssue { Notifications, ExactAlarms, FullScreenIntent, Microphone, Calendar, UsageStats }
+enum class PermissionIssue { Notifications, ExactAlarms, FullScreenIntent, Microphone, Calendar, UsageStats, Messages }
 
 /** Current state of each permission. */
 data class PermissionSnapshot(
@@ -11,6 +11,8 @@ data class PermissionSnapshot(
     val microphone: Boolean,
     val calendar: Boolean,
     val usageStats: Boolean,
+    /** Both "Receive text messages" and "Read text messages" are allowed. */
+    val messages: Boolean = true,
 )
 
 /** Which features are in use, so only relevant gaps are reported. */
@@ -21,6 +23,8 @@ data class PermissionNeeds(
     val voice: Boolean = false,
     val briefCalendar: Boolean = false,
     val suggestions: Boolean = false,
+    /** "Payments from messages" is on. */
+    val messages: Boolean = false,
 )
 
 /** Which settings page fixes an issue. */
@@ -39,6 +43,7 @@ object PermissionHealth {
         if (!s.microphone && needs.voice) add(PermissionIssue.Microphone)
         if (!s.calendar && needs.briefCalendar) add(PermissionIssue.Calendar)
         if (!s.usageStats && needs.suggestions) add(PermissionIssue.UsageStats)
+        if (!s.messages && needs.messages) add(PermissionIssue.Messages)
     }
 
     /** Copy and fix for [issue]. [alarmsInUse] tailors the notification line when alarms exist. */
@@ -73,6 +78,11 @@ object PermissionHealth {
             "Usage access is off",
             "Suggestions based on how you use your phone are paused. Nothing leaves your phone either way.",
             "Open usage access", FixTarget.UsageAccessSettings,
+        )
+        PermissionIssue.Messages -> PermissionGuideText(
+            "Payments from messages are paused",
+            "Allow “Receive text messages” and “Read text messages” for Cove. You can still paste a message to add a payment.",
+            "Open settings", FixTarget.AppSettings,
         )
     }
 }

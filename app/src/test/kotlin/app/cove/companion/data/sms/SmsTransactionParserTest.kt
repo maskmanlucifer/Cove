@@ -68,6 +68,16 @@ class SmsTransactionParserTest {
         Case("indian grouping decimals", "VM-SBIINB", "Rs 12,34,567.89 credited to A/c XX1234 on 05-10-26 by NEFT-SBIN52026100500123-ACME LTD", 123456789, Direction.Credit, "Acme", "1234", "SBIN52026100500123"),
         Case("rupee symbol", "AX-HDFCBK", "₹1,250.50 debited from A/c XX1234 on 05-10-26 to VPA bigbasket@icici. UPI Ref 628374650192", 125050, Direction.Debit, "Bigbasket", "1234", "628374650192"),
         Case("rs no dot space", "AX-HDFCBK", "Rs450 debited from A/c XX1234 on 05-10-26 to VPA zepto@axl. UPI Ref 628374650192", 45000, Direction.Debit, "Zepto", "1234", "628374650192"),
+        Case("pluxee short", "VM-PLUXEE", "Rs 8 spent from Pluxee wallet", 800, Direction.Debit, null, null, null, "Wallet", "Pluxee"),
+        Case("pluxee at merchant", "VM-PLUXEE", "Rs. 8.00 spent from your Pluxee wallet at CAFE on 07-10-2026. Bal Rs. 1,250", 800, Direction.Debit, "Cafe", null, null, "Wallet", "Pluxee"),
+        Case("sodexo meal card", "AX-SODEXO", "Your Sodexo Meal Card ending 1234 is debited by Rs 8.00 at XYZ. Avl bal Rs 1,242.00", 800, Direction.Debit, "Xyz", "1234", null, "Wallet", "Sodexo"),
+        Case("pluxee sodexo card", "VM-PLUXEE", "Your Sodexo/Pluxee Meal Card ending 1234 is debited by Rs 8.00 at XYZ", 800, Direction.Debit, "Xyz", "1234", null, "Wallet", "Pluxee"),
+        Case("pluxee deducted", "VM-PLUXEE", "Rs 120.50 deducted from your Pluxee wallet at Cafe Coffee Day. Balance: Rs 900", 12050, Direction.Debit, "Cafe Coffee Day", null, null, "Wallet", "Pluxee"),
+        Case("pluxee refund", "VM-PLUXEE", "Refund of Rs 45.00 credited to your Pluxee wallet from BIG BAZAAR", 4500, Direction.Credit, "Big Bazaar", null, null, "Wallet", "Pluxee"),
+        Case("paste wallet no sender", null, "Rs 8 spent from Pluxee wallet", 800, Direction.Debit, null, null, null, "Wallet", "Pluxee"),
+        Case("paste wallet merchant no sender", null, "Rs. 8.00 spent from your Pluxee wallet at CAFE. Bal Rs. 1,250", 800, Direction.Debit, "Cafe", null, null, "Wallet", "Pluxee"),
+        Case("paytm wallet", "VM-PAYTMW", "Rs 60 paid from your Paytm Wallet to Chai Point. Bal Rs 340", 6000, Direction.Debit, "Chai Point", null, null, "Wallet", "Paytm Wallet"),
+        Case("mobikwik", "VM-MOBIKW", "Rs 99 debited from your MobiKwik wallet at JIOMART. Avl bal Rs 400", 9900, Direction.Debit, "Jiomart", null, null, "Wallet", "Mobikwik"),
         Case("old date year", "AX-HDFCBK", "Rs 100.00 debited from A/c XX1234 on 04-10-26 to VPA dmart@icici. UPI Ref 628374650192", 10000, Direction.Debit, "DMART", "1234", "628374650192", null, null, at(2026, 10, 4, 12, 0)),
     )
 
@@ -115,6 +125,17 @@ class SmsTransactionParserTest {
         Triple("personal 10 digit", "9876543210", "Paid Rs 450 via UPI to zomato@okaxis") to Rejection.PersonalSender,
         Triple("chat", "VM-ZOMATO", "Your order is on its way! Total Rs 450 will be collected on delivery") to Rejection.NoAmount,
         Triple("empty", "VM-HDFCBK", "   ") to Rejection.Empty,
+        Triple("wallet otp", "VM-PLUXEE", "123456 is your OTP to pay Rs 8.00 from Pluxee wallet. Do not share.") to Rejection.Otp,
+        Triple("wallet promo", "VM-PLUXEE", "Congratulations! Get Rs 100 cashback offer on your Pluxee wallet. Click here") to Rejection.Promo,
+        Triple("wallet future", "VM-PLUXEE", "Rs 8 will be debited from your Pluxee wallet on 08-10-26") to Rejection.Future,
+        Triple("wallet balance only", "VM-PLUXEE", "Your Pluxee wallet balance is Rs 1,242.00 as on 07-10-26") to Rejection.BalanceOnly,
+        Triple("wallet low balance", "VM-PLUXEE", "Low balance alert: Avl bal Rs 12.00 in your Pluxee Meal Card ending 1234") to Rejection.BalanceOnly,
+        Triple("wallet failed", "VM-PLUXEE", "Rs 8 payment from your Pluxee wallet failed. Please try again") to Rejection.Failed,
+        Triple("wallet top up", "VM-PLUXEE", "Rs 150 added to Pluxee wallet. Bal Rs 1,400") to Rejection.Transfer,
+        Triple("wallet top up 2", "VM-PAYTMW", "Rs 500 added to your Paytm Wallet via UPI. Bal Rs 560") to Rejection.Transfer,
+        Triple("wallet credited", "VM-PLUXEE", "Rs 2,200.00 credited to your Sodexo Meal Card ending 1234") to Rejection.Transfer,
+        Triple("paste wallet no amount", null, "Your Pluxee wallet was used at CAFE") to Rejection.NoAmount,
+        Triple("paste top up no sender", null, "Rs 150 added to Pluxee wallet") to Rejection.Transfer,
     )
 
     @Test fun rejectsNonTransactions() {
@@ -125,6 +146,48 @@ class SmsTransactionParserTest {
             else if (r.reason != why) failures += "${c.first}: reason want $why got ${r.reason}"
         }
         assertTrue(failures.joinToString("\n"), failures.isEmpty())
+    }
+
+    @Test fun walletPaymentIsLabelledAndNotedAsAWallet() {
+        val t = ok("VM-PLUXEE", "Rs 8 spent from Pluxee wallet")
+        assertEquals("Wallet", t.paidWith)
+        assertEquals("Pluxee", t.bank)
+        assertEquals("Pluxee wallet", t.noteFor("spent"))
+        assertEquals("name:WALLET:PLUXEE", t.payeeKey)
+        assertEquals(800L, t.amountPaise)
+        assertEquals(received, t.at)
+    }
+
+    @Test fun walletMerchantWinsOverTheWalletNote() {
+        val t = ok("VM-PLUXEE", "Rs. 8.00 spent from your Pluxee wallet at CAFE on 07-10-2026. Bal Rs. 1,250")
+        assertEquals("Cafe", t.noteFor("spent"))
+        assertEquals("name:WALLET:CAFE", t.payeeKey)
+    }
+
+    @Test fun walletNoteWordsAreNotDoubled() {
+        assertEquals("Paytm Wallet", ok("VM-PAYTMW", "Rs 60 paid from your Paytm Wallet to Chai Point").bank)
+        val t = ok("VM-PAYTMW", "Rs 60 paid from your Paytm Wallet. Bal Rs 340")
+        assertEquals("Paytm Wallet", t.noteFor("spent"))
+    }
+
+    @Test fun plainTextWithoutAWalletNameAndSenderStaysWeak() {
+        assertTrue(parse(null, "Rs 8 spent from your wallet") is ParseResult.Rejected)
+        assertTrue(parse(null, "Rs 8 spent at the cafe") is ParseResult.Rejected)
+    }
+
+    @Test fun walletHandleInAVpaIsNotAWallet() {
+        val t = ok("AX-HDFCBK", "Rs.450.00 debited from A/c XX1234 on 05-10-26 to VPA wallet@okaxis. UPI Ref No 123456789012")
+        assertEquals("UPI", t.paidWith)
+    }
+
+    @Test fun refundsToAWalletAreReceived() {
+        val t = ok("VM-PLUXEE", "Refund of Rs 45.00 credited to your Pluxee wallet from BIG BAZAAR")
+        assertEquals(Direction.Credit, t.direction)
+        assertEquals("Big Bazaar", t.noteFor("received"))
+    }
+
+    @Test fun parserVersionWasBumpedForWallets() {
+        assertTrue(SmsTransactionParser.VERSION >= 2)
     }
 
     @Test fun weakTextFromUnknownSenderIsRejected() {

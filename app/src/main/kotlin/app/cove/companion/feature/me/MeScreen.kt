@@ -41,6 +41,7 @@ fun MeScreen(nav: Nav) {
     val sync by vm.sync.collectAsState()
     val conflictTitle by vm.conflictTitle.collectAsState()
     val backupLabel by vm.backupLabel.collectAsState()
+    val captureMode by vm.captureMode.collectAsState()
     val settings = s ?: return
     var advanced by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
@@ -86,6 +87,8 @@ fun MeScreen(nav: Nav) {
             SettingsRow("Back up now", value = backupLabel, onClick = { vm.resetBackup(); sheet = MeSheet.Backup })
             RowDivider()
             SettingsRow("Privacy and data", value = "Yours", onClick = { sheet = MeSheet.Privacy })
+            RowDivider()
+            SettingsRow("Payments from messages", value = captureMode.label, onClick = { sheet = MeSheet.PaymentsFromMessages })
             RowDivider()
             SettingsRow("Forget imported-message history", onClick = { sheet = MeSheet.ForgetMessages })
             RowDivider()

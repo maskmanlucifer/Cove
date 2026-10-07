@@ -38,6 +38,7 @@ Send with `adb shell am start -n app.cove.companion/.MainActivity <extras>`.
 | `--ez seed true` (`--ez dark true`, `--ez evening true`, `--ez moneyLogged true`, `--es plan todos\|empty\|drag`, `--ez conflict true`) | Load the design's sample data (`CLEAR=1 tools/run.sh` wipes data first) |
 | `--es now HH:mm` (`--es date yyyy-MM-dd`) | Freeze the clock |
 | `--ez journalBlocks true` | Add Journal entries `blocks-text|mid|start|mixed|legacy|missing|long` (every block layout); open with `--es route journal/blocks-mid` |
+| `--es captureMode off\|ask\|auto` (`--ez catchUp true`) | Set "Payments from messages" without the UI; run the since-last-import scan now. Test with `adb emu sms send VM-PLUXEE "Rs 8 spent from Pluxee wallet"` after granting RECEIVE_SMS, READ_SMS, POST_NOTIFICATIONS |
 | `--ei journalPhotos N` | Create journal entry `debug-photos` with N generated photos (several shapes, EXIF-rotated, corrupt) and a voice row; open it with `--es route journal/debug-photos` |
 | `--es route <route>` | Start on a route (`alarms`, `money/categories`, `sync/conflict`, `brief`, `one-thing`, ...; see `navigation/Routes.kt`) |
 | `--es tab plan --es segment 1 --es sheet categories --es title Dentist` | Open a Plan tab view, segment, sheet or prefilled title |
@@ -69,7 +70,7 @@ Release builds ignore all of these. Debug builds also log StrictMode violations 
 - `PLAN.md`: product and architecture plan, decisions, phases.
 - `docs/CONTRIBUTING.md`: how features are built and verified.
 - `docs/CATEGORIZATION.md`: how expenses are filed (rules, learning, payee memory for repeat payments, Review, optional AI cross-check).
-- `docs/SMS_IMPORT.md`: Money > Import from messages: parsing, payee identity, dedupe, privacy, how to add a bank format.
+- `docs/SMS_IMPORT.md`: Money > Import from messages and Payments from messages (new texts captured as they arrive, Off / Ask me / Add automatically, wallets): parsing, payee identity, dedupe, privacy, how to add a bank format.
 - `docs/TRAINING.md`: the simple weekday workout plan, weight suggestion rules, voice phrases.
 - `docs/JOURNAL.md`: journal entries as text, photo and voice blocks: body format, codec rules, legacy entries, search, backup, sync.
 - `docs/audit/LAYOUT.md`: journal photos and viewer, voice-note row, brief controls, profile photo (device-local, 512 px WebP).

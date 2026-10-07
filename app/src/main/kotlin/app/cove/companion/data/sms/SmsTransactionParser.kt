@@ -12,6 +12,8 @@ enum class Direction { Debit, Credit }
 /** Why a message was not taken as a transaction. Debug and tests only; never shown to the user. */
 enum class Rejection {
     Empty, PersonalSender, Otp, Promo, Future, Request, Failed, Due, Statement, BalanceOnly, CardBillAck, Mandate, NoAmount, NoDirection, WeakStructure,
+    /** Money moved between the user's own accounts (a wallet top-up); counting it would double count. */
+    Transfer,
 }
 
 /** Fields read from one bank or UPI message. Never holds the message text. */
@@ -23,14 +25,26 @@ data class ParsedSms(
     /** True when [at] came from the message text rather than the SMS timestamp. */
     val dateFromText: Boolean,
     val last4: String?,
-    /** UPI, Card, Cash or Bank transfer: matches the app's "Paid with" values. */
+    /** UPI, Card, Cash, Wallet or Bank transfer: matches the app's "Paid with" values. */
     val paidWith: String,
     val ref: String?,
+    /** Bank or issuer; the wallet's own name (`Pluxee`, `Paytm Wallet`) when [paidWith] is `Wallet`. */
     val bank: String?,
     val confidence: Float,
     /** Stable identity of the counterparty (see [PayeeKey]); null for ATM cash and generic or unreadable payees. */
     val payeeKey: String? = null,
 )
+
+/**
+ * Note for an expense made from this message: the merchant, else the wallet ("Pluxee wallet") for a wallet payment,
+ * else a plain label for a payment of [kind] (`spent` or `received`).
+ */
+fun ParsedSms.noteFor(kind: String): String = merchant ?: walletNote() ?: if (kind == "received") "Money received" else "Payment"
+
+private fun ParsedSms.walletNote(): String? {
+    val name = bank?.takeIf { paidWith == "Wallet" } ?: return null
+    return if (Regex("""(?i)(wallet|money|card)$""").containsMatchIn(name)) name else "$name wallet"
+}
 
 /** Outcome of [SmsTransactionParser.parse]. */
 sealed interface ParseResult {
@@ -45,7 +59,7 @@ sealed interface ParseResult {
  */
 object SmsTransactionParser {
     /** Bumped when parsing rules change so earlier "ignored" decisions are looked at again. */
-    const val VERSION = 1
+    const val VERSION = 2
 
     private const val MAX_PAISE = 100_00_00_000L * 100
 
@@ -69,7 +83,7 @@ object SmsTransactionParser {
     private val bareAmount = Regex("""(?i)\b(?:debited|credited|withdrawn|spent|sent|paid|received|debit|credit|charged|txn|transaction)\s+(?:by|for|with|of|an amount of|amount)?\s*(?:rs\.?|inr|₹)?\s*(\d[\d,]*\.\d{1,2}|\d{2,}(?:,\d{2,3})*)(?![\d/\-:])""")
     private val balanceBefore = Regex("""(?i)(bal(ance)?|avl|avail(able)?|limit|lmt|outstanding|due|min(imum)?|total)\W{0,12}$""")
 
-    private val debitWord = Regex("""(?i)\b(?:debited|debit(?!\s*card)|spent|sent|paid|payment of|purchase[d]?|withdrawn|withdrawal|charged|charge of|transferred to|transfer to|trf to)\b|\bdr\b\.?(?=\s*(?:from|to|a/c|acct|\d))""")
+    private val debitWord = Regex("""(?i)\b(?:debited|debit(?!\s*card)|deducted|spent|sent|paid|payment of|purchase[d]?|withdrawn|withdrawal|charged|charge of|transferred to|transfer to|trf to)\b|\bdr\b\.?(?=\s*(?:from|to|a/c|acct|\d))""")
     private val creditWord = Regex("""(?i)\b(?:credited|credit(?!\s*(?:card|limit|score|facility))|received|refund(?:ed)?|deposited|added to)\b|\bcr\b\.?(?=\s*(?:to|from|a/c|acct|\d))""")
     private val cardUse = Regex("""(?i)(thank you for using.{0,60}card|card .{0,40}(used|swiped)|used (your|at)|transaction of|txn of|txn rs|txn inr|payment of rs)""")
 
@@ -88,6 +102,35 @@ object SmsTransactionParser {
         Regex("""(?i)\b(?:utr|rrn|ref(?:erence)?|ref\s*no|refno|txn\s*(?:id|no)|transaction\s*(?:id|no|ref)|imps\s*ref|neft\s*ref)\s*(?:no\.?|number|id)?\s*[:.\-#]?\s*([A-Z0-9]{6,24})\b"""),
         Regex("""(?i)\bupi[:/]\s*(\d{9,18})"""),
     )
+
+    /** A prepaid wallet or meal card the parser knows by name; [senderKeys] are parts of the sender id, [body] matches its name in text. */
+    private class Wallet(val name: String, val senderKeys: List<String>, val body: Regex)
+
+    /** Order matters: "Sodexo/Pluxee Meal Card" is a Pluxee card (the Sodexo benefits brand became Pluxee). */
+    private val wallets = listOf(
+        Wallet("Pluxee", listOf("PLUXEE"), Regex("""(?i)\bpluxee\b""")),
+        Wallet("Sodexo", listOf("SODEXO"), Regex("""(?i)\bsodexo\b""")),
+        Wallet("Paytm Wallet", emptyList(), Regex("""(?i)\bpaytm\s+wallet\b""")),
+        Wallet("PhonePe Wallet", emptyList(), Regex("""(?i)\bphone\s?pe\s+wallet\b""")),
+        Wallet("Amazon Pay", emptyList(), Regex("""(?i)\bamazon\s+pay\s+(balance|wallet)\b""")),
+        Wallet("Mobikwik", listOf("MOBIKW", "MBKWIK"), Regex("""(?i)\bmobikwik\b""")),
+        Wallet("Freecharge", listOf("FRCHRG", "FREECH"), Regex("""(?i)\bfreecharge\b""")),
+        Wallet("Zomato Money", emptyList(), Regex("""(?i)\bzomato\s+money\b""")),
+        Wallet("Swiggy Money", emptyList(), Regex("""(?i)\bswiggy\s+money\b""")),
+        Wallet("Meal card", emptyList(), Regex("""(?i)\bmeal\s+(card|wallet|pass)\b""")),
+    )
+    private val plainWallet = Regex("""(?i)(?<![@\w.\-])wallet\b(?!@)""")
+    private val topUp = Regex("""(?i)\b(added|top(ped)?[- ]?up|loaded|load|recharged?|credited)\b""")
+    private val incomeLike = Regex("""(?i)\b(refund(ed)?|cashback|returned)\b""")
+    private val walletSpend = Regex("""(?i)\b(spent|debited|deducted|paid|purchase[d]?)\b""")
+
+    /** The wallet a message is about: from the sender id, then the body; a [Wallet] with a blank name for a plain "wallet". */
+    private fun walletFor(sender: String?, text: String, plain: Boolean): Wallet? {
+        val key = sender?.uppercase()?.substringAfter('-')?.substringBefore('-')
+        if (key != null) wallets.firstOrNull { w -> w.senderKeys.any { key.contains(it) } }?.let { return it }
+        wallets.firstOrNull { it.body.containsMatchIn(text) }?.let { return it }
+        return if (plain && plainWallet.containsMatchIn(text)) Wallet("", emptyList(), plainWallet) else null
+    }
 
     private val bankByKey = linkedMapOf(
         "HDFC" to "HDFC Bank", "ICICI" to "ICICI Bank", "SBI" to "SBI", "AXIS" to "Axis Bank", "KOTAK" to "Kotak Bank",
@@ -136,8 +179,12 @@ object SmsTransactionParser {
         val last4 = last4Regex.find(text)?.groupValues?.get(1)?.takeLast(4)
         val ref = findRef(text)
         val vpaMatch = vpa.find(text)
+        val upiWord = Regex("""(?i)\bupi\b""").containsMatchIn(text)
+        val wallet = walletFor(senderId, text, plain = vpaMatch == null && !upiWord)
+        if (wallet != null && direction == Direction.Credit && !incomeLike.containsMatchIn(text) && topUp.containsMatchIn(text)) return reject(Rejection.Transfer)
         val bankish = senderId != null && senderShape.matches(senderId.uppercase())
-        val strong = strongToken.containsMatchIn(text) && (last4 != null || ref != null || vpaMatch != null || Regex("""(?i)\b(upi|atm|imps|neft|rtgs)\b""").containsMatchIn(text))
+        val strong = strongToken.containsMatchIn(text) && (last4 != null || ref != null || vpaMatch != null || Regex("""(?i)\b(upi|atm|imps|neft|rtgs)\b""").containsMatchIn(text)) ||
+            (wallet != null && wallet.name.isNotEmpty() && direction == Direction.Debit && walletSpend.containsMatchIn(text))
         if (!bankish && !strong) return reject(Rejection.WeakStructure)
 
         val atm = Regex("""(?i)\batm\b|cash withdrawal|withdrawn at""").containsMatchIn(text)
@@ -145,19 +192,20 @@ object SmsTransactionParser {
         val (at, fromText) = findInstant(text, receivedAt, zone)
         val paidWith = when {
             atm -> "Cash"
+            wallet != null -> "Wallet"
             Regex("""(?i)\bcard\b""").containsMatchIn(text) && vpaMatch == null && !Regex("""(?i)\bupi\b""").containsMatchIn(text) -> "Card"
             Regex("""(?i)\bupi\b|@[a-z]{2,}|\bvpa\b""").containsMatchIn(text) -> "UPI"
             Regex("""(?i)^(sent|paid)\b""").containsMatchIn(text) -> "UPI"
             else -> "Bank transfer"
         }
-        val bank = bankFor(senderId, text)
+        val bank = wallet?.name?.takeIf { it.isNotEmpty() } ?: if (wallet != null) null else bankFor(senderId, text)
         var conf = 0.45f
         if (bankish) conf += 0.2f
         if (ref != null) conf += 0.1f
         if (last4 != null) conf += 0.1f
         if (merchant != null) conf += 0.1f
         if (fromText) conf += 0.05f
-        val payeeKey = if (atm) null else PayeeKey.derive(payeeVpa(text), merchant, paidWith)
+        val payeeKey = if (atm) null else PayeeKey.derive(payeeVpa(text), merchant ?: wallet?.name?.takeIf { it.isNotEmpty() && direction == Direction.Debit }, paidWith)
         return ParseResult.Accepted(ParsedSms(amount, direction, merchant, at, fromText, last4, paidWith, ref, bank, conf.coerceAtMost(1f), payeeKey))
     }
 

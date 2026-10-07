@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -25,13 +26,18 @@ import app.cove.companion.data.local.entity.SettingsEntity
 import app.cove.companion.data.media.PhotoQuality
 import app.cove.companion.feature.onboarding.WakeWheel
 import app.cove.companion.design.components.Segmented
+import app.cove.companion.data.sms.CaptureMode
+import app.cove.companion.feature.money.live.PaymentsModePicker
+import app.cove.companion.feature.money.live.PaymentsPermissionGuide
+import app.cove.companion.feature.money.live.PaymentsPrivacyNote
+import app.cove.companion.feature.money.live.rememberPaymentsAccess
 import app.cove.companion.feature.plan.PlanSheet
 import app.cove.companion.feature.security.LockAfterSheet
 import app.cove.companion.feature.security.LockUnavailableSheet
 import app.cove.companion.feature.plan.TitleField
 
 /** Which Me sheet is open. */
-enum class MeSheet { Name, Wake, Brief, OneThing, Spoken, Nudges, Motion, Look, Privacy, PhotoQuality, Backup, Restore, LockAfter, LockUnavailable, VoiceCheck, ForgetMessages, ClearData }
+enum class MeSheet { Name, Wake, Brief, OneThing, Spoken, Nudges, Motion, Look, Privacy, PhotoQuality, Backup, Restore, LockAfter, LockUnavailable, VoiceCheck, ForgetMessages, ClearData, PaymentsFromMessages }
 
 /** Hosts whichever sheet [sheet] names, reading and writing through [vm]. */
 @Composable
@@ -95,6 +101,7 @@ fun MeSheets(sheet: MeSheet?, s: SettingsEntity, vm: MeViewModel, briefPlay: () 
             )
         }
         MeSheet.Privacy -> PrivacySheet(onDismiss) { onDismiss(); onOpen(MeSheet.ClearData) }
+        MeSheet.PaymentsFromMessages -> PaymentsSheet(vm, onDismiss)
         MeSheet.ForgetMessages -> PlanSheet(onDismiss, gap = 16) { close ->
             SheetHeading("Forget imported-message history")
             SheetCaption("Cove will no longer remember which messages it has already looked at. Your expenses stay exactly as they are. Next time, Cove checks for repeats against your expenses.")
@@ -117,6 +124,20 @@ fun MeSheets(sheet: MeSheet?, s: SettingsEntity, vm: MeViewModel, briefPlay: () 
             SheetCaption(photoQualityHelp(s.photoQuality))
         }
         MeSheet.Backup, MeSheet.Restore -> BackupSheet(sheet == MeSheet.Restore, vm, onDismiss, openConnect)
+    }
+}
+
+/** "Payments from messages": the mode, what it needs, and the privacy promise. */
+@Composable
+private fun PaymentsSheet(vm: MeViewModel, onDismiss: () -> Unit) {
+    val mode by vm.captureMode.collectAsState()
+    val access = rememberPaymentsAccess()
+    PlanSheet(onDismiss, gap = 16) {
+        SheetHeading("Payments from messages")
+        SheetCaption("Cove can notice a payment the moment its message arrives. It needs “Receive text messages” and “Read text messages”.")
+        PaymentsModePicker(mode, { m -> vm.setCaptureMode(m); if (m != CaptureMode.Off && !access.granted) access.askPermissions() })
+        PaymentsPermissionGuide(mode, access)
+        PaymentsPrivacyNote()
     }
 }
 
