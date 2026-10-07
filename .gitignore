@@ -8,3 +8,11 @@ captures/
 *.jks
 *.keystore
 keystore.properties
+.kotlin/
+.claude/
+*.apk
+*.aab
+.env
+cove-setup*
+*.p12
+*.pem

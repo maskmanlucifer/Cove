@@ -17,7 +17,7 @@ Each service sheet in the app has the same steps with "Open dashboard" buttons a
 ## 1. Supabase (sync)
 1. Create a free project at [supabase.com/dashboard](https://supabase.com/dashboard). On the new-project form leave **Enable Data API** on (Cove syncs through it). **Automatically expose new tables** can stay on or off: `setup.sql` grants signed-in users access itself, and every table is protected by row-level security so each user only ever sees their own rows.
 2. Open **SQL Editor > New query**, paste the contents of `supabase/setup.sql` (in the app: Supabase sheet > **Copy setup SQL**), and run it. It is safe to run twice.
-3. Open **Project Settings > API**. Copy the **Project URL** (`https://xxxx.supabase.co`) and the **anon public** key (a long text starting `eyJ`). Never use the `service_role` key; the app refuses it.
+3. Open **Project Settings > API**. Copy the **Project URL** (`https://xxxx.supabase.co`) and the **anon public** key (a long text starting `eyJ`; the newer `sb_publishable_…` key also works). Never use the `service_role` or a secret key; the app refuses them.
 4. In the app: Connect services > Supabase, paste both, **Test connection**. A good result says it is reachable, the key works and the tables are there. If it says the tables are missing, step 2 was not run.
 
 Free projects pause after a week without use. Using the app counts; see "Keep the project awake" in `supabase/README.md` if you want a ping.
@@ -25,7 +25,7 @@ Free projects pause after a week without use. Using the app counts; see "Keep th
 ## 2. Google sign-in
 Sign-in goes Google account > your Supabase project, so do Supabase first.
 1. [Google Cloud console](https://console.cloud.google.com): create a project (or reuse one).
-2. **APIs & Services > OAuth consent screen**: fill in app name and your email, add yourself, then **Publish app** so the status is **In production**. (In "Testing" Google logs you out every 7 days.) No verification is needed for the basic scopes used here.
+2. **APIs & Services > OAuth consent screen**: fill in app name and your email, add yourself, then **Publish app** so the status is **In production**. (In "Testing" Google logs you out every 7 days, and only accounts listed under **Test users** can sign in or connect Drive; otherwise Google shows "403: access_denied".) No verification is needed for the basic scopes used here.
 3. **Credentials > Create credentials > OAuth client ID**, type **Web application**. Copy the **Client ID** (ends `.apps.googleusercontent.com`) and the **Client secret**.
 4. **Android client** (needed for the sign-in sheet to appear): create another OAuth client, type **Android**, package name `app.cove.companion`, and the SHA-1 shown in Connect services > Google Drive (the sheet reads it from the installed build). Add one per build you use (debug and release differ).
 5. In Supabase: **Authentication > Providers > Google**: enable, paste the web Client ID and secret, save. Under Authentication > URL configuration nothing is needed for an Android app.
