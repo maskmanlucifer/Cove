@@ -319,9 +319,13 @@ class VoiceViewModel(private val c: AppContainer) : ViewModel() {
                 }
             }
             is AiResult.Failed -> {
-                val guesses = c.ai.guessIntents(text)
-                // Nothing in the app fits and nothing looks like a half-heard command: if it reads like something to keep, offer to keep it.
-                if (guesses.isEmpty() && MemoryNotes.looksLikeNote(text)) {
+                // No rule fits. First read dates, amounts and numbers out of it (resolved properly, unlike a bare "5 am" guess),
+                // then offer the half-heard guesses, then keep it as a plain note.
+                val details = c.ai.readDetails(text)
+                val guesses = if (details.isEmpty()) c.ai.guessIntents(text) else emptyList()
+                if (details.isNotEmpty()) {
+                    _state.update { it.copy(busy = false, stage = Stage.Result, drafts = details, categories = categories, expenseCategories = expenseCats) }
+                } else if (guesses.isEmpty() && MemoryNotes.looksLikeNote(text)) {
                     _state.update { it.copy(busy = false, stage = Stage.Result, drafts = listOf(MemoryNotes.note(text)), categories = categories, expenseCategories = expenseCats) }
                 } else {
                     _state.update { it.copy(busy = false, stage = Stage.Partial, guesses = guesses, transcript = text) }

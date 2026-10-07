@@ -70,6 +70,12 @@ interface AiService {
      */
     suspend fun adviseWorkout(request: AdviceRequest): AiResult<String>
 
+    /**
+     * Drafts for text no rule understood, built from the dates, amounts, phone numbers and the like a small model on this
+     * phone finds in it. Empty when the setting is off, the model is not ready yet, or nothing clear was found. On-device only.
+     */
+    suspend fun readDetails(text: String): List<VoiceIntent> = emptyList()
+
     /** What each capability can use right now and why not, for settings screens. */
     suspend fun status(): AiStatus
 

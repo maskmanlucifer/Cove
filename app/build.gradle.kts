@@ -16,8 +16,8 @@ android {
         applicationId = "app.cove.companion"
         minSdk = 31
         targetSdk = 36
-        versionCode = 16
-        versionName = "0.2.12"
+        versionCode = 17
+        versionName = "0.2.13"
 
         buildConfigField("String", "SUPABASE_URL", "\"${providers.gradleProperty("supabaseUrl").getOrElse("")}\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"${providers.gradleProperty("supabaseAnonKey").getOrElse("")}\"")
@@ -113,6 +113,7 @@ dependencies {
 
     implementation(libs.mlkit.genai.prompt)
     implementation(libs.mlkit.genai.speech)
+    implementation(libs.mlkit.entity)
 
     implementation(libs.ktor.client.okhttp)
     implementation(libs.ktor.client.content)

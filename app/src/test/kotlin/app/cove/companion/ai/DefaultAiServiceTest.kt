@@ -17,6 +17,10 @@ import java.time.LocalDateTime
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import app.cove.companion.ai.model.DetailKind
+import app.cove.companion.ai.model.FoundDetail
+import app.cove.companion.ai.model.VoiceIntent
+import app.cove.companion.ai.provider.ondevice.EntityReader
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -25,10 +29,12 @@ class DefaultAiServiceTest {
     private val rules = RuleParser(clock)
     private val unknown = "could you maybe sort the dog situation"
     private var foreground = true
+    private var detailsOn = true
+    private var entities: EntityReader? = null
 
     private fun service(providers: AiProviders, check: suspend (String, String) -> CloudCheck = { _, _ -> CloudCheck(true, "ok") }): AiService {
         val router = AiRouter(providers, AiPolicy({ foreground }, { true }), backoffMs = 1)
-        return DefaultAiService(router, providers, TypedSpeechProvider(), rules, clock, check)
+        return DefaultAiService(router, providers, TypedSpeechProvider(), rules, clock, entities, { detailsOn }, check)
     }
 
     private val nano get() = FakeIntentProvider("nano", Location.Native, ok(todoIntents, "nano"))
@@ -144,5 +150,37 @@ class DefaultAiServiceTest {
         session.submit("add milk")
         val event = session.events.first()
         assertEquals("add milk", (event as app.cove.companion.ai.model.SpeechEvent.Final).text)
+    }
+
+    private class FakeReader(val ready: Boolean = true, val found: List<FoundDetail> = emptyList(), val fails: Boolean = false) : EntityReader {
+        var reads = 0
+        override suspend fun ready() = ready
+        override suspend fun read(text: String, nowMs: Long): List<FoundDetail> {
+            reads++
+            if (fails) error("model broke")
+            return found
+        }
+    }
+
+    private val phone = FoundDetail(DetailKind.Phone, 20, 31, "98123 45678")
+
+    @Test fun readDetailsDraftsFromWhatTheReaderFinds() = runBlocking {
+        entities = FakeReader(found = listOf(phone))
+        val drafts = service(AiProviders()).readDetails("The landlord's number is 98123 45678")
+        assertTrue(drafts.single() is VoiceIntent.Remember)
+    }
+
+    @Test fun readDetailsDoesNothingWhenOffMissingNotReadyOrBroken() = runBlocking {
+        val text = "The landlord's number is 98123 45678"
+        assertTrue(service(AiProviders()).readDetails(text).isEmpty())          // no reader at all
+        val reader = FakeReader(found = listOf(phone)); entities = reader
+        detailsOn = false
+        assertTrue(service(AiProviders()).readDetails(text).isEmpty())          // switched off
+        assertEquals(0, reader.reads)
+        detailsOn = true
+        entities = FakeReader(ready = false, found = listOf(phone))
+        assertTrue(service(AiProviders()).readDetails(text).isEmpty())          // model still downloading
+        entities = FakeReader(fails = true)
+        assertTrue(service(AiProviders()).readDetails(text).isEmpty())          // a failing model never breaks the command
     }
 }

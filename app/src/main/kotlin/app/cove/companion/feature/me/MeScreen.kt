@@ -42,6 +42,7 @@ fun MeScreen(nav: Nav) {
     val conflictTitle by vm.conflictTitle.collectAsState()
     val backupLabel by vm.backupLabel.collectAsState()
     val captureMode by vm.captureMode.collectAsState()
+    val readDetails by vm.readDetails.collectAsState()
     val settings = s ?: return
     var advanced by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
@@ -116,6 +117,8 @@ fun MeScreen(nav: Nav) {
                 SettingsRow("Wake-up time", value = clockLabel(settings.wakeMinutes), onClick = { sheet = MeSheet.Wake })
                 RowDivider()
                 SettingsRow("Spoken replies", value = onOff(settings.spokenReplies), onClick = { sheet = MeSheet.Spoken })
+                RowDivider()
+                SettingsRow("Understand details", value = onOff(readDetails), onClick = { sheet = MeSheet.Details })
                 RowDivider()
                 SettingsRow("Voice check", onClick = { sheet = MeSheet.VoiceCheck })
                 RowDivider()

@@ -2,6 +2,7 @@ package app.cove.companion
 
 import android.content.Context
 import app.cove.companion.core.Clock
+import app.cove.companion.ai.provider.ondevice.MlKitEntityReader
 import app.cove.companion.data.auth.AuthRepository
 import app.cove.companion.data.auth.EncryptedSessionStore
 import app.cove.companion.ai.AiPolicy
@@ -53,6 +54,7 @@ import app.cove.companion.data.sms.SmsCapturePrefs
 import app.cove.companion.data.sms.SmsCatchUp
 import app.cove.companion.data.sms.SmsLiveCapture
 import app.cove.companion.data.memory.MemoryRepository
+import app.cove.companion.data.config.AssistantPrefs
 import app.cove.companion.data.sms.SmsImportRepository
 import app.cove.companion.data.sms.SmsSource
 import app.cove.companion.data.repo.PlanRepository
@@ -174,6 +176,7 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
 
     /** "Payments from messages": this device's mode, in plain preferences so the SMS receiver can read it first. */
     val smsCapturePrefs = SmsCapturePrefs(context.applicationContext)
+    val assistantPrefs = AssistantPrefs(context.applicationContext)
 
     /** Handles payments found in new messages and the Add / Skip / Undo notification actions (see `docs/SMS_IMPORT.md`). */
     val smsCapture = SmsLiveCapture(database, money, smsImport, smsCapturePrefs)
@@ -318,7 +321,7 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
             app.cove.companion.ai.speech.SpeechLogBook.add(line)
             if (BuildConfig.DEBUG) android.util.Log.d("CoveVoice", line)
         })
-        DefaultAiService(router, providers, typed, rules, clock) { key, model ->
+        DefaultAiService(router, providers, typed, rules, clock, MlKitEntityReader(), { assistantPrefs.readDetails.value }) { key, model ->
             GeminiConnectionCheck.run(GeminiDirectClient(key, model, "", httpClient))
         }
     }

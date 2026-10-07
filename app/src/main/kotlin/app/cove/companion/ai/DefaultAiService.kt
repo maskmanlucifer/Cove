@@ -10,6 +10,7 @@ import app.cove.companion.ai.model.AdviceRequest
 import app.cove.companion.ai.model.CategoryRequest
 import app.cove.companion.ai.model.CategorySuggestion
 import app.cove.companion.ai.model.CloudCheck
+import app.cove.companion.ai.model.DetailDrafts
 import app.cove.companion.ai.model.IntentContext
 import app.cove.companion.ai.model.IntentRequest
 import app.cove.companion.ai.model.Location
@@ -21,6 +22,7 @@ import app.cove.companion.ai.speech.SpeechDebug
 import app.cove.companion.ai.model.Summary
 import app.cove.companion.ai.model.TypedSession
 import app.cove.companion.ai.model.VoiceIntent
+import app.cove.companion.ai.provider.ondevice.EntityReader
 import app.cove.companion.ai.provider.rules.RuleParser
 import app.cove.companion.ai.provider.rules.TypedSpeechProvider
 import app.cove.companion.core.Clock
@@ -36,6 +38,8 @@ import java.time.format.DateTimeFormatter
  *
  * @param typed the typed-input provider, also listed in `providers.speech` for status.
  * @param rules used only for [guessIntents].
+ * @param entities reads details out of text for [readDetails]; null turns the feature off.
+ * @param readDetailsOn the user's setting, asked on every call.
  * @param cloudCheck runs "Test connection" for the cloud provider.
  */
 class DefaultAiService(
@@ -44,6 +48,8 @@ class DefaultAiService(
     private val typed: TypedSpeechProvider,
     private val rules: RuleParser,
     private val clock: Clock,
+    private val entities: EntityReader? = null,
+    private val readDetailsOn: () -> Boolean = { true },
     private val cloudCheck: suspend (apiKey: String, model: String) -> CloudCheck,
 ) : AiService {
     override suspend fun parseIntent(transcript: String, context: IntentContext): AiResult<ParsedIntents> {
@@ -55,6 +61,19 @@ class DefaultAiService(
     }
 
     override fun guessIntents(text: String): List<VoiceIntent> = rules.guesses(text)
+
+    override suspend fun readDetails(text: String): List<VoiceIntent> {
+        val reader = entities ?: return emptyList()
+        if (!readDetailsOn()) return emptyList()
+        return try {
+            if (!reader.ready()) emptyList()
+            else clock.now().let { now -> DetailDrafts.draft(text, reader.read(text, now), now) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
 
     override suspend fun composeBriefLines(facts: BriefInput): AiResult<BriefLines> {
         val safe = facts.facts.filterKeys { !it.contains("journal", ignoreCase = true) }

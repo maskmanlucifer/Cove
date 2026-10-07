@@ -39,7 +39,7 @@ import app.cove.companion.feature.security.LockUnavailableSheet
 import app.cove.companion.feature.plan.TitleField
 
 /** Which Me sheet is open. */
-enum class MeSheet { Name, Wake, Brief, OneThing, Spoken, Nudges, Motion, Look, Privacy, PhotoQuality, Backup, Restore, LockAfter, LockUnavailable, VoiceCheck, ForgetMessages, ClearData, PaymentsFromMessages }
+enum class MeSheet { Name, Wake, Brief, OneThing, Spoken, Details, Nudges, Motion, Look, Privacy, PhotoQuality, Backup, Restore, LockAfter, LockUnavailable, VoiceCheck, ForgetMessages, ClearData, PaymentsFromMessages }
 
 /** Hosts whichever sheet [sheet] names, reading and writing through [vm]. */
 @Composable
@@ -64,6 +64,12 @@ fun MeSheets(sheet: MeSheet?, s: SettingsEntity, vm: MeViewModel, briefPlay: () 
             SheetHeading("Spoken replies")
             OnOffSegment(s.spokenReplies) { on -> vm.update { it.copy(spokenReplies = on) } }
             SheetCaption("Cove answers out loud after you speak to it.")
+        }
+        MeSheet.Details -> PlanSheet(onDismiss, gap = 16) {
+            val on by vm.readDetails.collectAsState()
+            SheetHeading("Understand details")
+            OnOffSegment(on) { vm.setReadDetails(it) }
+            SheetCaption("When Cove does not understand something you say, a small model on this phone looks for dates, amounts and phone numbers in it and drafts a reminder or an expense. Nothing leaves your phone. It downloads once, on Wi-Fi.")
         }
         MeSheet.Nudges -> PlanSheet(onDismiss, gap = 16) {
             SheetHeading("Nudges")

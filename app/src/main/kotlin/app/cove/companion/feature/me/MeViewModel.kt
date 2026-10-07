@@ -30,6 +30,11 @@ class MeViewModel(private val c: AppContainer) : ViewModel() {
     val settings: StateFlow<SettingsEntity?> =
         c.settings.settings.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+    /** Whether Cove reads dates, amounts and numbers out of text it did not understand, on this phone. */
+    val readDetails: StateFlow<Boolean> = c.assistantPrefs.readDetails
+
+    fun setReadDetails(on: Boolean) = c.assistantPrefs.setReadDetails(on)
+
     /** This device's "Payments from messages" mode. */
     val captureMode: StateFlow<CaptureMode> = c.smsCapturePrefs.mode
 
