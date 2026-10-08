@@ -34,6 +34,9 @@ import kotlinx.coroutines.flow.map
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
+import app.cove.companion.design.components.SwipePages
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.cove.companion.design.components.CoveDock
@@ -52,7 +55,7 @@ private val DockFadeHeight = 112.dp
  * The four swipeable pages. Me is not one of them: it opens over the pages from the dock or the profile bubble on Today,
  * so the dots in the dock always count these four.
  */
-private val Pages = Tab.entries.filter { it != Tab.Me }
+private val Pages = SwipePages
 
 /**
  * Swipe sideways between Today, Plan, Money and Journal; the dock's pill and dots follow the page. Each page keeps its
@@ -61,7 +64,7 @@ private val Pages = Tab.entries.filter { it != Tab.Me }
 @Composable
 private fun PageHost(state: PagerState, onMe: Boolean, nav: Nav, openMe: () -> Unit) {
     val reduce = LocalReduceMotion.current
-    HorizontalPager(state, Modifier.fillMaxSize(), key = { Pages[it].name }) { index ->
+    HorizontalPager(state, Modifier.fillMaxSize().then(if (onMe) Modifier.clearAndSetSemantics { } else Modifier), key = { Pages[it].name }) { index ->
         Box(Modifier.fillMaxSize()) {
             when (Pages[index]) {
                 Tab.Today -> TodayScreen(nav, onOpenMe = openMe)
@@ -77,7 +80,8 @@ private fun PageHost(state: PagerState, onMe: Boolean, nav: Nav, openMe: () -> U
         enter = fadeIn(tween(if (reduce) ReducedMotionMillis else NavMotion.TAB_MS, easing = NavMotion.Ease)),
         exit = fadeOut(tween(if (reduce) ReducedMotionMillis else NavMotion.TAB_MS, easing = NavMotion.Ease)),
     ) {
-        Box(Modifier.fillMaxSize().background(Cove.colors.canvas)) { MeScreen(nav) }
+        // Opaque and touch-absorbing, so nothing underneath can be tapped while Me is open.
+        Box(Modifier.fillMaxSize().background(Cove.colors.canvas).pointerInput(Unit) {}) { MeScreen(nav) }
     }
 }
 

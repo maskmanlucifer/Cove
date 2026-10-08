@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -198,7 +199,7 @@ private fun ExpandedCard(
             CoveText(countText(group), Modifier.offset(y = CountOffset), style = CoveType.Meta, color = c.muted)
         }
         if (empty) EmptyState(actions.voice, big = allEmpty)
-        (visibleOpen + group.doneToday).sortedBy { it.sort }.forEach { todo ->
+        (visibleOpen + group.doneToday).sortedBy { it.sort }.forEach { todo -> key(todo.id) {
             val index = openIds.indexOf(todo.id)
             if (index < 0) {
                 DoneRow(todo, id, actions)
@@ -212,7 +213,7 @@ private fun ExpandedCard(
                     onDrop = { actions.move(todo.id, it.categoryId, it.index) },
                 )
             }
-        }
+        } }
         if (group.open.size > VISIBLE_OPEN_LIMIT) {
             FooterRow(if (showAll) "Show fewer" else "Show all ${group.open.size}", showAll, onShowAll)
         }

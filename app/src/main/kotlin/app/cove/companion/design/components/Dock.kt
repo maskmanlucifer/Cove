@@ -65,6 +65,9 @@ enum class Tab(val label: String, val icon: ImageVector, val selectedIcon: Image
     Me("Me", CoveIcons.Me, CoveIcons.MeBold),
 }
 
+/** The pages you swipe between, in order. Me is not one of them: it opens over the pages. Reordering [Tab] never changes this. */
+val SwipePages: List<Tab> = listOf(Tab.Today, Tab.Plan, Tab.Money, Tab.Journal)
+
 /** Pure pieces of the bottom bar, kept apart from the composable so they can be unit tested. */
 object DockSwitcher {
     /** How long the expanded icon row stays up before it settles away on its own. */
@@ -76,11 +79,10 @@ object DockSwitcher {
     /** Open the switcher unless it is already open; the same tap closes it. */
     fun toggle(expanded: Boolean): Boolean = !expanded
 
-    /** The swipeable pages are every tab except Me. */
-    val pageCount: Int = Tab.entries.size - 1
+    val pageCount: Int get() = SwipePages.size
 
-    /** Which page dot is lit for [tab]: its position among the swipeable pages, or -1 for Me. */
-    fun pageIndex(tab: Tab): Int = if (tab == Tab.Me) -1 else tab.ordinal
+    /** Which page dot is lit for [tab]: its position among [SwipePages], or -1 for Me. */
+    fun pageIndex(tab: Tab): Int = SwipePages.indexOf(tab)
 
     /** Spoken description of the collapsed pill, e.g. "Page 2 of 4, Plan. Tap to choose a page". */
     fun pillDescription(tab: Tab): String =

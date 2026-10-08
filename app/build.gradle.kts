@@ -16,8 +16,8 @@ android {
         applicationId = "app.cove.companion"
         minSdk = 31
         targetSdk = 36
-        versionCode = 17
-        versionName = "0.2.13"
+        versionCode = 18
+        versionName = "0.2.14"
 
         buildConfigField("String", "SUPABASE_URL", "\"${providers.gradleProperty("supabaseUrl").getOrElse("")}\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"${providers.gradleProperty("supabaseAnonKey").getOrElse("")}\"")

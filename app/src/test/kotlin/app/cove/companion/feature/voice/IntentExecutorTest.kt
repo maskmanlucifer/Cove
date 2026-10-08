@@ -164,6 +164,16 @@ class IntentExecutorTest {
     }
 
     @Test
+    fun whatMustStayOnThePhoneIsNeverStoredWordForWordInTheSyncedCommandLog() {
+        val secret = "remember that my locker code is 4492"
+        runBlocking { exec.execute(secret, listOf(VoiceIntent.Remember("My locker code is 4492", "locker code", "is 4492", "note"))) }
+        runBlocking { exec.execute("journal I felt anxious today", listOf(VoiceIntent.JournalNote("I felt anxious today"))) }
+        assertTrue(store.commands.none { it.transcript.contains("4492") || it.transcript.contains("anxious") })
+        runBlocking { exec.execute("buy milk", listOf(VoiceIntent.AddTodos(listOf(TodoDraft("Milk", null))))) }
+        assertEquals("buy milk", store.commands.last().transcript)
+    }
+
+    @Test
     fun recallIsAnsweredAndNotRecorded() {
         run(VoiceIntent.Remember("Passport is in the blue folder", "passport", "in the blue folder", "place"))
         val before = store.commands.size

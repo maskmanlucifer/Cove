@@ -88,9 +88,11 @@ class IntentExecutor(private val store: VoiceStore, private val clock: Clock, pr
                 )
             }
         }
-        val command = if (acc.isEmpty) null else store.recordCommand(
-            transcript, intents.joinToString(",") { it.type }, json.encodeToString(acc),
-        )
+        val types = intents.joinToString(",") { it.type }
+        // voice_commands syncs to the user's cloud project, so what was meant to stay on this phone (notes to remember, journal
+        // lines) is never stored there word for word: only the kinds of intent are.
+        val stays = intents.any { it is VoiceIntent.Remember || it is VoiceIntent.JournalNote }
+        val command = if (acc.isEmpty) null else store.recordCommand(if (stays) types else transcript, types, json.encodeToString(acc))
         val summary = when {
             summaries.size == 1 -> summaries.single()
             summaries.isEmpty() -> failed.firstOrNull() ?: "Nothing saved"

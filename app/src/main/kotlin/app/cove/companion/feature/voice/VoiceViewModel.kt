@@ -383,7 +383,7 @@ class VoiceViewModel(private val c: AppContainer) : ViewModel() {
     /** Saves every draft and closes; the chip with Undo appears over Today. */
     fun save() {
         val s = _state.value
-        if (s.busy || s.drafts.isEmpty()) return
+        if (s.busy || s.done || s.drafts.isEmpty()) return
         _state.update { it.copy(busy = true) }
         viewModelScope.launch {
             val r = kit.executor.execute(s.transcript, s.drafts)
