@@ -109,6 +109,14 @@ class RuleParserTest {
         assertEquals(emptyList<VoiceIntent>(), parser.guesses("blah"))
     }
 
+    @Test fun aCountOfThingsIsNotAnAmount() {
+        for (said in listOf("bought 2 apples", "bought 3 kg rice", "bought 2 shirts and 1 pant")) {
+            assertTrue(said, parser.parse(said).none { it is VoiceIntent.LogExpense })
+        }
+        val e = parser.parse("bought 2 kg rice for 120").single() as VoiceIntent.LogExpense
+        assertEquals(12000L, e.amountPaise)
+    }
+
     @Test fun anAlarmForTomorrowKeepsBareHoursInTheMorning() {
         assertEquals(listOf<VoiceIntent>(VoiceIntent.SetAlarm(4 * 60)), parser.parse("wake me at 4 tomorrow", habits))
     }

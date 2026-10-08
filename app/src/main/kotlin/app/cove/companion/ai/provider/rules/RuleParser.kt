@@ -164,6 +164,19 @@ class RuleParser(private val clock: Clock, private val categories: CategoryResol
         "\\b(?:using|via|with|by|through|on|in)\\s+(?:my\\s+)?(upi|cash|(?:credit |debit )?card|g ?pay|google pay|phone ?pe|paytm|net ?banking)\\b", opts,
     )
 
+    private val afterBareAmount = Regex(
+        "^\\s*(?:$|[.,;!?]|(?:on|for|at|to|from|in|using|via|with|by|through|towards|today|yesterday|just|this|tonight|only|and|rupees?|rs|bucks)\\b)", opts,
+    )
+
+    /**
+     * A number is money when it carries a currency mark or `k`, or when what follows reads like a payment
+     * ("500 for rent"), never when it is a count of things ("2 apples", "3 kg rice").
+     */
+    private fun looksLikeMoney(text: String, m: MatchResult): Boolean {
+        val marked = m.value.any { it == '₹' } || Regex("^(?:rs|inr|rupees)", opts).containsMatchIn(m.value.trim()) || m.groupValues[2].isNotBlank()
+        return marked || afterBareAmount.containsMatchIn(text.substring(m.range.last + 1))
+    }
+
     private fun expense(c: String): VoiceIntent.LogExpense? {
         val received = receivedLead.containsMatchIn(c) && Regex("\\d").containsMatchIn(c)
         val isExpense = spentLead.containsMatchIn(c) || logLead.containsMatchIn(c) || received
@@ -171,7 +184,7 @@ class RuleParser(private val clock: Clock, private val categories: CategoryResol
         val now = clock.now().toLocalDateTime()
         val time = WhenParser.findTime(c, allowBareHour = false)
         val noTime = if (time != null) c.removeRange(time.range) else c
-        val m = amount.find(noTime) ?: return null
+        val m = amount.findAll(noTime).firstOrNull { received || logLead.containsMatchIn(c) || looksLikeMoney(noTime, it) } ?: return null
         var value = m.groupValues[1].replace(",", "").toDouble()
         if (m.groupValues[2].trim().equals("k", true)) value *= 1000
         val paise = Math.round(value * 100)

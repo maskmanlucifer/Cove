@@ -252,10 +252,13 @@ object SmsTransactionParser {
     }
 
     private fun findDirection(text: String): Direction? {
-        val d = debitWord.find(text)?.range?.first
+        val dm = debitWord.find(text)
+        val d = dm?.range?.first
         val c = creditWord.find(text)?.range?.first
+        // "payment of Rs 500 received" names the amount first and the direction last.
+        val noun = dm != null && dm.value.lowercase().let { it == "payment of" || it == "charge of" }
         return when {
-            d != null && c != null -> if (d <= c) Direction.Debit else Direction.Credit
+            d != null && c != null -> if (d <= c && !(noun && c > d)) Direction.Debit else Direction.Credit
             d != null -> Direction.Debit
             c != null -> Direction.Credit
             cardUse.containsMatchIn(text) -> Direction.Debit

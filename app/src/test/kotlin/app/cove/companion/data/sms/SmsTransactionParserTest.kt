@@ -26,6 +26,7 @@ class SmsTransactionParserTest {
     )
 
     private val accepted = listOf(
+        Case("payment received is a credit", "AX-HDFCBK", "Payment of Rs.1500.00 received in A/c XX1234 on 05-10-26 from VPA rahul@okicici. UPI Ref No 123456789012", 150000, Direction.Credit, "Rahul", "1234", "123456789012", "UPI", "HDFC Bank", at(2026, 10, 5, 10, 22)),
         Case("hdfc upi debit", "AX-HDFCBK", "Rs.450.00 debited from A/c XX1234 on 05-10-26 to VPA zomato@okaxis. UPI Ref No 123456789012", 45000, Direction.Debit, "Zomato", "1234", "123456789012", "UPI", "HDFC Bank", at(2026, 10, 5, 10, 22)),
         Case("hdfc sent", "AD-HDFCBK", "Sent Rs.250.00 From HDFC Bank A/c *1234 To SWIGGY On 05/10/26 Ref 628374650192 Not You? Call 18002586161", 25000, Direction.Debit, "Swiggy", "1234", "628374650192", null, "HDFC Bank"),
         Case("hdfc card spent", "VM-HDFCBK", "INR 1,200.00 spent on HDFC Bank Card x1234 at AMAZON PAY on 05-Oct-26", 120000, Direction.Debit, "Amazon Pay", "1234", null, "Card", "HDFC Bank", at(2026, 10, 5, 10, 22)),
