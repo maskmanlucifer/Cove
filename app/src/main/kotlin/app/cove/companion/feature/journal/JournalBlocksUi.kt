@@ -157,7 +157,7 @@ internal fun Modifier.moveActions(canUp: Boolean, canDown: Boolean, move: (Int) 
 }
 
 /**
- * Grows with its content. Backspace at the very start of a text block that follows media does not delete the media:
+ * Grows with its content; [readOnly] shows it for reading (selectable, no keyboard). Backspace at the very start of a text block that follows media does not delete the media:
  * the caret goes to the end of the text before it. Reports focus so the chips know where to insert.
  */
 @Composable
@@ -168,6 +168,7 @@ internal fun TextBlock(
     placeholder: String,
     minHeight: Dp,
     modifier: Modifier = Modifier,
+    readOnly: Boolean = false,
 ) {
     val focus = remember { FocusRequester() }
     val state = doc.textState(block.id)
@@ -194,7 +195,7 @@ internal fun TextBlock(
                     false
                 }
             },
-        bodyColor(), shortBlankLines = true,
+        bodyColor(), shortBlankLines = true, readOnly = readOnly,
     )
 }
 
@@ -223,7 +224,7 @@ internal fun MediaBlock(
     hint: String?,
     onOpen: () -> Unit,
     onToggle: () -> Unit,
-    onRemove: () -> Unit,
+    onRemove: (() -> Unit)?,
 ) {
     val voice = row?.kind == "voice" || (row == null && block is JournalBlock.Voice)
     when {
@@ -233,7 +234,7 @@ internal fun MediaBlock(
                 loading -> "Adding photo…"
                 else -> "Not available yet"
             },
-            onRemove.takeUnless { loading },
+            onRemove?.takeUnless { loading },
         )
         voice -> VoiceRow(row, playback, onToggle, onRemove, hint)
         else -> JournalPhoto(row, onOpen, onRemove)

@@ -83,12 +83,16 @@ import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.UndoHost
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.design.components.pressable
+import app.cove.companion.feature.journal.blocks.JournalBlock
 import app.cove.companion.navigation.Nav
 import kotlinx.coroutines.launch
 
 internal val BodyStyle = CoveType.Body.copy(fontSize = 18.sp, lineHeight = 29.sp)
 
-/** Journal entry editor: date and mood, title, body with autosave, and photo / voice note attachments. */
+/**
+ * Journal entry editor: date and mood, title, body with autosave, and photo / voice note attachments. A new entry
+ * opens for editing; a saved one opens as a read-only preview with Edit, and Done in edit mode returns to it.
+ */
 @OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun JournalEditScreen(id: String, nav: Nav) {
@@ -107,6 +111,9 @@ fun JournalEditScreen(id: String, nav: Nav) {
     var viewing by rememberSaveable { mutableStateOf<Int?>(null) }
     var micHelp by remember { mutableStateOf(false) }
     var micCanAsk by remember { mutableStateOf(true) }
+    /** Whether the entry already existed when opened; null until loaded. */
+    var reopened by rememberSaveable { mutableStateOf<Boolean?>(null) }
+    var editing by rememberSaveable { mutableStateOf(false) }
     val leave: () -> Unit = {
         leaveGuard.launch(scope) {
             if (vm.finish()) Toast.makeText(context, "Voice note kept", Toast.LENGTH_SHORT).show()
@@ -136,17 +143,39 @@ fun JournalEditScreen(id: String, nav: Nav) {
     BackHandler(onBack = leave)
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { scope.launch { vm.save() } }
     LaunchedEffect(s.loaded) {
-        if (s.loaded && !s.persisted && vm.title.text.isEmpty() && vm.doc.isEmpty) titleFocus.requestFocus()
+        if (s.loaded && reopened == null) {
+            reopened = s.persisted
+            editing = !s.persisted
+        }
+    }
+    LaunchedEffect(editing) {
+        if (editing && s.loaded && !s.persisted && vm.title.text.isEmpty() && vm.doc.isEmpty) titleFocus.requestFocus()
     }
 
     Box(Modifier.fillMaxSize().background(paper()).imePadding()) {
         Column(Modifier.fillMaxSize().coveTopInset()) {
-            TopBar(s.status, canDelete = s.persisted, onBack = leave, onDone = leave, onDelete = { sheet = "delete" })
+            TopBar(
+                s.status, editing, canDelete = s.persisted, onBack = leave,
+                onDone = {
+                    if (reopened == true) {
+                        scope.launch { vm.save() }
+                        editing = false
+                    } else {
+                        leave()
+                    }
+                },
+                onEdit = {
+                    editing = true
+                    vm.doc.structure.lastOrNull { it is JournalBlock.Text }?.let { vm.doc.focusRequest = it.id }
+                },
+                onDelete = { sheet = "delete" },
+            )
             DocumentList(
                 vm, s, drag, listState, Modifier.weight(1f),
                 titleFocus = titleFocus,
                 onOpenPhoto = { viewing = it },
                 scope = scope,
+                readOnly = !editing,
             )
             s.notice?.let {
                 CoveText(
@@ -161,7 +190,7 @@ fun JournalEditScreen(id: String, nav: Nav) {
                 val recording = s.recordingMs
                 if (recording != null) {
                     RecordingBar(recording, vm::stopRecording)
-                } else {
+                } else if (editing) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         AttachChip("Photo") { sheet = "photo" }
                         AttachChip("Voice note") {
@@ -250,7 +279,15 @@ private fun paper(): Color = lerp(Cove.colors.canvas, Cove.colors.card, 0.6f)
 internal fun bodyColor(): Color = lerp(Cove.colors.ink, Cove.colors.muted, 0.28f)
 
 @Composable
-private fun TopBar(status: SaveStatus, canDelete: Boolean, onBack: () -> Unit, onDone: () -> Unit, onDelete: () -> Unit) {
+private fun TopBar(
+    status: SaveStatus,
+    editing: Boolean,
+    canDelete: Boolean,
+    onBack: () -> Unit,
+    onDone: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+) {
     val c = Cove.colors
     Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(48.dp).pressable(onBack, role = Role.Button).semantics { contentDescription = "Back" }, contentAlignment = Alignment.Center) {
@@ -258,10 +295,11 @@ private fun TopBar(status: SaveStatus, canDelete: Boolean, onBack: () -> Unit, o
         }
         Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
             CoveText(
-                when (status) {
-                    SaveStatus.Idle -> ""
-                    SaveStatus.Saving -> "Saving…"
-                    SaveStatus.Saved -> "Saved"
+                when {
+                    !editing -> ""
+                    status == SaveStatus.Saving -> "Saving…"
+                    status == SaveStatus.Saved -> "Saved"
+                    else -> ""
                 },
                 style = CoveType.Meta, color = c.muted,
             )
@@ -271,8 +309,8 @@ private fun TopBar(status: SaveStatus, canDelete: Boolean, onBack: () -> Unit, o
                 CoveText("Delete", style = CoveType.Meta, color = c.alert)
             }
         }
-        Box(Modifier.height(48.dp).pressable(onDone).padding(horizontal = 10.dp), contentAlignment = Alignment.Center) {
-            CoveText("Done", style = CoveType.Body.copy(fontSize = 16.sp, fontWeight = FontWeight.Medium))
+        Box(Modifier.height(48.dp).pressable(if (editing) onDone else onEdit).padding(horizontal = 10.dp), contentAlignment = Alignment.Center) {
+            CoveText(if (editing) "Done" else "Edit", style = CoveType.Body.copy(fontSize = 16.sp, fontWeight = FontWeight.Medium))
         }
     }
 }
@@ -287,11 +325,13 @@ internal fun EntryField(
     color: Color = Cove.colors.ink,
     singleLine: Boolean = false,
     shortBlankLines: Boolean = false,
+    readOnly: Boolean = false,
     onNext: () -> Unit = {},
 ) {
     BasicTextField(
         state,
         modifier.fillMaxWidth().focusRequester(focus),
+        readOnly = readOnly,
         textStyle = style.copy(color = color),
         cursorBrush = SolidColor(Cove.colors.ink),
         keyboardOptions = KeyboardOptions(
@@ -303,7 +343,7 @@ internal fun EntryField(
         inputTransformation = if (singleLine) InputTransformation { if (asCharSequence().contains('\n')) revertAllChanges() } else null,
         decorator = { inner ->
             Box {
-                if (state.text.isEmpty()) CoveText(placeholder, style = style, color = Cove.colors.placeholder)
+                if (state.text.isEmpty() && !readOnly) CoveText(placeholder, style = style, color = Cove.colors.placeholder)
                 inner()
             }
         },

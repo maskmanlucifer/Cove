@@ -59,7 +59,7 @@ private val PhotoShape = RoundedCornerShape(24.dp)
  * Explains a missing or unreadable file in place, with Retry.
  */
 @Composable
-internal fun JournalPhoto(photo: JournalMediaEntity, onOpen: () -> Unit, onRemove: () -> Unit) {
+internal fun JournalPhoto(photo: JournalMediaEntity, onOpen: () -> Unit, onRemove: (() -> Unit)?) {
     val loader = LocalContext.current.container.photoLoader
     val reduce = LocalReduceMotion.current
     BoxWithConstraints(Modifier.fillMaxWidth()) {
@@ -89,7 +89,7 @@ internal fun JournalPhoto(photo: JournalMediaEntity, onOpen: () -> Unit, onRemov
                 else -> Unit
             }
         }
-        HoldToRemoveButton("photo", onRemove, Modifier.align(Alignment.TopEnd).padding(2.dp), idle = Color(0x99000000), iconColor = Color.White)
+        if (onRemove != null) HoldToRemoveButton("photo", onRemove, Modifier.align(Alignment.TopEnd).padding(2.dp), idle = Color(0x99000000), iconColor = Color.White)
     }
 }
 

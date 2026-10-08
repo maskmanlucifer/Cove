@@ -53,7 +53,7 @@ import app.cove.companion.feature.plan.OptionList
  * scales the duration moves under the bar.
  */
 @Composable
-fun VoiceRow(note: JournalMediaEntity, playback: PlaybackState, onToggle: () -> Unit, onRemove: () -> Unit, hint: String? = null) {
+fun VoiceRow(note: JournalMediaEntity, playback: PlaybackState, onToggle: () -> Unit, onRemove: (() -> Unit)?, hint: String? = null) {
     val c = Cove.colors
     val playing = playback.id == note.id
     val total = note.durationMs ?: 0
@@ -79,7 +79,7 @@ fun VoiceRow(note: JournalMediaEntity, playback: PlaybackState, onToggle: () -> 
             Box(Modifier.weight(1f)) { VoiceProgress(progress, hint) }
             if (hint == null) VoiceDuration(duration)
         }
-        HoldToRemoveButton("voice note", onRemove)
+        if (onRemove != null) HoldToRemoveButton("voice note", onRemove)
     }
 }
 

@@ -31,6 +31,8 @@ import kotlinx.coroutines.CoroutineScope
  * fields keep focus and caret while blocks are added, removed or dragged; only what is on screen is composed.
  *
  * @param onOpenPhoto gets the index of the tapped photo among the document's photos.
+ * @param readOnly preview of a saved entry: text is selectable but not editable, blank text blocks are hidden, and
+ *   media cannot be removed or dragged (photos still open, voice notes still play).
  */
 @Composable
 internal fun DocumentList(
@@ -42,6 +44,7 @@ internal fun DocumentList(
     titleFocus: FocusRequester,
     onOpenPhoto: (Int) -> Unit,
     scope: CoroutineScope,
+    readOnly: Boolean = false,
 ) {
     val doc = vm.doc
     val haptics = LocalHapticFeedback.current
@@ -51,6 +54,7 @@ internal fun DocumentList(
     val ids = blocks.map { it.id }
     val currentIds by rememberUpdatedState(ids)
     val shown = (drag.order ?: ids).mapNotNull(byId::get)
+        .filter { !readOnly || it !is JournalBlock.Text || doc.textState(it.id).text.isNotBlank() }
     val rows = s.media.associateBy { it.id }
     val photos = doc.photoRows(s.media)
     val single = blocks.size == 1
@@ -65,10 +69,10 @@ internal fun DocumentList(
         item(key = "meta") {
             CoveText(s.day.longLabel() + (s.mood?.let { " · $it" } ?: ""), style = CoveType.Meta, color = Cove.colors.muted)
         }
-        item(key = "title") {
+        if (!readOnly || vm.title.text.isNotBlank()) item(key = "title") {
             Box(Modifier.padding(top = 16.dp)) {
                 EntryField(
-                    vm.title, "Title", CoveType.Title, titleFocus, Modifier.offset(y = (-2).dp), singleLine = true,
+                    vm.title, "Title", CoveType.Title, titleFocus, Modifier.offset(y = (-2).dp), singleLine = true, readOnly = readOnly,
                     onNext = { blocks.firstOrNull { it is JournalBlock.Text }?.let { doc.focusRequest = it.id } },
                 )
             }
@@ -87,13 +91,14 @@ internal fun DocumentList(
                         pos > 0 -> "Keep writing."
                         else -> ""
                     },
-                    minHeight = if (single) 160.dp else if (last) 120.dp else 0.dp,
-                    modifier = base.moveActions(pos > 0, pos < ids.lastIndex) { doc.move(block.id, it) },
+                    minHeight = if (readOnly) 0.dp else if (single) 160.dp else if (last) 120.dp else 0.dp,
+                    modifier = if (readOnly) base else base.moveActions(pos > 0, pos < ids.lastIndex) { doc.move(block.id, it) },
+                    readOnly = readOnly,
                 )
             } else {
                 val photoIndex = photos.indexOfFirst { it.id == block.id }
                 Box(
-                    base
+                    if (readOnly) base else base
                         .reorderable(drag, block.id, { currentIds }, listState, haptics, { listState.scrollBy(it) }, doc::reorder, scope)
                         .lifted(drag, block.id, reduce)
                         .moveActions(pos > 0, pos < ids.lastIndex) { doc.move(block.id, it) },
@@ -102,7 +107,7 @@ internal fun DocumentList(
                         block, rows[block.id], block.id in s.loading, s.playback, s.voiceHints[block.id],
                         onOpen = { if (photoIndex >= 0) onOpenPhoto(photoIndex) },
                         onToggle = { rows[block.id]?.let(vm::togglePlayback) },
-                        onRemove = { vm.removeBlock(block.id) },
+                        onRemove = if (readOnly) null else { { vm.removeBlock(block.id) } },
                     )
                 }
             }
