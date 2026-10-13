@@ -146,7 +146,7 @@ fun TodayScreen(nav: Nav, onOpenMe: () -> Unit = {}) {
         PermissionGuides(permissionIssues, alarmsInUse = false)
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(Modifier.fillMaxWidth().heightIn(min = 44.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                if (!offline) CoveText(state.date.longLabel(), style = CoveType.Meta, color = c.muted) else Spacer(Modifier)
+                if (!offline) CoveText(state.date.longLabel(), style = CoveType.Heading, color = c.ink) else Spacer(Modifier)
                 Avatar(state.name, rememberProfilePhoto(), size = 44.dp, description = "Me and settings", onClick = onOpenMe)
             }
             BalancedText(greeting(state), suggestion?.let { " ${it.title}" } ?: headline(state, offline), CoveType.Title)

@@ -48,3 +48,16 @@ fun categoryMonths(
         CategoryMonth(cat, current.filter { it.categoryId == cat.id }.sumOf { it.amountPaise }, cat.budgetPaise + carried)
     }
 }
+
+/**
+ * This month's spending behind the Money tab's Other or More row ([id] is [OTHER_CATEGORY_ID] or [MORE_CATEGORY_ID]).
+ * Other is only spending with no category; More is the small categories [MoneyMath.collapseRows] folded together, which
+ * includes uncategorised spending only when that is small enough to be folded too.
+ */
+fun otherOrMoreExpenses(id: String, categories: List<ExpenseCategoryEntity>, expenses: List<ExpenseEntity>, today: LocalDate): List<ExpenseEntity> {
+    val month = thisMonth(expenses, today).filter { it.kind == "spent" }
+    if (id == OTHER_CATEGORY_ID) return month.filter { it.categoryId == null }
+    val perCategory = categoryMonths(categories.filter { it.kind == "spending" }, expenses, today)
+    val folded = MoneyMath.foldedRows(moneyRows(perCategory, month)).map { it.id }.toSet()
+    return month.filter { it.categoryId in folded }
+}

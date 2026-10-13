@@ -37,6 +37,7 @@ import app.cove.companion.design.CoveIcons
 import app.cove.companion.design.CoveShapes
 import app.cove.companion.design.CoveType
 import app.cove.companion.design.components.CoveScreen
+import app.cove.companion.design.components.DockStackBottom
 import app.cove.companion.design.components.CoveText
 import app.cove.companion.design.components.EmptyState
 import app.cove.companion.design.illustrations.Scene
@@ -58,6 +59,7 @@ fun MoneyCategoryDetailScreen(id: String, nav: Nav) {
     val c = Cove.colors
     val cat = s.category
     val isOther = id == OTHER_CATEGORY_ID
+    val isMore = id == MORE_CATEGORY_ID
     val owner = LocalLifecycleOwner.current
     // A category deleted from its Edit sheet leaves this page empty: close it once it is the screen on top.
     LaunchedEffect(s.loaded, cat == null) {
@@ -67,15 +69,15 @@ fun MoneyCategoryDetailScreen(id: String, nav: Nav) {
         Column(Modifier.fillMaxSize().coveTopInset()) {
             MoneyTopBar(
                 label = if (cat == null) "" else "${cat.name} · ${s.month}",
-                action = if (isOther) "" else "Edit",
+                action = if (isOther || isMore) "" else "Edit",
                 onBack = nav.back,
-                onAction = { if (!isOther) nav.go(Routes.moneyCategory(id)) },
+                onAction = { if (!isOther && !isMore) nav.go(Routes.moneyCategory(id)) },
                 actionStrong = false,
             )
             if (cat != null) {
                 LazyColumn(
                     Modifier.weight(1f).fillMaxWidth(),
-                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 176.dp),
+                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = DockStackBottom + 72.dp),
                     verticalArrangement = Arrangement.spacedBy(20.dp),
                 ) {
                     item { Hero(s) }
@@ -107,14 +109,14 @@ fun MoneyCategoryDetailScreen(id: String, nav: Nav) {
                 }
             }
         }
-        Box(Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = 112.dp)) {
+        Box(Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = DockStackBottom)) {
             val shadow = c.shadow
             Row(
                 Modifier
                     .height(52.dp)
                     .shadow(24.dp, CoveShapes.Pill, ambientColor = shadow, spotColor = shadow)
                     .background(c.ink, CoveShapes.Pill)
-                    .pressable({ nav.go(Routes.expenseEdit(if (isOther) "new" else "new@$id")) })
+                    .pressable({ nav.go(Routes.expenseEdit(if (isOther || isMore) "new" else "new@$id")) })
                     .padding(horizontal = 20.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -146,7 +148,7 @@ private fun Hero(s: CategoryDetailState) {
             BudgetBar(MoneyMath.progress(s.spent, s.budget), MoneyMath.isOver(s.spent, s.budget))
             CoveText(heroLine(s), style = MoneyType.Sub, color = c.muted)
         } else {
-            if (s.category?.id != OTHER_CATEGORY_ID) CoveText("No budget set · tap Edit to add one", style = MoneyType.Sub, color = c.muted)
+            if (s.category?.id != OTHER_CATEGORY_ID && s.category?.id != MORE_CATEGORY_ID) CoveText("No budget set · tap Edit to add one", style = MoneyType.Sub, color = c.muted)
         }
     }
 }

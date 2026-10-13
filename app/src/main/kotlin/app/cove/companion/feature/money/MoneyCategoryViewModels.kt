@@ -52,7 +52,7 @@ data class CategoryDetailState(
     val budget: Long = 0,
     val daysToGo: Int = 0,
     val groups: List<DayGroup> = emptyList(),
-    /** Category names by id; only the Other page uses them, to say where each folded expense belongs. */
+    /** Category names by id; only the More page uses them, to say where each folded expense belongs. */
     val categoryNames: Map<String, String> = emptyMap(),
 ) {
     val left: Long get() = budget - spent
@@ -61,7 +61,10 @@ data class CategoryDetailState(
 /** Detail-page id for spending with no category ("Other" on the Money tab); not a stored category. */
 const val OTHER_CATEGORY_ID = "other"
 
-/** One category's month: progress against budget and its transactions grouped by day. [id] may be [OTHER_CATEGORY_ID]. */
+/** Detail-page id for the Money tab's "More" row, the small categories folded together; not a stored category. */
+const val MORE_CATEGORY_ID = "more"
+
+/** One category's month: progress against budget and its transactions grouped by day. [id] may be [OTHER_CATEGORY_ID] or [MORE_CATEGORY_ID]. */
 class CategoryDetailViewModel(c: AppContainer, id: String) : ViewModel() {
     private val today = c.clock.now().toLocalDate()
     private val range = ledgerRange(today)
@@ -69,15 +72,11 @@ class CategoryDetailViewModel(c: AppContainer, id: String) : ViewModel() {
     val state: StateFlow<CategoryDetailState> = combine(
         c.money.categories, c.money.expenses(range.first, range.last),
     ) { categories, all ->
-        if (id == OTHER_CATEGORY_ID) {
-            val month = thisMonth(all, today)
-            val perCategory = categoryMonths(categories.filter { it.kind == "spending" }, all, today)
-            // The Money tab's "Other" row is the uncategorised spending plus any small categories folded into it.
-            val folded = MoneyMath.foldedRows(moneyRows(perCategory, month)).mapNotNull { it.id }.toSet()
-            val shown = month.filter { it.kind == "spent" && (it.categoryId == null || it.categoryId in folded) }
+        if (id == OTHER_CATEGORY_ID || id == MORE_CATEGORY_ID) {
+            val shown = otherOrMoreExpenses(id, categories, all, today)
             CategoryDetailState(
                 loaded = true,
-                category = ExpenseCategoryEntity(OTHER_CATEGORY_ID, "Other"),
+                category = ExpenseCategoryEntity(id, if (id == OTHER_CATEGORY_ID) "Other" else "More"),
                 month = monthName(today),
                 spent = MoneyMath.spentOf(shown),
                 daysToGo = MoneyMath.daysToGo(today),

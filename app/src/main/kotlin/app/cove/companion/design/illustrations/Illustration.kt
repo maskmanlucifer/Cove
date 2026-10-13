@@ -70,7 +70,7 @@ fun Illustration(scene: Scene, modifier: Modifier = Modifier, animate: Boolean =
 @Composable
 fun SceneBanner(
     scene: Scene, height: Dp, modifier: Modifier = Modifier, anchorY: Float = 0.7f, animate: Boolean = true,
-    shape: Shape = RoundedCornerShape(28.dp),
+    shape: Shape = RoundedCornerShape(16.dp),
 ) {
     val strip = height < 100.dp
     ArtView(

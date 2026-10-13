@@ -8,7 +8,6 @@ class NavMotionTest {
     fun transitionsAreShortAndLeaveFasterThanTheyEnter() {
         assertTrue(NavMotion.ENTER_MS in 150..300)
         assertTrue(NavMotion.EXIT_MS < NavMotion.ENTER_MS)
-        assertTrue(NavMotion.TAB_MS <= NavMotion.ENTER_MS)
     }
 
     @Test

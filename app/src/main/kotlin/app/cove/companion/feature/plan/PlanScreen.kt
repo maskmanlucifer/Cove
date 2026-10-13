@@ -45,6 +45,7 @@ import app.cove.companion.design.components.EmptyState
 import app.cove.companion.design.illustrations.Scene
 import app.cove.companion.design.components.DockClearance
 import app.cove.companion.design.components.DockFloatBottom
+import app.cove.companion.design.components.DockStackBottom
 import app.cove.companion.design.components.Segmented
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.design.components.pressable
@@ -124,7 +125,7 @@ fun PlanScreen(nav: Nav) {
             }
         }
         if (!todos && drag.id == null) DayPill(state.day, state.isToday, vm::shiftDay, vm::showToday, Modifier.align(Alignment.BottomStart).padding(start = 20.dp, bottom = DockFloatBottom))
-        if (drag.id == null) AddButton(if (todos) "Add to-do" else "Add to schedule", { sheet = if (todos) ADD_TODO else ADD_EVENT }, Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = DockFloatBottom))
+        if (drag.id == null) AddButton(if (todos) "Add to-do" else "Add to schedule", { sheet = if (todos) ADD_TODO else ADD_EVENT }, Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = DockStackBottom))
         undo?.let { notice ->
             LaunchedEffect(notice.id) {
                 delay(6000)

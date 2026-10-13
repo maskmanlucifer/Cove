@@ -13,9 +13,6 @@ object NavMotion {
     /** Leaving screen; shorter so the old one is gone before the new one settles. */
     const val EXIT_MS = 160
 
-    /** Tab fade-in. */
-    const val TAB_MS = 160
-
     /** Horizontal travel in dp (forward screens come from the right, back goes the other way). */
     const val SLIDE_DP = 16
 

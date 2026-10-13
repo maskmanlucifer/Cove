@@ -39,4 +39,15 @@ class MoneyLedgerTest {
         )
         assertEquals(0L, categoryMonths(listOf(food), expenses, today).single().spent)
     }
+
+    @Test fun otherListsOnlyUncategorisedSpendingAndMoreHoldsTheFoldedCategories() {
+        val cats = listOf("food" to 500_000L, "home" to 400_000L, "fun" to 300_000L, "bills" to 200_000L, "gifts" to 50_000L, "health" to 40_000L)
+            .map { (id, _) -> ExpenseCategoryEntity(id, id.replaceFirstChar { it.uppercase() }) }
+        val tagged = listOf(500_000L, 400_000L, 300_000L, 200_000L, 50_000L, 40_000L).zip(cats) { p, c -> spend(c.id, p, today) }
+        val loose = ExpenseEntity("loose", 30_000, categoryId = null, spentAt = at(today))
+        val all = tagged + loose
+        // The bug: a Gifts expense showed up on the Other page because Other also held the folded small categories.
+        assertEquals(listOf("loose"), otherOrMoreExpenses(OTHER_CATEGORY_ID, cats, all, today).map { it.id })
+        assertEquals(setOf("gifts", "health", null), otherOrMoreExpenses(MORE_CATEGORY_ID, cats, all, today).map { it.categoryId }.toSet())
+    }
 }

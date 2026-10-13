@@ -6,7 +6,7 @@ import android.content.Context
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,8 +23,9 @@ import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -54,6 +55,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import app.cove.companion.core.OneShot
@@ -62,11 +64,13 @@ import app.cove.companion.core.rupees
 import app.cove.companion.core.toEpochMillis
 import app.cove.companion.core.toLocalDate
 import app.cove.companion.core.toLocalDateTime
+import app.cove.companion.data.local.entity.ExpenseCategoryEntity
 import app.cove.companion.design.Cove
 import app.cove.companion.design.CoveIcon
 import app.cove.companion.design.CoveIcons
 import app.cove.companion.design.CoveShapes
 import app.cove.companion.design.CoveType
+import app.cove.companion.design.hueFor
 import app.cove.companion.design.components.CoveScreen
 import app.cove.companion.design.components.CoveSheet
 import app.cove.companion.design.components.CoveText
@@ -199,45 +203,67 @@ private fun AmountBlock(s: ExpenseEditState, onNote: (String) -> Unit, focus: (B
     }
 }
 
-/**
- * Category chips scroll sideways; "+ New" stays pinned at the right so it is always reachable, except at large font
- * sizes where the pinned button would squeeze the names, so it scrolls with them.
- */
+/** Every category at once in a three-column grid, with "New" always first so adding one never needs a scroll. */
 @Composable
 private fun CategoryChips(s: ExpenseEditState, onPick: (String) -> Unit, onNew: () -> Unit) {
-    val large = LocalDensity.current.fontScale > 1.3f
-    Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(
-            Modifier.weight(1f).horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            s.categories.forEach { cat -> Chip(cat.name, cat.id == s.categoryId) { onPick(cat.id) } }
-            if (large) Chip("+ New", false, onNew)
+    val cells: List<ExpenseCategoryEntity?> = listOf(null) + s.categories
+    Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        cells.chunked(3).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { cat ->
+                    val cell = Modifier.weight(1f)
+                    if (cat == null) NewChip(onNew, cell) else Chip(cat.name, cat.id == s.categoryId, cell) { onPick(cat.id) }
+                }
+                repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+            }
         }
-        if (!large) Chip("+ New", false, onNew)
     }
 }
 
 @Composable
-private fun Chip(text: String, selected: Boolean, onClick: () -> Unit) {
+private fun NewChip(onClick: () -> Unit, modifier: Modifier) {
     val c = Cove.colors
-    Box(
-        Modifier
-            .heightIn(min = 40.dp)
-            .background(if (selected) c.accent else c.card, CoveShapes.Pill)
+    Row(
+        modifier
+            .heightIn(min = 44.dp)
+            .border(1.5.dp, c.quiet, ChipShape)
+            .pressable(onClick, role = Role.Button)
+            .semantics { contentDescription = "New category" }
+            .padding(horizontal = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CoveIcon(CoveIcons.Plus, c.accent, size = 16.dp)
+        CoveText("New", style = CoveType.Button, color = c.accent, maxLines = 1)
+    }
+}
+
+@Composable
+private fun Chip(text: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val c = Cove.colors
+    Row(
+        modifier
+            .heightIn(min = 44.dp)
+            .background(if (selected) c.accent else c.card, ChipShape)
             .pressable(onClick)
             .semantics { this.selected = selected }
-            .padding(horizontal = 16.dp),
-        contentAlignment = Alignment.Center,
+            .padding(horizontal = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
+        Box(Modifier.size(8.dp).background(if (selected) c.onAccent else c.hueFor(text).strong, CoveShapes.Circle))
         CoveText(
             text,
+            Modifier.weight(1f),
             style = CoveType.Button.copy(fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal),
             color = if (selected) c.onAccent else c.ink,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
+
+private val ChipShape = RoundedCornerShape(14.dp)
 
 @Composable
 private fun MethodSheet(selected: String, onPick: (String) -> Unit) {

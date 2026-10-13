@@ -45,18 +45,19 @@ object MoneyMath {
     }
 
     /**
-     * Keeps the [limit] biggest rows and folds the rest into one "Other" row, so the rows always add up to the total.
-     * A single leftover row is kept as it is.
+     * Keeps the [limit] biggest rows and folds the rest into one "More" row ([MORE_CATEGORY_ID]), so the rows always add
+     * up to the total. It is not called "Other": that name belongs to spending with no category, and an expense filed
+     * under, say, Gifts must never appear to be in Other. A single leftover row is kept as it is.
      */
     fun collapseRows(rows: List<MoneyRow>, limit: Int = 4): List<MoneyRow> {
         val sorted = rows.sortedByDescending { it.spent }
         if (sorted.size <= limit) return sorted
         val rest = sorted.drop(limit)
-        val tail = rest.singleOrNull() ?: MoneyRow(null, "Other", rest.sumOf { it.spent }, 0)
+        val tail = rest.singleOrNull() ?: MoneyRow(MORE_CATEGORY_ID, "More", rest.sumOf { it.spent }, 0)
         return sorted.take(limit) + tail
     }
 
-    /** The rows [collapseRows] folds into its "Other" row (same [limit]); empty when nothing is folded. */
+    /** The rows [collapseRows] folds into its "More" row (same [limit]); empty when nothing is folded. */
     fun foldedRows(rows: List<MoneyRow>, limit: Int = 4): List<MoneyRow> =
         rows.sortedByDescending { it.spent }.drop(limit).takeIf { it.size > 1 }.orEmpty()
 

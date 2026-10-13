@@ -25,15 +25,15 @@ class MoneyLayoutLogicTest {
         assertEquals(listOf("Food", "Home", "Fun"), rows.map { it.name })
     }
 
-    @Test fun overflowRowsFoldIntoOtherSoTheRowsSumToTheTotal() {
+    @Test fun overflowRowsFoldIntoMoreSoTheRowsSumToTheTotal() {
         val all = listOf(row("A", 500), row("B", 400), row("C", 300), row("D", 200), row("E", 100), row("F", 50))
         val rows = MoneyMath.collapseRows(all)
-        assertEquals(listOf("A", "B", "C", "D", "Other"), rows.map { it.name })
+        assertEquals(listOf("A", "B", "C", "D", "More"), rows.map { it.name })
         assertEquals(all.sumOf { it.spent }, rows.sumOf { it.spent })
-        assertNull(rows.last().id)
+        assertEquals(MORE_CATEGORY_ID, rows.last().id)
     }
 
-    @Test fun foldedRowsAreExactlyWhatTheOtherRowAbsorbs() {
+    @Test fun foldedRowsAreExactlyWhatTheMoreRowAbsorbs() {
         val all = listOf(row("A", 500), row("B", 400), row("C", 300), row("D", 200), row("E", 100), row("F", 50))
         assertEquals(listOf("E", "F"), MoneyMath.foldedRows(all).map { it.name })
         assertEquals(all.sumOf { it.spent } - MoneyMath.collapseRows(all).dropLast(1).sumOf { it.spent }, MoneyMath.foldedRows(all).sumOf { it.spent })

@@ -27,11 +27,17 @@ fun CoveScreen(modifier: Modifier = Modifier, content: @Composable BoxScope.() -
     Box(modifier.fillMaxSize().background(Cove.colors.canvas).paperGrain(if (Cove.colors.isDark) 0.09f else 0.07f), content = content)
 }
 
-/** Height of the bottom bar's hit area and fade: pill and orb (44 dp) sit 22 dp above the screen edge. */
-val DockBarHeight = 88.dp
+/** Gap between the screen's bottom edge and the floating dock at the bottom right. */
+val DockBottom = 22.dp
 
-/** Space reserved at the bottom so scrolling content clears the bottom bar. */
-val DockClearance = 96.dp
+/** From the screen's bottom edge to the top of the dock: page dots (64 dp) over the orb (48 dp) in a padded capsule. */
+val DockBarHeight = DockBottom + 124.dp
 
-/** Bottom offset for controls that float just above the bar (undo bars, add buttons, day pill). */
-val DockFloatBottom = 84.dp
+/** Space reserved at the bottom so scrolling content clears the dock. */
+val DockClearance = DockBarHeight + 16.dp
+
+/** Bottom offset for controls that float at the bottom left, level with the dock (day pill). */
+val DockFloatBottom = DockBottom
+
+/** Bottom offset for a control that floats at the bottom right, stacked just above the dock (add buttons). */
+val DockStackBottom = DockBarHeight + 12.dp

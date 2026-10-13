@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.stateIn
 import java.time.format.TextStyle
 import java.util.Locale
 
-/** A line in the Money tab's category card. [id] is null for spending with no category ("Other"). */
+/** A line in the Money tab's category card. [id] is null for spending with no category ("Other"), [MORE_CATEGORY_ID] for the folded row. */
 data class MoneyRow(val id: String?, val name: String, val spent: Long, val budget: Long)
 
 data class MoneyState(
@@ -31,7 +31,7 @@ data class MoneyState(
     val reviewBanner: String? = null,
 )
 
-/** Month overview for the Money tab: spend so far, daily strip and the busiest categories (the rest fold into Other). */
+/** Month overview for the Money tab: spend so far, daily strip and the busiest categories (the rest fold into More). */
 class MoneyViewModel(c: AppContainer) : ViewModel() {
     /** Payments found in new messages that wait for the user ("Payments from messages"). */
     val pending: StateFlow<Int> = c.smsImport.pendingCount().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
