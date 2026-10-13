@@ -52,8 +52,8 @@ private tailrec fun Context.activity(): Activity? = when (this) {
  * "Paste a message" path that needs no permission. See `docs/SMS_IMPORT.md`.
  */
 @Composable
-fun MoneyImportScreen(nav: Nav, pendingOnly: Boolean = false) {
-    val vm = appViewModel(key = if (pendingOnly) "pending" else null) { ImportViewModel(it, pendingOnly) }
+fun MoneyImportScreen(nav: Nav) {
+    val vm = appViewModel { ImportViewModel(it) }
     val s by vm.state.collectAsState()
     val context = LocalContext.current
     var granted by remember { mutableStateOf(Permissions.granted(context, READ_SMS)) }
@@ -75,7 +75,7 @@ fun MoneyImportScreen(nav: Nav, pendingOnly: Boolean = false) {
     }
     val step = permissionStep(granted, deniedBefore, canAskAgain)
     val access = rememberPaymentsAccess()
-    var offerMode by rememberSaveable { mutableStateOf(CaptureMode.Ask) }
+    var offerMode by rememberSaveable { mutableStateOf(CaptureMode.Auto) }
 
     CoveScreen {
         Column(Modifier.fillMaxSize().coveTopInset()) {

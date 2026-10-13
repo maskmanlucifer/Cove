@@ -8,6 +8,7 @@ import app.cove.companion.ai.provider.CaptionProvider
 import app.cove.companion.ai.provider.CategoryProvider
 import app.cove.companion.ai.provider.EmbeddingProvider
 import app.cove.companion.ai.provider.IntentProvider
+import app.cove.companion.ai.provider.MatchProvider
 import app.cove.companion.ai.provider.SpeechProvider
 import app.cove.companion.ai.provider.SummaryProvider
 
@@ -21,6 +22,7 @@ data class AiProviders(
     val embedding: List<EmbeddingProvider> = emptyList(),
     val category: List<CategoryProvider> = emptyList(),
     val advice: List<AdviceProvider> = emptyList(),
+    val match: List<MatchProvider> = emptyList(),
 ) {
     /** The providers of [capability], in order. */
     fun of(capability: Capability): List<AiProvider> = when (capability) {
@@ -32,5 +34,6 @@ data class AiProviders(
         Capability.Embedding -> embedding
         Capability.Category -> category
         Capability.Advice -> advice
+        Capability.Match -> match
     }
 }

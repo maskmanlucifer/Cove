@@ -1,7 +1,8 @@
 package app.cove.companion.data.sms
 
 import androidx.room.withTransaction
-import app.cove.companion.core.rupees
+import app.cove.companion.ai.model.SamePair
+import app.cove.companion.ai.model.SameRequest
 import app.cove.companion.data.categorize.ExpenseCategorizer
 import app.cove.companion.data.categorize.Reason
 import app.cove.companion.data.categorize.Suggestion
@@ -13,16 +14,31 @@ import app.cove.companion.data.repo.MoneyRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 /** An expense live capture wrote on its own ("Add automatically", or Add on a notification). */
 data class AddedPayment(val expenseId: String, val amountPaise: Long, val kind: String, val note: String, val categoryName: String?)
 
-/** A payment waiting for the user. [duplicateLine] explains a possible repeat. */
-data class PendingPayment(val key: String, val amountPaise: Long, val kind: String, val label: String, val duplicateLine: String?)
-
 /** What live capture did with one message or one catch-up scan. */
-data class CaptureReport(val added: List<AddedPayment> = emptyList(), val pending: List<PendingPayment> = emptyList()) {
-    val isEmpty: Boolean get() = added.isEmpty() && pending.isEmpty()
+data class CaptureReport(val added: List<AddedPayment> = emptyList()) {
+    val isEmpty: Boolean get() = added.isEmpty()
+}
+
+/**
+ * Asks whether payments found in messages repeat the expenses they are paired with (`AiService.samePayments`):
+ * [Answer.Same] per pair, [Answer.NoAi] when no cloud model is set up, [Answer.NoAnswer] when it could not answer now.
+ */
+fun interface SameChecker {
+    suspend fun check(pairs: List<SamePair>): Answer
+
+    sealed interface Answer {
+        data class Same(val same: List<Boolean>) : Answer
+        data object NoAi : Answer
+        data object NoAnswer : Answer
+    }
 }
 
 /** Category and remembered label to use for a captured payment. */
@@ -56,67 +72,74 @@ object CaptureSuggestion {
 }
 
 /**
- * Handles payments found in new messages: the live receiver's one message, the app-open catch-up scan, and the
- * Add / Skip / Undo actions on notifications. It reuses [SmsImportRepository] for parsing, dedupe and the log, then
- * applies the user's [CaptureMode] (see [CaptureDecision]). Message text is parsed in memory and never kept.
- * Decisions that write run one at a time, so a repeated notification tap finds nothing left to do.
+ * Handles payments found in new messages, with no one asked: the live receiver's one message, the app-open catch-up
+ * scan, and Undo on an "Added" notification. It reuses [SmsImportRepository] for parsing, dedupe and the log, then
+ * settles each payment with [CaptureDecision]: new ones are added, repeats are logged as duplicates, and doubts go to
+ * [same] (names and times only). A doubt Gemini cannot answer now is left unlogged, and the catch-up cursor
+ * ([CaptureCursor]) stays before it, so the next scan asks again. Message text is parsed in memory and never kept.
+ * Decisions that write run one at a time.
  */
 class SmsLiveCapture(
     private val db: CoveDatabase,
     private val money: MoneyRepository,
     private val imports: SmsImportRepository,
     private val prefs: SmsCapturePrefs,
+    private val same: SameChecker,
+    private val zone: ZoneId = ZoneId.systemDefault(),
 ) {
     private val gate = Mutex()
 
-    /** Handles one message from the receiver ([permission]: the system delivered it, so receiving is allowed). */
+    /** Handles one message from the receiver. A doubt that cannot be settled now is read again by the catch-up scan. */
     suspend fun onMessage(sender: String?, body: String, receivedAt: Long): CaptureReport = gate.withLock {
-        val mode = prefs.mode.value
-        if (mode == CaptureMode.Off) return@withLock CaptureReport()
+        if (prefs.mode.value == CaptureMode.Off) return@withLock CaptureReport()
         val result = imports.scan(OneMessageSource(SmsMessage(null, sender, body, receivedAt)), 0L)
-        process(result.items, mode, permission = true)
+        settle(result.items).report
     }
 
-    /** Scans [source] for messages since the last decision (and not before capture was turned on) and handles what it finds. */
+    /**
+     * Scans [source] from the cursor (at first: since the last decision, never before capture was turned on), settles
+     * what it finds and what the old "Ask me" mode left waiting, then moves the cursor up to the newest message read,
+     * but not past one still waiting for an answer.
+     */
     suspend fun catchUp(source: SmsSource): CaptureReport = gate.withLock {
-        val mode = prefs.mode.value
-        if (mode == CaptureMode.Off) return@withLock CaptureReport()
-        val since = maxOf(imports.rangeStart(ImportRange.SinceLast), prefs.enabledAt)
+        if (prefs.mode.value == CaptureMode.Off) return@withLock CaptureReport()
+        val since = prefs.checkedUntil.takeIf { it > 0 } ?: maxOf(imports.rangeStart(ImportRange.SinceLast), prefs.enabledAt)
         val result = imports.scan(source, since)
-        process(result.items, mode, permission = true)
+        val outcome = settle(result.items + imports.pendingItems())
+        prefs.checkedUntil = CaptureCursor.next(since, result.newestAt, outcome.oldestWaiting)
+        outcome.report
     }
 
-    private suspend fun process(items: List<ReviewItem>, mode: CaptureMode, permission: Boolean): CaptureReport {
-        if (items.isEmpty()) return CaptureReport()
-        val adds = ArrayList<ReviewItem>()
-        val asks = ArrayList<ReviewItem>()
-        for (item in items) when (CaptureDecision.decide(mode, permission, found = true, duplicate = item.match != null)) {
-            CaptureAction.Add -> adds += item
-            CaptureAction.Ask -> asks += item
-            CaptureAction.Ignore -> Unit
+    private class Outcome(val report: CaptureReport, val oldestWaiting: Long?)
+
+    private suspend fun settle(items: List<ReviewItem>): Outcome {
+        if (items.isEmpty()) return Outcome(CaptureReport(), null)
+        val actions = items.associate { it.id to CaptureDecision.decide(it.match) }.toMutableMap()
+        val doubts = items.filter { actions[it.id] == CaptureAction.Check }
+        doubts.chunked(SameRequest.MAX_BATCH).forEach { batch ->
+            when (val answer = same.check(batch.map { pairOf(it) })) {
+                is SameChecker.Answer.Same -> batch.forEachIndexed { i, item -> actions[item.id] = if (answer.same[i]) CaptureAction.Skip else CaptureAction.Add }
+                SameChecker.Answer.NoAi -> batch.forEach { actions[it.id] = CaptureDecision.withoutAi(it.candidate.tx.at, it.match!!, zone) }
+                SameChecker.Answer.NoAnswer -> Unit
+            }
         }
-        val ctx = context(items)
-        val added = if (adds.isEmpty()) emptyList() else write(adds, ctx)
-        if (asks.isNotEmpty()) imports.savePending(asks)
-        val pending = asks.map { it.toPayment() }
-        return CaptureReport(added, pending)
+        val adds = items.filter { actions[it.id] == CaptureAction.Add }
+        val skips = items.filter { actions[it.id] == CaptureAction.Skip }
+        val added = if (adds.isEmpty()) emptyList() else write(adds, context(adds))
+        if (skips.isNotEmpty()) imports.import(skips.map { ImportDecision(it, false, kindOf(it), null) })
+        val oldestWaiting = items.filter { actions[it.id] == CaptureAction.Check }
+            .flatMap { item -> item.candidate.messages.map { it.receivedAt } }.filter { it > 0 }.minOrNull()
+        return Outcome(CaptureReport(added), oldestWaiting)
     }
 
-    /** Adds the pending payment [key] as an expense, as the Add action does. Null when it is already decided. */
-    suspend fun accept(key: String): AddedPayment? = gate.withLock {
-        val row = db.smsImport().pendingByKey(key) ?: return@withLock null
-        val item = ReviewItem(row.toCandidate(), null)
-        write(listOf(item), context(listOf(item))).firstOrNull()
+    /** What may leave the phone about a doubt: the two names and the two local times, never amounts or message text. */
+    private fun pairOf(item: ReviewItem): SamePair {
+        val tx = item.candidate.tx
+        val m = item.match!!
+        return SamePair(tx.noteFor(kindOf(item)), timeLabel(tx.at), m.note.ifBlank { "Expense" }, timeLabel(m.at))
     }
 
-    /** Skips the pending payment [key] and remembers it as skipped. No-op when it is already decided. */
-    suspend fun skip(key: String) {
-        gate.withLock {
-            val row = db.smsImport().pendingByKey(key) ?: return@withLock
-            val item = ReviewItem(row.toCandidate(), null)
-            imports.import(listOf(ImportDecision(item, false, kindOf(item), null)))
-        }
-    }
+    private fun timeLabel(ms: Long): String = Instant.ofEpochMilli(ms).atZone(zone).format(TIME)
 
     /** Undoes an automatic add: soft-deletes the expense and logs its message as skipped so it is not added again. No-op when done. */
     suspend fun undo(expenseId: String) {
@@ -155,9 +178,7 @@ class SmsLiveCapture(
 
     private fun kindOf(item: ReviewItem) = if (item.candidate.tx.direction == Direction.Credit) "received" else "spent"
 
-    private fun ReviewItem.toPayment(): PendingPayment {
-        val tx = candidate.tx
-        val line = match?.let { m -> "Possible duplicate: you already added ${m.note.ifBlank { "a payment" }} ${rupees(m.amountPaise)}" }
-        return PendingPayment(id, tx.amountPaise, kindOf(this), tx.noteFor(kindOf(this)), line)
+    private companion object {
+        val TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE d MMM, h:mm a", Locale.ENGLISH)
     }
 }

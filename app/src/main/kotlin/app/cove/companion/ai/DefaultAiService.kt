@@ -15,6 +15,8 @@ import app.cove.companion.ai.model.IntentContext
 import app.cove.companion.ai.model.IntentRequest
 import app.cove.companion.ai.model.Location
 import app.cove.companion.ai.model.ParsedIntents
+import app.cove.companion.ai.model.SamePair
+import app.cove.companion.ai.model.SameRequest
 import app.cove.companion.ai.model.Sensitivity
 import app.cove.companion.ai.model.SpeechEngineInfo
 import app.cove.companion.ai.model.SpeechSession
@@ -116,6 +118,12 @@ class DefaultAiService(
     override suspend fun adviseWorkout(request: AdviceRequest): AiResult<String> {
         if (request.sessions.isEmpty()) return AiResult.Failed(AiError.Unavailable("No sessions yet"))
         return router.route(Capability.Advice, Sensitivity.Everyday, providers.advice) { it.advise(request) }
+    }
+
+    override suspend fun samePayments(pairs: List<SamePair>): AiResult<List<Boolean>> {
+        if (pairs.isEmpty()) return AiResult.Failed(AiError.Unavailable("Nothing to check"))
+        if (pairs.size > SameRequest.MAX_BATCH) return AiResult.Failed(AiError.Unavailable("Too many at once"))
+        return router.route(Capability.Match, Sensitivity.Everyday, providers.match) { it.same(SameRequest(pairs)) }
     }
 
     override suspend fun status(): AiStatus = router.status()

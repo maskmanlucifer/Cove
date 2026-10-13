@@ -20,8 +20,11 @@ object SmsImportOutcome {
 /** A message as read from the inbox or pasted. The text lives only in memory while it is parsed. */
 data class SmsMessage(val providerId: Long?, val sender: String?, val body: String, val receivedAt: Long)
 
-/** Identity of one message: its hash key and, when it came from the inbox, the provider row id. */
-data class MessageId(val key: String, val providerId: Long?)
+/**
+ * Identity of one message: its hash key and, when it came from the inbox, the provider row id. [receivedAt] is when it
+ * arrived (0 when unknown, as for payments restored from `sms_pending`); the catch-up cursor uses it.
+ */
+data class MessageId(val key: String, val providerId: Long?, val receivedAt: Long = 0L)
 
 /** The fields two records are compared on to decide whether they describe one payment. */
 data class TxSig(val amountPaise: Long, val direction: Direction, val last4: String?, val merchant: String?, val ref: String?, val at: Long)

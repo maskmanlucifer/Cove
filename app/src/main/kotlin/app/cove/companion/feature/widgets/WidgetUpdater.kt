@@ -9,8 +9,6 @@ import androidx.work.WorkerParameters
 import androidx.glance.appwidget.updateAll
 import app.cove.companion.AppContainer
 import app.cove.companion.container
-import app.cove.companion.core.startOfDayMillis
-import app.cove.companion.core.toLocalDate
 import app.cove.companion.feature.nudges.NudgeScheduler
 import app.cove.companion.resilience.CrashHandler
 import kotlinx.coroutines.CoroutineScope
@@ -27,8 +25,6 @@ object WidgetUpdater {
     /** Redraws every widget from the database (cheap; no AI). */
     suspend fun refresh(context: Context) {
         NextWidget().updateAll(context)
-        SpentWidget().updateAll(context)
-        TasksWidget().updateAll(context)
         VoiceWidget().updateAll(context)
     }
 
@@ -36,15 +32,8 @@ object WidgetUpdater {
     @OptIn(FlowPreview::class)
     fun start(context: Context, c: AppContainer, scope: CoroutineScope) {
         val app = context.applicationContext
-        val day = c.clock.now().toLocalDate()
         scope.launch {
-            combine(
-                c.todos.todos,
-                c.plan.upcomingEvents(30),
-                c.plan.alarms,
-                c.money.categories,
-                c.money.expenses(day.minusDays(40).startOfDayMillis(), Long.MAX_VALUE / 2),
-            ) { _, _, _, _, _ -> }.debounce(1_000).collect { refresh(app) }
+            combine(c.todos.todos, c.plan.upcomingEvents(30), c.plan.alarms) { _, _, _ -> }.debounce(1_000).collect { refresh(app) }
         }
         WorkManager.getInstance(app).enqueueUniquePeriodicWork(
             WORK_NAME, ExistingPeriodicWorkPolicy.KEEP,

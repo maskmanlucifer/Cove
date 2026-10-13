@@ -6,6 +6,7 @@ import app.cove.companion.ai.model.BriefRequest
 import app.cove.companion.ai.model.AdviceRequest
 import app.cove.companion.ai.model.CategoryRequest
 import app.cove.companion.ai.model.CategorySuggestion
+import app.cove.companion.ai.model.SameRequest
 import app.cove.companion.ai.model.IntentRequest
 import app.cove.companion.ai.model.Location
 import app.cove.companion.ai.model.ParsedIntents
@@ -73,6 +74,11 @@ interface CategoryProvider : AiProvider {
 /** One-sentence second opinion on a lift's weight (ordinary workout data). */
 interface AdviceProvider : AiProvider {
     suspend fun advise(request: AdviceRequest): AiResult<String>
+}
+
+/** Decides whether payments found in messages repeat expenses the user already has (names and times only). */
+interface MatchProvider : AiProvider {
+    suspend fun same(request: SameRequest): AiResult<List<Boolean>>
 }
 
 /** Turns text into a fixed-size vector for semantic search. */

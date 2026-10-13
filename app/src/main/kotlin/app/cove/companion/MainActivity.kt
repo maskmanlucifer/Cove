@@ -70,13 +70,9 @@ class MainActivity : FragmentActivity() {
     /** Bumped when the brief-ready notification asks to open the brief player. */
     private val briefRequest = mutableIntStateOf(0)
 
-    /** Bumped when a payment notification asks to open the review of payments found in messages. */
-    private val paymentsRequest = mutableIntStateOf(0)
-
     /** Last [voiceRequest] already acted on, so a request made while locked runs once after unlocking and never again. */
     private var handledVoice = 0
     private var handledBrief = 0
-    private var handledPayments = 0
 
     /** Shows Google's Drive consent screen when the uploader needs it and hands the result back. */
     private val driveConsent = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
@@ -106,7 +102,6 @@ class MainActivity : FragmentActivity() {
         DeviceWipe.takeNotice(this)?.let { Toast.makeText(this, it, Toast.LENGTH_LONG).show() }
         if (intent.action == ACTION_LISTEN) voiceRequest.intValue++
         if (intent.action == ACTION_BRIEF) briefRequest.intValue++
-        if (intent.action == ACTION_PAYMENTS) paymentsRequest.intValue++
         setContent {
             val startup by container.startup.collectAsState()
             (startup as? StartupState.Recovery)?.let {
@@ -154,15 +149,11 @@ class MainActivity : FragmentActivity() {
                     val pendingBrief = briefRequest.intValue
                     val brief = if (pendingBrief > handledBrief) pendingBrief else 0
                     LaunchedEffect(brief) { if (brief > 0) handledBrief = brief }
-                    val pendingPayments = paymentsRequest.intValue
-                    val payments = if (pendingPayments > handledPayments) pendingPayments else 0
-                    LaunchedEffect(payments) { if (payments > 0) handledPayments = payments }
                     Box {
                         CoveNavHost(
                             start = debugRoute ?: DebugLaunch.route ?: if (s.onboarded) Routes.Main else Routes.Welcome,
                             voiceRequest = request,
                             briefRequest = brief,
-                            paymentsRequest = payments,
                         )
                         RingingBanner(Modifier.align(Alignment.TopCenter))
                     }
@@ -192,7 +183,6 @@ class MainActivity : FragmentActivity() {
         if (BuildConfig.DEBUG) handleDebugIntent()
         if (intent.action == ACTION_LISTEN) voiceRequest.intValue++
         if (intent.action == ACTION_BRIEF) briefRequest.intValue++
-        if (intent.action == ACTION_PAYMENTS) paymentsRequest.intValue++
     }
 
     /**
@@ -310,8 +300,5 @@ class MainActivity : FragmentActivity() {
 
         /** Opens the morning brief player; sent by the brief-ready notification. */
         const val ACTION_BRIEF = "app.cove.companion.action.BRIEF"
-
-        /** Opens the review of payments found in messages; sent by the payment notifications. */
-        const val ACTION_PAYMENTS = "app.cove.companion.action.PAYMENTS"
     }
 }

@@ -3,7 +3,7 @@
     <ImageView android:layout_width="100dp" android:layout_height="100dp" android:layout_gravity="bottom|end" android:scaleType="fitXY" android:src="@drawable/widget_orb_corner" />
     <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="18dp">
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Cove" android:textColor="#A5B09E" android:textSize="13sp" />
-        <Space android:layout_width="0dp" android:layout_height="0dp" android:layout_weight="1" />
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Tap to talk" android:textColor="#FFFCF5" android:textSize="17sp" android:textStyle="bold" />
+        <!-- No <Space>: widget previews may only use RemoteViews views, so the weighted text pushes itself to the bottom. -->
+        <TextView android:layout_width="wrap_content" android:layout_height="0dp" android:layout_weight="1" android:gravity="bottom" android:text="Tap to talk" android:textColor="#FFFCF5" android:textSize="17sp" android:textStyle="bold" />
     </LinearLayout>
 </FrameLayout>

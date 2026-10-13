@@ -20,7 +20,6 @@ import app.cove.companion.data.sms.noteFor
 import app.cove.companion.data.sms.SmsReadException
 import app.cove.companion.data.sms.SmsSource
 import app.cove.companion.feature.money.RetroOffer
-import app.cove.companion.feature.money.live.PaymentNotifier
 import app.cove.companion.feature.money.RetroTag
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -113,11 +112,8 @@ data class ImportState(
     val dupRows: List<ImportRow> get() = rows.filter { it.isDuplicate }
 }
 
-/**
- * Runs the scan, holds the user's choices and performs the one-shot import with its Undo. With [pendingOnly] it skips the scan and
- * reviews the payments live capture found in new messages (`sms_pending`).
- */
-class ImportViewModel(private val c: AppContainer, private val pendingOnly: Boolean = false) : ViewModel() {
+/** Runs the scan, holds the user's choices and performs the one-shot import with its Undo. */
+class ImportViewModel(private val c: AppContainer) : ViewModel() {
     private val _state = MutableStateFlow(ImportState(mode = c.smsCapturePrefs.mode.value))
     val state: StateFlow<ImportState> = _state
     private var job: Job? = null
@@ -131,7 +127,7 @@ class ImportViewModel(private val c: AppContainer, private val pendingOnly: Bool
             _state.update { it.copy(categories = cats, hasHistory = has, range = if (has) ImportRange.SinceLast else ImportRange.Last30) }
         }
         viewModelScope.launch { c.smsCapturePrefs.mode.collect { m -> _state.update { it.copy(mode = m) } } }
-        if (pendingOnly) loadPending() else if (!c.smsCapturePrefs.offerShown) _state.update { it.copy(stage = ImportStage.Offer) }
+        if (!c.smsCapturePrefs.offerShown) _state.update { it.copy(stage = ImportStage.Offer) }
     }
 
     /** Saves the mode chosen on the one-time offer or in the range step. */
@@ -143,28 +139,6 @@ class ImportViewModel(private val c: AppContainer, private val pendingOnly: Bool
         c.smsCapturePrefs.offerShown = true
         _state.update { it.copy(stage = if (readGranted) ImportStage.Range else ImportStage.Intro) }
         if (readGranted) loadEstimate()
-    }
-
-    /** Shows the payments found in new messages for review. */
-    private fun loadPending() {
-        _state.update { it.copy(stage = ImportStage.Scanning, progress = null) }
-        job = viewModelScope.launch {
-            try {
-                val items = c.smsImport.pendingItems()
-                val cats = c.money.categories.first().filter { it.kind == "spending" && it.deletedAt == null }
-                val memory = c.money.memory.first()
-                val payees = c.money.payees(items.mapNotNull { it.candidate.tx.payeeKey })
-                val rows = items.map { rowFor(it, cats, memory, payees) }
-                _state.update {
-                    if (rows.isEmpty()) it.copy(stage = ImportStage.Done, summaryText = "Nothing is waiting", added = 0, categories = cats)
-                    else it.copy(stage = ImportStage.Review, rows = rows, categories = cats, scanned = rows.size)
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                _state.update { it.copy(stage = ImportStage.Done, summaryText = "Could not look just now", added = 0, message = null) }
-            }
-        }
     }
 
     /** Called by the screen once READ_SMS is granted (or already was). */
@@ -275,10 +249,6 @@ class ImportViewModel(private val c: AppContainer, private val pendingOnly: Bool
             try {
                 val decisions = rows.map { ImportDecision(it.item, it.checked, it.kind, it.categoryId, it.suggestedId, it.picked, it.label, it.labelEdited) }
                 val summary = c.smsImport.import(decisions)
-                runCatching {
-                    rows.forEach { PaymentNotifier.dismissAsk(c.appContext, it.id) }
-                    PaymentNotifier.refreshSummary(c.appContext)
-                }
                 val dups = rows.count { !it.checked && it.isDuplicate }
                 val left = rows.count { !it.checked && !it.isDuplicate }
                 val text = summaryText(summary.added, dups, left)

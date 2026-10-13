@@ -12,7 +12,6 @@ import app.cove.companion.data.repo.PayeeSnapshot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import java.time.ZoneId
 
@@ -29,6 +28,8 @@ data class ScanResult(
     val alreadyHandled: Int,
     /** Payments dropped because they repeat an earlier decision or another message of this scan. */
     val duplicatesDropped: Int,
+    /** Arrival time of the newest message read, or null when none was read. */
+    val newestAt: Long? = null,
 )
 
 /** Live numbers while scanning. */
@@ -111,6 +112,7 @@ class SmsImportRepository(
         val found = ArrayList<Candidate>()
         var scanned = 0
         var handled = 0
+        var newest: Long? = null
         source.read(since) { page ->
             currentCoroutineContext().ensureActive()
             val keys = page.map { SmsDedupe.messageKey(it.sender, it.body) }
@@ -121,6 +123,7 @@ class SmsImportRepository(
             val ignored = ArrayList<SmsImportLogEntity>()
             page.forEachIndexed { i, m ->
                 scanned++
+                newest = maxOf(newest ?: m.receivedAt, m.receivedAt)
                 val key = keys[i]
                 val row = rows[key]
                 if (!seen.add(key) || (row != null && (row.outcome != SmsImportOutcome.IGNORED || row.parserVersion >= SmsTransactionParser.VERSION)) || (m.providerId != null && m.providerId in decidedIds)) {
@@ -128,7 +131,7 @@ class SmsImportRepository(
                     return@forEachIndexed
                 }
                 when (val r = SmsTransactionParser.parse(m.sender, m.body, m.receivedAt, zone)) {
-                    is ParseResult.Accepted -> found += Candidate(r.tx, listOf(MessageId(key, m.providerId)))
+                    is ParseResult.Accepted -> found += Candidate(r.tx, listOf(MessageId(key, m.providerId, m.receivedAt)))
                     is ParseResult.Rejected -> ignored += SmsImportLogEntity(
                         key = key, providerId = m.providerId, outcome = SmsImportOutcome.IGNORED, messageAt = m.receivedAt,
                         loggedAt = now, parserVersion = SmsTransactionParser.VERSION,
@@ -138,7 +141,7 @@ class SmsImportRepository(
             if (ignored.isNotEmpty()) dao.upsertAll(ignored)
             onProgress(ScanProgress(scanned, total, found.size))
         }
-        finish(found, scanned, handled)
+        finish(found, scanned, handled).copy(newestAt = newest)
     }
 
     private suspend fun finish(found: List<Candidate>, scanned: Int, handled: Int): ScanResult {
@@ -172,27 +175,14 @@ class SmsImportRepository(
     }
 
     /**
-     * Stores [items] as waiting for the user (parsed fields in `sms_pending`) and marks their messages `pending` in the log,
-     * so a rescan, or a twin message from another sender, does not find them again. Safe to repeat.
+     * Payments left waiting by the old "Ask me" mode, with the existing expense each may repeat (looked up again, so it
+     * is current). Live capture settles them on its next scan.
      */
-    suspend fun savePending(items: List<ReviewItem>) = withContext(Dispatchers.IO) {
-        if (items.isEmpty()) return@withContext
-        val now = clock.now()
-        db.withTransaction {
-            dao.insertPending(items.map { it.toPending(now) })
-            dao.upsertAll(items.flatMap { logRows(it.candidate, SmsImportOutcome.PENDING, null, null, now) })
-        }
-    }
-
-    /** Payments waiting for the user, newest first, with the existing expense each may repeat (looked up again, so it is current). */
     suspend fun pendingItems(): List<ReviewItem> = withContext(Dispatchers.IO) {
         val candidates = dao.pending().map { it.toCandidate() }
         val matches = matchesFor(candidates)
         candidates.map { ReviewItem(it, matches[it.id]) }
     }
-
-    /** How many payments wait for the user; drives the quiet row on Money. */
-    fun pendingCount(): Flow<Int> = dao.observePendingCount()
 
     internal fun logRows(c: Candidate, outcome: String, expenseId: String?, batchId: String?, now: Long) = c.messages.mapIndexed { i, m ->
         SmsImportLogEntity(

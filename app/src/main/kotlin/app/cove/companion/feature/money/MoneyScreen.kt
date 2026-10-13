@@ -48,11 +48,9 @@ import app.cove.companion.design.components.FitText
 import app.cove.companion.design.components.coveTopInset
 import app.cove.companion.design.components.pressable
 import app.cove.companion.data.sms.CaptureMode
-import app.cove.companion.feature.money.live.PaymentTexts
 import app.cove.companion.feature.permissions.PermissionGuides
 import app.cove.companion.feature.permissions.PermissionNeeds
 import app.cove.companion.feature.permissions.rememberPermissionIssues
-import androidx.compose.ui.semantics.Role
 import app.cove.companion.navigation.Nav
 import app.cove.companion.navigation.Routes
 
@@ -62,7 +60,6 @@ import app.cove.companion.navigation.Routes
 fun MoneyScreen(nav: Nav) {
     val vm = appViewModel { MoneyViewModel(it) }
     val s by vm.state.collectAsState()
-    val pending by vm.pending.collectAsState()
     val mode by vm.captureMode.collectAsState()
     val c = Cove.colors
     Box(Modifier.fillMaxSize()) {
@@ -87,7 +84,7 @@ fun MoneyScreen(nav: Nav) {
                         leading = { CoveIcon(MessageIcon.Message, c.accent, size = 18.dp) },
                     )
                 }
-                PaymentsFromMessages(pending, mode, nav)
+                PaymentsFromMessages(mode, nav)
             }
             CoveCard(color = c.hue(HueName.Coral).tint, padding = 20) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -182,32 +179,13 @@ private fun CategoryValue(row: MoneyRow, stacked: Boolean = false) {
     }
 }
 
-/**
- * The two quiet things "Payments from messages" can put on Money: a row when payments wait ("2 new payments found in your
- * messages · Review"), and the permission guide with a paste fallback when the mode is on but Cove may not read messages.
- */
+/** When "Payments from messages" is on but Cove may not read messages: the permission guide with a paste fallback. */
 @Composable
-private fun PaymentsFromMessages(pending: Int, mode: CaptureMode, nav: Nav) {
+private fun PaymentsFromMessages(mode: CaptureMode, nav: Nav) {
     val issues = rememberPermissionIssues(PermissionNeeds(messages = mode != CaptureMode.Off))
     if (issues.isNotEmpty()) {
         PermissionGuides(issues)
         AccentButton("Paste a message", { nav.go(Routes.MoneyImport) })
-    }
-    if (pending > 0) PendingPaymentsRow(PaymentTexts.moneyRow(pending)) { nav.go(Routes.MoneyImportPending) }
-}
-
-@Composable
-private fun PendingPaymentsRow(text: String, onClick: () -> Unit) {
-    val c = Cove.colors
-    Row(
-        Modifier.fillMaxWidth().heightIn(min = 52.dp).background(c.card, RoundedCornerShape(20.dp))
-            .pressable(onClick, role = Role.Button).semantics(mergeDescendants = true) { contentDescription = text.replace(" · ", ". ") }
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        CoveText(text, Modifier.weight(1f), style = MoneyType.Sub)
-        CoveIcon(CoveIcons.ChevronRight, c.tail, size = 14.dp)
     }
 }
 

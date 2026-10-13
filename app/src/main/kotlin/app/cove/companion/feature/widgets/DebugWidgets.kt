@@ -11,7 +11,7 @@ import app.cove.companion.feature.nudges.Nudges
 /** Debug-only intent hooks for widgets and nudges; call only inside `BuildConfig.DEBUG`. */
 object DebugWidgets {
     /**
-     * `--es pin_widget next|voice|spent|tasks` asks the launcher to pin that widget;
+     * `--es pin_widget next|voice` asks the launcher to pin that widget;
      * `--ei nudge_in_sec N` schedules the bundled summary N seconds from real time (after the scheduler's own startup sync);
      * `--ei reminder_in_sec N` adds a to-do "Test reminder" due N real seconds from now with a reminder;
      * `--ez brief_ready true` posts the brief-ready notification.
@@ -19,10 +19,8 @@ object DebugWidgets {
     suspend fun handle(context: Context, c: AppContainer, intent: Intent) {
         intent.getStringExtra("pin_widget")?.let { which ->
             val receiver = when (which) {
-                "next" -> NextWidgetReceiver::class.java
                 "voice" -> VoiceWidgetReceiver::class.java
-                "spent" -> SpentWidgetReceiver::class.java
-                else -> TasksWidgetReceiver::class.java
+                else -> NextWidgetReceiver::class.java
             }
             context.getSystemService(AppWidgetManager::class.java).requestPinAppWidget(ComponentName(context, receiver), null, null)
         }

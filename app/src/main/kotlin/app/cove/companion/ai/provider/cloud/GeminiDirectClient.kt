@@ -72,6 +72,11 @@ class GeminiDirectClient(
         return withFallback(system, user, { it }, CATEGORY_TIMEOUT_MS)
     }
 
+    override suspend fun samePayments(system: String, user: String): String? {
+        if (!enabled) return null
+        return withFallback(system, user, { it }, CATEGORY_TIMEOUT_MS)
+    }
+
     /** One tiny call on the primary model with a longer timeout, for "Test connection". */
     suspend fun ping(): GeminiReply =
         generate(model, "Reply with the single word OK.", "Say OK.", json = false, maxTokens = 16, timeout = PING_TIMEOUT_MS)

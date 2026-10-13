@@ -10,16 +10,20 @@ import app.cove.companion.ai.model.CategorySuggestion
 import app.cove.companion.ai.model.IntentRequest
 import app.cove.companion.ai.model.Location
 import app.cove.companion.ai.model.ParsedIntents
+import app.cove.companion.ai.model.SameRequest
 import app.cove.companion.ai.model.VoiceIntent
 import app.cove.companion.ai.prompt.AdvicePrompt
 import app.cove.companion.ai.prompt.CategoryPrompt
+import app.cove.companion.ai.prompt.SamePaymentPrompt
 import app.cove.companion.ai.provider.BriefProvider
 import app.cove.companion.ai.provider.AdviceProvider
 import app.cove.companion.ai.provider.CategoryProvider
 import app.cove.companion.ai.provider.IntentProvider
+import app.cove.companion.ai.provider.MatchProvider
 import app.cove.companion.ai.schema.AdviceSchema
 import app.cove.companion.ai.schema.CategorySchema
 import app.cove.companion.ai.schema.IntentSchema
+import app.cove.companion.ai.schema.SamePaymentSchema
 
 /**
  * Cloud adapter over a [CloudGateway]: Gemini direct ([GEMINI_ID]) or the legacy Edge Function ([EDGE_ID]).
@@ -30,7 +34,7 @@ class CloudProvider(
     override val id: String,
     private val needs: String,
     private val gateway: () -> CloudGateway,
-) : IntentProvider, BriefProvider, CategoryProvider, AdviceProvider {
+) : IntentProvider, BriefProvider, CategoryProvider, AdviceProvider, MatchProvider {
     override val location = Location.Cloud
 
     override suspend fun availability(): Availability =
@@ -59,6 +63,12 @@ class CloudProvider(
         val raw = gateway().adviseWorkout(AdvicePrompt.SYSTEM, AdvicePrompt.user(request))
             ?: return failed(AiError.Unavailable("The cloud gave no answer"))
         return AdviceSchema.parse(raw)?.let { AiResult.Ok(it, ref) } ?: failed(AiError.InvalidOutput)
+    }
+
+    override suspend fun same(request: SameRequest): AiResult<List<Boolean>> {
+        val raw = gateway().samePayments(SamePaymentPrompt.SYSTEM, SamePaymentPrompt.user(request))
+            ?: return failed(AiError.Unavailable("The cloud gave no answer"))
+        return SamePaymentSchema.parse(raw, request.pairs.size)?.let { AiResult.Ok(it, ref) } ?: failed(AiError.InvalidOutput)
     }
 
     private fun failed(error: AiError) = AiResult.Failed(error, listOf(ref))

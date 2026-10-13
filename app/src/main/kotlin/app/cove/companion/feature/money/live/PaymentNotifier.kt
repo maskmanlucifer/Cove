@@ -12,31 +12,23 @@ import app.cove.companion.R
 import app.cove.companion.core.Notifications
 import app.cove.companion.data.sms.AddedPayment
 import app.cove.companion.data.sms.CaptureReport
-import app.cove.companion.data.sms.PendingPayment
 
 /**
- * Posts the quiet payment notifications: "₹8 spent · Pluxee wallet" with Add and Skip, "Added ₹8 · Food" with Undo, and one
- * summary when several are showing. They use the low-importance Payments channel (no sound, no pop-up), hide the amount on
- * the lock screen, and are never posted while one-thing mode is on (the Money row still shows what is waiting).
+ * Posts the quiet payment notifications: "Added ₹8 · Food" with Undo, and one summary when several are showing. They use
+ * the low-importance Payments channel (no sound, no pop-up), hide the amount on the lock screen, and are never posted
+ * while one-thing mode is on.
  */
 object PaymentNotifier {
     private const val GROUP = "cove_payments"
-    private const val ASK = "ask:"
     private const val ADDED = "added:"
 
-    /** Posts [report]'s payments unless [quiet] (one-thing mode); both lists may be empty. */
+    /** Posts [report]'s payments unless [quiet] (one-thing mode). */
     fun post(context: Context, report: CaptureReport, quiet: Boolean) {
         if (quiet || report.isEmpty) return
         val nm = context.getSystemService(NotificationManager::class.java)
         Notifications.createChannels(context)
-        report.pending.forEach { nm.notify(ASK + it.key, idOf(it.key), ask(context, it)) }
         report.added.forEach { nm.notify(ADDED + it.expenseId, idOf(it.expenseId), added(context, it)) }
         refreshSummary(context)
-    }
-
-    /** Takes down the notification of pending payment [key] (after Add or Skip). */
-    fun dismissAsk(context: Context, key: String) {
-        context.getSystemService(NotificationManager::class.java).cancel(ASK + key, idOf(key))
     }
 
     /** Takes down the "Added" notification of [expenseId] (after Undo). */
@@ -52,31 +44,16 @@ object PaymentNotifier {
             nm.cancel(Notifications.ID_PAYMENTS_SUMMARY)
             return
         }
-        val pending = mine.count { it.tag?.startsWith(ASK) == true }
-        val text = PaymentTexts.summary(pending, mine.size - pending)
+        val text = PaymentTexts.summary(mine.size)
         val n = base(context)
             .setContentTitle(text.title)
             .setContentText(text.text)
             .setGroupSummary(true)
-            .setContentIntent(if (pending > 0) reviewIntent(context, "summary") else openIntent(context))
+            .setContentIntent(openIntent(context))
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setPublicVersion(hidden(context))
             .build()
         nm.notify(Notifications.ID_PAYMENTS_SUMMARY, n)
-    }
-
-    private fun ask(context: Context, p: PendingPayment): Notification {
-        val text = PaymentTexts.ask(p)
-        return base(context)
-            .setContentTitle(text.title)
-            .setContentText(text.text)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(text.text))
-            .setContentIntent(reviewIntent(context, p.key))
-            .addAction(0, "Add", action(context, PaymentActionReceiver.ACTION_ADD, p.key))
-            .addAction(0, "Skip", action(context, PaymentActionReceiver.ACTION_SKIP, p.key))
-            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
-            .setPublicVersion(hidden(context))
-            .build()
     }
 
     private fun added(context: Context, a: AddedPayment): Notification {
@@ -107,14 +84,6 @@ object PaymentNotifier {
 
     private fun openIntent(context: Context): PendingIntent =
         PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-
-    /** Opens the app on the review of payments waiting for the user. */
-    private fun reviewIntent(context: Context, key: String): PendingIntent = PendingIntent.getActivity(
-        context, 0,
-        Intent(context, MainActivity::class.java).setAction(MainActivity.ACTION_PAYMENTS).setData(Uri.parse("cove-pay://review/$key"))
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP),
-        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-    )
 
     private fun action(context: Context, action: String, key: String): PendingIntent = PendingIntent.getBroadcast(
         context, 0,

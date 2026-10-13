@@ -9,6 +9,7 @@ import app.cove.companion.ai.model.CategorySuggestion
 import app.cove.companion.ai.model.CloudCheck
 import app.cove.companion.ai.model.IntentContext
 import app.cove.companion.ai.model.ParsedIntents
+import app.cove.companion.ai.model.SamePair
 import app.cove.companion.ai.model.SpeechEngineInfo
 import app.cove.companion.ai.model.SpeechSession
 import app.cove.companion.ai.model.Summary
@@ -75,6 +76,13 @@ interface AiService {
      * phone finds in it. Empty when the setting is off, the model is not ready yet, or nothing clear was found. On-device only.
      */
     suspend fun readDetails(text: String): List<VoiceIntent> = emptyList()
+
+    /**
+     * For each of [pairs] (at most [app.cove.companion.ai.model.SameRequest.MAX_BATCH]), whether the payment found in a
+     * message repeats the expense it is paired with. Everyday data: only names and local times are sent, never amounts or
+     * message text. Fails with [app.cove.companion.ai.model.AiError.NeedsConfig] when no cloud model is set up.
+     */
+    suspend fun samePayments(pairs: List<SamePair>): AiResult<List<Boolean>>
 
     /** What each capability can use right now and why not, for settings screens. */
     suspend fun status(): AiStatus

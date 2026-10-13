@@ -31,6 +31,14 @@ class SmsCapturePrefs(context: Context) {
         get() = prefs.getBoolean(OFFER_SHOWN, false)
         set(v) { prefs.edit().putBoolean(OFFER_SHOWN, v).apply() }
 
+    /**
+     * Arrival time (epoch millis) of the newest message the catch-up scan has fully settled; 0 before the first scan.
+     * See [CaptureCursor].
+     */
+    var checkedUntil: Long
+        get() = prefs.getLong(CHECKED_UNTIL, 0L)
+        set(v) { prefs.edit().putLong(CHECKED_UNTIL, v).apply() }
+
     /** When the catch-up scan last started (epoch millis); 0 when never. */
     var lastCatchUpAt: Long
         get() = prefs.getLong(LAST_CATCH_UP, 0L)
@@ -42,5 +50,6 @@ class SmsCapturePrefs(context: Context) {
         const val ENABLED_AT = "enabled_at"
         const val OFFER_SHOWN = "offer_shown"
         const val LAST_CATCH_UP = "last_catch_up"
+        const val CHECKED_UNTIL = "checked_until"
     }
 }

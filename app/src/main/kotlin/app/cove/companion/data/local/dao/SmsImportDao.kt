@@ -7,7 +7,6 @@ import androidx.room.Query
 import app.cove.companion.data.local.entity.ExpenseEntity
 import app.cove.companion.data.local.entity.SmsImportLogEntity
 import app.cove.companion.data.local.entity.SmsPendingEntity
-import kotlinx.coroutines.flow.Flow
 
 /** Access to the local `sms_import_log` and the expense lookups the import needs. */
 @Dao
@@ -40,19 +39,10 @@ interface SmsImportDao {
     @Query("DELETE FROM sms_import_log WHERE outcome != 'pending'")
     suspend fun clear()
 
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insertPending(rows: List<SmsPendingEntity>)
-
     @Query("SELECT * FROM sms_pending ORDER BY `at` DESC")
     suspend fun pending(): List<SmsPendingEntity>
 
-    @Query("SELECT * FROM sms_pending WHERE `key` = :key")
-    suspend fun pendingByKey(key: String): SmsPendingEntity?
-
-    @Query("SELECT COUNT(*) FROM sms_pending")
-    fun observePendingCount(): Flow<Int>
-
-    /** Returns how many rows went, so a repeated Add or Skip finds nothing left to do. */
+    /** Returns how many rows went. */
     @Query("DELETE FROM sms_pending WHERE `key` IN (:keys)")
     suspend fun deletePending(keys: List<String>): Int
 

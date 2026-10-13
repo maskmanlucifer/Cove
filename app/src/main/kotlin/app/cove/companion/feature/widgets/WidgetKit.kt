@@ -23,13 +23,8 @@ internal object WidgetColors {
     val tail = ColorProvider(day = LightColors.tail, night = DarkColors.tail)
     val placeholder = ColorProvider(day = LightColors.placeholder, night = DarkColors.placeholder)
 
-    val accent = ColorProvider(day = LightColors.accent, night = DarkColors.accent)
-    val onAccent = ColorProvider(day = LightColors.onAccent, night = DarkColors.onAccent)
-
-    /** Quiet tinted card backgrounds: Next is sun, Tasks leaf, Spent coral. */
+    /** Quiet tinted card background of Next: sun. */
     val sunCard = ColorProvider(day = LightColors.hue(HueName.Sun).tint, night = DarkColors.hue(HueName.Sun).tint)
-    val leafCard = ColorProvider(day = LightColors.hue(HueName.Leaf).tint, night = DarkColors.hue(HueName.Leaf).tint)
-    val coralCard = ColorProvider(day = LightColors.hue(HueName.Coral).tint, night = DarkColors.hue(HueName.Coral).tint)
 
     /** The "Tap to talk" tile: ink in light, a raised well in dark so it stays visible on dark wallpapers. */
     val voiceCard = ColorProvider(day = LightColors.ink, night = DarkColors.wellStrong)

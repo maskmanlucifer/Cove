@@ -5,12 +5,9 @@ import app.cove.companion.core.DayPhase
 import app.cove.companion.core.clockText
 import app.cove.companion.core.dayPhase
 import app.cove.companion.core.inText
-import app.cove.companion.core.startOfDayMillis
 import app.cove.companion.core.toLocalDate
 import app.cove.companion.data.local.entity.AlarmEntity
 import app.cove.companion.data.local.entity.EventEntity
-import app.cove.companion.data.local.entity.ExpenseCategoryEntity
-import app.cove.companion.data.local.entity.ExpenseEntity
 import app.cove.companion.data.local.entity.TodoEntity
 import app.cove.companion.feature.nudges.NudgeMath
 import kotlinx.coroutines.flow.first
@@ -20,22 +17,13 @@ import java.time.ZoneId
 /** "Next" card content: [inText] ("in 25 min"), the clock split as in the design, and the title. */
 data class NextCard(val inText: String, val digits: String, val suffix: String, val title: String)
 
-/** One row of the tasks widget. */
-data class TaskRow(val id: String, val title: String, val done: Boolean)
-
 /** Everything the widgets draw, computed from the database in one cheap read. */
-data class WidgetSnapshot(
-    val next: NextCard?,
-    val tasks: List<TaskRow>,
-    val tasksLeft: Int,
-    val spentTodayPaise: Long,
-    val leftThisMonthPaise: Long?,
-)
+data class WidgetSnapshot(val next: NextCard?)
 
 /** Builds [WidgetSnapshot]s; pure apart from [load], so it can be tested. Widgets never run Nano or heavy work. */
 object WidgetData {
     /** What widgets draw when the database cannot be read: calm empty state instead of an error or a crash. */
-    val Empty = WidgetSnapshot(null, emptyList(), 0, 0, null)
+    val Empty = WidgetSnapshot(null)
 
     /** Reads the current state of the database once; an unreadable database gives [Empty] and a crash note. */
     suspend fun load(c: AppContainer): WidgetSnapshot = try {
@@ -49,15 +37,11 @@ object WidgetData {
     private suspend fun read(c: AppContainer): WidgetSnapshot {
         val now = c.clock.now()
         val day = now.toLocalDate()
-        val monthStart = day.withDayOfMonth(1).startOfDayMillis()
-        val monthEnd = day.plusMonths(1).withDayOfMonth(1).startOfDayMillis() - 1
         return build(
             now,
             c.todos.todos.first(),
             c.plan.upcomingEvents(30).first() + c.plan.repeatingEvents(day.plusYears(100)).first(),
             c.plan.alarms.first(),
-            c.money.expenses(monthStart, monthEnd).first(),
-            c.money.categories.first(),
         )
     }
 
@@ -66,25 +50,14 @@ object WidgetData {
         todos: List<TodoEntity>,
         events: List<EventEntity>,
         alarms: List<AlarmEntity>,
-        monthExpenses: List<ExpenseEntity>,
-        categories: List<ExpenseCategoryEntity>,
         zone: ZoneId = ZoneId.systemDefault(),
     ): WidgetSnapshot {
         val today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
         val dayStart = today.atStartOfDay(zone).toInstant().toEpochMilli()
         val dayEnd = today.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
-        val spent = monthExpenses.filter { it.kind == "spent" }
-        val budget = categories.filter { it.kind == "spending" }.sumOf { it.budgetPaise }
         val relevant = todos.filter { it.deletedAt == null && (it.dueAt == null || it.dueAt in dayStart until dayEnd) }
         val open = relevant.filter { !it.done }.sortedWith(compareBy(nullsLast()) { it.dueAt })
-        val doneToday = relevant.filter { it.done && (it.doneAt ?: 0) >= dayStart }
-        return WidgetSnapshot(
-            next = nextCard(now, today.atStartOfDay(zone).toInstant().toEpochMilli(), events, open, alarms, zone),
-            tasks = (open + doneToday).map { TaskRow(it.id, it.title, it.done) },
-            tasksLeft = open.size,
-            spentTodayPaise = spent.filter { it.spentAt in dayStart until dayEnd }.sumOf { it.amountPaise },
-            leftThisMonthPaise = if (budget > 0) budget - spent.sumOf { it.amountPaise } else null,
-        )
+        return WidgetSnapshot(nextCard(now, dayStart, events, open, alarms, zone))
     }
 
     private fun nextCard(now: Long, dayStart: Long, events: List<EventEntity>, open: List<TodoEntity>, alarms: List<AlarmEntity>, zone: ZoneId): NextCard? {

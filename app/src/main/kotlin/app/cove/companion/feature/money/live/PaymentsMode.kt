@@ -66,10 +66,10 @@ fun rememberPaymentsAccess(onResult: (granted: Boolean) -> Unit = {}): PaymentsA
         onResult(granted)
     }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { granted = Permissions.messagesGranted(context) }
-    return PaymentsAccess(granted) { launcher.launch(paymentPermissions(context, CaptureMode.Ask)) }
+    return PaymentsAccess(granted) { launcher.launch(paymentPermissions(context, CaptureMode.Auto)) }
 }
 
-/** The three modes, each with one plain sentence; one is selected. Used on the import screen and in Me. */
+/** Off and On, each with one plain sentence; one is selected. Used on the import screen and in Me. */
 @Composable
 fun PaymentsModePicker(mode: CaptureMode, onMode: (CaptureMode) -> Unit, modifier: Modifier = Modifier) {
     RowsCard(modifier) {

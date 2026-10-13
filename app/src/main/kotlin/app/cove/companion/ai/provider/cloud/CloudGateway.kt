@@ -50,6 +50,9 @@ interface CloudGateway {
 
     /** Runs the workout advice prompt ([system], [user] as built by `AdvicePrompt`); the raw JSON reply, or null. */
     suspend fun adviseWorkout(system: String, user: String): String? = null
+
+    /** Runs the same-payment prompt ([system], [user] as built by `SamePaymentPrompt`: names and times only); the raw JSON reply, or null. */
+    suspend fun samePayments(system: String, user: String): String? = null
 }
 
 /**

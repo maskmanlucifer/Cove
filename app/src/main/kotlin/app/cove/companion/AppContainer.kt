@@ -53,6 +53,9 @@ import app.cove.companion.data.sms.ContentResolverSmsInbox
 import app.cove.companion.data.sms.SmsCapturePrefs
 import app.cove.companion.data.sms.SmsCatchUp
 import app.cove.companion.data.sms.SmsLiveCapture
+import app.cove.companion.data.sms.SameChecker
+import app.cove.companion.ai.model.AiError
+import app.cove.companion.ai.model.AiResult
 import app.cove.companion.data.memory.MemoryRepository
 import app.cove.companion.data.config.AssistantPrefs
 import app.cove.companion.data.sms.SmsImportRepository
@@ -178,8 +181,13 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
     val smsCapturePrefs = SmsCapturePrefs(context.applicationContext)
     val assistantPrefs = AssistantPrefs(context.applicationContext)
 
-    /** Handles payments found in new messages and the Add / Skip / Undo notification actions (see `docs/SMS_IMPORT.md`). */
-    val smsCapture = SmsLiveCapture(database, money, smsImport, smsCapturePrefs)
+    /** Settles payments found in new messages by itself, and the Undo notification action (see `docs/SMS_IMPORT.md`). */
+    val smsCapture = SmsLiveCapture(database, money, smsImport, smsCapturePrefs, same = { pairs ->
+        when (val r = ai.samePayments(pairs)) {
+            is AiResult.Ok -> SameChecker.Answer.Same(r.value)
+            is AiResult.Failed -> if (r.error is AiError.NeedsConfig) SameChecker.Answer.NoAi else SameChecker.Answer.NoAnswer
+        }
+    })
 
     /** Silent catch-up scan when the app opens (throttled), for messages the receiver could not handle. */
     val smsCatchUp by lazy {
@@ -316,6 +324,7 @@ class AppContainer(private val context: Context, val clock: Clock = Clock.System
             embedding = listOf(UnbundledEmbeddingProvider()),
             category = listOf(nano, gemini),
             advice = listOf(nano, gemini),
+            match = listOf(gemini),
         )
         val router = AiRouter(providers, AiPolicy(foreground) { connectivity.online.value }, speechLog = { line ->
             app.cove.companion.ai.speech.SpeechLogBook.add(line)

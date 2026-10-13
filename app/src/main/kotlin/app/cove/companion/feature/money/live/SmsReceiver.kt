@@ -6,7 +6,6 @@ import android.content.Intent
 import android.provider.Telephony
 import app.cove.companion.container
 import app.cove.companion.data.sms.CaptureMode
-import app.cove.companion.data.sms.CaptureReport
 import app.cove.companion.feature.today.oneThingActive
 import app.cove.companion.resilience.CrashHandler
 import kotlinx.coroutines.CoroutineScope
@@ -56,7 +55,7 @@ class SmsReceiver : BroadcastReceiver() {
     }
 }
 
-/** The Add, Skip and Undo buttons on payment notifications. Each is safe to run twice: the second finds nothing left to do. */
+/** The Undo button on "Added" payment notifications. Safe to run twice: the second finds nothing left to do. */
 class PaymentActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action ?: return
@@ -75,16 +74,6 @@ class PaymentActionReceiver : BroadcastReceiver() {
     private suspend fun handle(app: Context, action: String, key: String) {
         val c = app.container
         when (action) {
-            ACTION_ADD -> {
-                PaymentNotifier.dismissAsk(app, key)
-                if (withTimeoutOrNull(HANDLER_TIMEOUT_MS - 2_000) { c.dbReady.first { it } } != true) return
-                c.smsCapture.accept(key)?.let { PaymentNotifier.post(app, CaptureReport(added = listOf(it)), quiet = false) }
-            }
-            ACTION_SKIP -> {
-                PaymentNotifier.dismissAsk(app, key)
-                if (withTimeoutOrNull(HANDLER_TIMEOUT_MS - 2_000) { c.dbReady.first { it } } != true) return
-                c.smsCapture.skip(key)
-            }
             ACTION_UNDO -> {
                 PaymentNotifier.dismissAdded(app, key)
                 if (withTimeoutOrNull(HANDLER_TIMEOUT_MS - 2_000) { c.dbReady.first { it } } != true) return
@@ -95,8 +84,6 @@ class PaymentActionReceiver : BroadcastReceiver() {
     }
 
     companion object {
-        const val ACTION_ADD = "app.cove.companion.payment.ADD"
-        const val ACTION_SKIP = "app.cove.companion.payment.SKIP"
         const val ACTION_UNDO = "app.cove.companion.payment.UNDO"
         const val EXTRA_KEY = "key"
     }
