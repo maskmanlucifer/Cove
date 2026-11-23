@@ -117,6 +117,7 @@ fun TodayScreen(nav: Nav, onOpenMe: () -> Unit = {}) {
     val permissionIssues = rememberPermissionIssues(PermissionNeeds(reminders = remindersExist))
         .filter { it == PermissionIssue.Notifications }
     DisposableEffect(Unit) { onDispose { vm.markNewSeen() } }
+    if (!state.loaded) return
     if (state.oneThingMode) {
         OneThingContent(nav)
         return

@@ -46,3 +46,6 @@ After changing dependencies, build the release APK and run through launch, to-do
 - `CredentialManagerMisuse`: all `GetCredentialException`s (which include `NoCredentialException`) are handled together.
 - `HardcodedText`/`ContentDescription` in `widget_preview_*` layouts: they are static launcher previews.
 No `abortOnError` override is needed.
+
+## 6. Intro page
+`docs/index.html` is served by GitHub Pages from `master` `/docs`. After a release, change the APK link and version in it.

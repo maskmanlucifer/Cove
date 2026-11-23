@@ -61,6 +61,8 @@ data class TodayState(
     val oneThingMode: Boolean = false,
     /** Whether "How was today?" is offered right now. */
     val askMood: Boolean = false,
+    /** False until the database has answered; the screen shows nothing rather than placeholder text that then changes. */
+    val loaded: Boolean = false,
 )
 
 private data class Aux(
@@ -164,6 +166,7 @@ class TodayViewModel(private val c: AppContainer) : ViewModel() {
             moreCount = picked.more,
             lateNight = now.hour < LATE_NIGHT_END_HOUR,
             askMood = MoodPrompt.visible(now, answeredMood),
+            loaded = true,
         )
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TodayState())
 
