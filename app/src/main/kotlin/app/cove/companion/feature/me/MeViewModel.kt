@@ -46,6 +46,11 @@ class MeViewModel(private val c: AppContainer) : ViewModel() {
         viewModelScope.launch { c.smsImport.forgetHistory() }
     }
 
+    /** Clears every expense up to now; [onDone] gets how many were cleared. */
+    fun clearSpending(onDone: (Int) -> Unit) {
+        viewModelScope.launch { onDone(c.money.clearUntilNow()) }
+    }
+
     /** Clears what Cove learned about payees (`payee_memory`); expenses and word memory stay. */
     fun forgetPayees() {
         viewModelScope.launch { c.money.forgetAllPayees() }

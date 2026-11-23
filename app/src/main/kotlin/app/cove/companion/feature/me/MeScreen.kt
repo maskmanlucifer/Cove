@@ -93,6 +93,8 @@ fun MeScreen(nav: Nav) {
             RowDivider()
             SettingsRow("Forget imported-message history", onClick = { sheet = MeSheet.ForgetMessages })
             RowDivider()
+            SettingsRow("Clear spending", onClick = { sheet = MeSheet.ClearSpending })
+            RowDivider()
             SettingsRow("Clear all data", onClick = { sheet = MeSheet.ClearData })
         }
         SecurityGroup(

@@ -69,7 +69,7 @@ fun PlanScreen(nav: Nav) {
     var segment by rememberSaveable { mutableIntStateOf(DebugLaunch.segment ?: 0) }
     var sheet by rememberSaveable { mutableStateOf(DebugLaunch.sheet) }
     val drag = remember { TodoDragState() }
-    val todos = segment == 1
+    val todos = segment == 0
 
     Box(Modifier.fillMaxSize()) {
         val header: @Composable () -> Unit = {
@@ -79,7 +79,7 @@ fun PlanScreen(nav: Nav) {
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 CoveText("Plan", style = CoveType.Title, modifier = Modifier.semantics { heading() })
-                Segmented(listOf("Schedule", "To-dos"), segment, { segment = it }, height = 40.dp)
+                Segmented(listOf("To-dos", "Schedule"), segment, { segment = it }, height = 40.dp)
             }
         }
         if (todos) {

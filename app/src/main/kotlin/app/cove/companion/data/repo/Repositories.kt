@@ -215,6 +215,22 @@ class MoneyRepository(private val db: CoveDatabase, private val clock: Clock, pr
 
     suspend fun expense(id: String): ExpenseEntity? = db.expenses().get(id)?.takeIf { it.deletedAt == null }
 
+    /**
+     * Soft-deletes every live expense spent up to now (Me > "Clear spending"). Categories, learned payees and the
+     * message-import log stay, so a later message scan does not add the cleared payments again.
+     *
+     * @returns How many expenses were cleared.
+     */
+    suspend fun clearUntilNow(): Int {
+        val now = clock.now()
+        val rows = db.expenses().liveUntil(now)
+        rows.forEach {
+            db.expenses().upsert(it.copy(deletedAt = now, updatedAt = now))
+            log.mark("expenses", it.id)
+        }
+        return rows.size
+    }
+
     /** Brings back an expense removed with [delete] (used by Undo). */
     suspend fun restore(id: String) {
         db.expenses().get(id)?.let { save(it.copy(deletedAt = null)) }

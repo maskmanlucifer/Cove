@@ -129,6 +129,9 @@ interface ExpenseDao {
     @Query("SELECT * FROM expenses WHERE id = :id")
     suspend fun get(id: String): ExpenseEntity?
 
+    @Query("SELECT * FROM expenses WHERE deletedAt IS NULL AND spentAt <= :to")
+    suspend fun liveUntil(to: Long): List<ExpenseEntity>
+
     @Upsert
     suspend fun upsert(expense: ExpenseEntity)
 

@@ -39,7 +39,7 @@ import app.cove.companion.feature.security.LockUnavailableSheet
 import app.cove.companion.feature.plan.TitleField
 
 /** Which Me sheet is open. */
-enum class MeSheet { Name, Wake, Brief, OneThing, Spoken, Details, Nudges, Motion, Look, Privacy, PhotoQuality, Backup, Restore, LockAfter, LockUnavailable, VoiceCheck, ForgetMessages, ClearData, PaymentsFromMessages }
+enum class MeSheet { Name, Wake, Brief, OneThing, Spoken, Details, Nudges, Motion, Look, Privacy, PhotoQuality, Backup, Restore, LockAfter, LockUnavailable, VoiceCheck, ForgetMessages, ClearSpending, ClearData, PaymentsFromMessages }
 
 /** Hosts whichever sheet [sheet] names, reading and writing through [vm]. */
 @Composable
@@ -117,6 +117,16 @@ fun MeSheets(sheet: MeSheet?, s: SettingsEntity, vm: MeViewModel, briefPlay: () 
             PillButton("Forget history", { vm.forgetImportedMessages(); Toast.makeText(context, "Message history forgotten", Toast.LENGTH_SHORT).show(); close() }, Modifier.fillMaxWidth(), height = 52.dp)
             SheetCaption("Cove also remembers how you tagged payees, so the next payment to the same shop or QR is tagged like last time. You can forget that on its own: your expenses and their tags stay as they are.")
             PillButton("Forget learned payees", { vm.forgetPayees(); Toast.makeText(context, "Learned payees forgotten", Toast.LENGTH_SHORT).show(); close() }, Modifier.fillMaxWidth(), kind = ButtonKind.Secondary, height = 52.dp)
+            PillButton("Cancel", close, Modifier.fillMaxWidth(), kind = ButtonKind.Secondary, height = 52.dp)
+        }
+        MeSheet.ClearSpending -> PlanSheet(onDismiss, gap = 16) { close ->
+            val context = LocalContext.current
+            SheetHeading("Clear spending")
+            SheetCaption("Deletes every expense and income entry up to now, on this phone and in your synced copy. Your categories and learned payees stay. Payments from old messages are not added again. New payments are added as usual.")
+            PillButton("Clear spending", {
+                vm.clearSpending { n -> Toast.makeText(context, if (n == 1) "1 entry cleared" else "$n entries cleared", Toast.LENGTH_SHORT).show() }
+                close()
+            }, Modifier.fillMaxWidth(), kind = ButtonKind.Destructive, height = 52.dp)
             PillButton("Cancel", close, Modifier.fillMaxWidth(), kind = ButtonKind.Secondary, height = 52.dp)
         }
         MeSheet.ClearData -> app.cove.companion.feature.datacontrols.ClearDataSheet(onDismiss)

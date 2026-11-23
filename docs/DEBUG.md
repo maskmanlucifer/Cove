@@ -13,7 +13,7 @@ Send with `adb shell am start -n app.cove.companion/.MainActivity <extras>`.
 | `--es captureMode off\|ask\|auto` (`--ez catchUp true`) | Set "Payments from messages" without the UI; run the since-last-import scan now. Test with `adb emu sms send VM-PLUXEE "Rs 8 spent from Pluxee wallet"` after granting RECEIVE_SMS, READ_SMS, POST_NOTIFICATIONS |
 | `--ei journalPhotos N` | Create journal entry `debug-photos` with N generated photos (several shapes, EXIF-rotated, corrupt) and a voice row; open it with `--es route journal/debug-photos` |
 | `--es route <route>` | Start on a route (`alarms`, `money/categories`, `sync/conflict`, `brief`, `one-thing`, ...; see `navigation/Routes.kt`) |
-| `--es tab plan --es segment 1 --es sheet categories --es title Dentist` | Open a Plan tab view, segment, sheet or prefilled title |
+| `--es tab plan --es segment 0 --es sheet categories --es title Dentist` | Open a Plan tab view, segment, sheet or prefilled title |
 | `--es suggest late-night` | Fake a 1:40 am phone use for the late-night suggestion |
 | `--es briefAt 51/124` | Freeze the brief player at elapsed/total seconds |
 | `--es setupCode cove-setup:1:...`, `--ez forgetCredentials true`, `--es sheet supabase\|google\|drive\|gemini\|code` (with `--es route connect`) | Fill or wipe stored credentials; open a Connect services sheet |
